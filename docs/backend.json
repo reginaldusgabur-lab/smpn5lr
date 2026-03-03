@@ -1,0 +1,397 @@
+
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user in the system with different roles. A user can be an admin, headmaster (kepala_sekolah), teacher (guru), staff (pegawai), or student (siswa). Teachers have an employment status (position).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "Real email address for the user, used for authentication and password resets.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user (admin, kepala_sekolah, guru, pegawai, siswa)."
+        },
+        "position": {
+          "type": "string",
+          "description": "The employment status of the user. For 'guru', this can be PNS or PPPK. For 'pegawai', this can be Honorer, PPPK, or PW (PPPK Paruh Waktu).",
+          "enum": [
+            "PNS",
+            "PPPK",
+            "Honorer",
+            "PW"
+          ]
+        },
+        "nip": {
+          "type": "string",
+          "description": "NIP (Nomor Induk Pegawai) for teachers. Only applicable if role is 'guru' or 'kepala_sekolah'."
+        },
+        "nisn": {
+          "type": "string",
+          "description": "NISN (Nomor Induk Siswa Nasional) for students. Only applicable if role is 'siswa'."
+        },
+        "sequenceNumber": {
+          "type": "number",
+          "description": "Nomor urut kepegawaian untuk pengurutan, biasanya didapat dari SK pembagian tugas. Berlaku untuk guru dan kepala sekolah."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "role",
+        "email"
+      ]
+    },
+    "AttendanceRecord": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AttendanceRecord",
+      "type": "object",
+      "description": "Represents a single attendance record for a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the attendance record."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User. (Relationship: User 1:N AttendanceRecord)"
+        },
+        "checkInTime": {
+          "type": "string",
+          "description": "Timestamp of when the user checked in.",
+          "format": "date-time"
+        },
+        "checkOutTime": {
+          "type": "string",
+          "description": "Timestamp of when the user checked out.",
+          "format": "date-time"
+        },
+        "checkInLatitude": {
+          "type": "number",
+          "description": "Latitude coordinate of the check-in location."
+        },
+        "checkInLongitude": {
+          "type": "number",
+          "description": "Longitude coordinate of the check-in location."
+        },
+        "checkOutLatitude": {
+          "type": "number",
+          "description": "Latitude coordinate of the check-out location."
+        },
+        "checkOutLongitude": {
+          "type": "number",
+          "description": "Longitude coordinate of the check-out location."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "checkInTime"
+      ]
+    },
+    "LeaveRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LeaveRequest",
+      "type": "object",
+      "description": "Represents a leave request submitted by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the leave request."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User. (Relationship: User 1:N LeaveRequest)"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of leave request (Sakit/Izin/Dinas)."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Start date of the leave period.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "End date of the leave period.",
+          "format": "date-time"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason for the leave request."
+        },
+        "proofUrl": {
+          "type": "string",
+          "description": "URL of the uploaded proof (optional).",
+          "format": "uri"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the leave request (pending, approved, rejected)."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "type",
+        "startDate",
+        "endDate",
+        "reason",
+        "status"
+      ]
+    },
+    "SchoolConfig": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SchoolConfig",
+      "type": "object",
+      "description": "Configuration settings for the school, such as attendance radius, check-in/out times, and report details.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the school configuration. Should only be one record."
+        },
+        "isAttendanceActive": {
+          "type": "boolean",
+          "description": "Toggles the entire attendance system on or off for simulation or maintenance."
+        },
+        "offDays": {
+          "type": "array",
+          "description": "Days of the week that are considered holidays. 0=Sunday, 1=Monday, ..., 6=Saturday.",
+          "items": {
+            "type": "number"
+          }
+        },
+        "useLocationValidation": {
+          "type": "boolean",
+          "description": "If true, the system will validate the user's location against the school's radius."
+        },
+        "useTimeValidation": {
+          "type": "boolean",
+          "description": "If true, the system will validate attendance against the check-in/out times."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Latitude of the school's location."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Longitude of the school's location."
+        },
+        "radius": {
+          "type": "number",
+          "description": "Radius around the school for attendance validation (in meters)."
+        },
+        "checkInStartTime": {
+          "type": "string",
+          "description": "Start time for check-in.",
+          "format": "time"
+        },
+        "checkInEndTime": {
+          "type": "string",
+          "description": "End time for check-in.",
+          "format": "time"
+        },
+        "checkOutStartTime": {
+          "type": "string",
+          "description": "Start time for check-out.",
+          "format": "time"
+        },
+        "checkOutEndTime": {
+          "type": "string",
+          "description": "End time for check-out.",
+          "format": "time"
+        },
+        "schoolName": {
+          "type": "string",
+          "description": "The name of the school, e.g., 'SMP NEGERI 5 LANGKE REMBONG'."
+        },
+        "governmentAgency": {
+          "type": "string",
+          "description": "The top-level government agency, e.g., 'PEMERINTAH KABUPATEN MANGGARAI'."
+        },
+        "educationAgency": {
+          "type": "string",
+          "description": "The education department or agency, e.g., 'DINAS PENDIDIKAN, KEPEMUDAAN DAN OLAHRAGA'."
+        },
+        "address": {
+          "type": "string",
+          "description": "The full address of the school."
+        },
+        "headmasterName": {
+          "type": "string",
+          "description": "The full name and title of the headmaster, e.g., 'Fransiskus Sales, S.Pd'."
+        },
+        "headmasterNip": {
+          "type": "string",
+          "description": "The NIP (Nomor Induk Pegawai) of the headmaster."
+        },
+        "reportCity": {
+          "type": "string",
+          "description": "The city name to be displayed in the report signature block, e.g., 'Mando'."
+        },
+        "qrCodeValue": {
+          "type": "string",
+          "description": "The secret value embedded in the QR code for attendance validation."
+        }
+      },
+      "required": [
+        "id",
+        "latitude",
+        "longitude",
+        "radius",
+        "checkInStartTime",
+        "checkInEndTime",
+        "checkOutStartTime",
+        "checkOutEndTime",
+        "schoolName",
+        "governmentAgency",
+        "educationAgency",
+        "address",
+        "headmasterName",
+        "headmasterNip",
+        "reportCity"
+      ]
+    },
+    "MonthlyConfig": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MonthlyConfig",
+      "type": "object",
+      "description": "Stores month-specific configurations like holidays and the manual number of work days.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier in 'YYYY-MM' format (e.g., '2024-08')."
+        },
+        "manualWorkDays": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "A manual override for the number of effective work days in this month. If null, the system calculates it automatically."
+        },
+        "holidays": {
+          "type": "array",
+          "description": "An array of specific dates marked as holidays in 'YYYY-MM-DD' format.",
+          "items": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information, including name, role (admin, guru, pegawai, siswa), NIP (for guru), email (for pegawai), and NISN (for siswa). The 'role' field is denormalized to enable authorization independence. User 'id' is the firebase auth uid.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user, corresponding to the Firebase Auth UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/attendanceRecords/{attendanceRecordId}",
+        "definition": {
+          "entityName": "AttendanceRecord",
+          "schema": {
+            "$ref": "#/backend/entities/AttendanceRecord"
+          },
+          "description": "Stores attendance records for each user. This is a subcollection of the user document, ensuring path-based ownership for simplified security rules.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "attendanceRecordId",
+              "description": "The unique identifier for the attendance record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/leaveRequests/{leaveRequestId}",
+        "definition": {
+          "entityName": "LeaveRequest",
+          "schema": {
+            "$ref": "#/backend/entities/LeaveRequest"
+          },
+          "description": "Stores leave requests for each user.  This is a subcollection of the user document, ensuring path-based ownership for simplified security rules.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "leaveRequestId",
+              "description": "The unique identifier for the leave request."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/schoolConfig/{schoolConfigId}",
+        "definition": {
+          "entityName": "SchoolConfig",
+          "schema": {
+            "$ref": "#/backend/entities/SchoolConfig"
+          },
+          "description": "Stores school-wide configuration settings, such as location, attendance radius, and check-in/check-out times.  There should only be one document in this collection.",
+          "params": [
+            {
+              "name": "schoolConfigId",
+              "description": "The unique identifier for the school configuration. Should only be one record named 'default'."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/monthlyConfigs/{yearMonth}",
+        "definition": {
+          "entityName": "MonthlyConfig",
+          "schema": {
+            "$ref": "#/backend/entities/MonthlyConfig"
+          },
+          "description": "Stores month-specific settings, like holidays and manual work day counts. The document ID is a string in 'YYYY-MM' format.",
+          "params": [
+            {
+              "name": "yearMonth",
+              "description": "The document ID in 'YYYY-MM' format."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the E-SPENLI application's requirements, focusing on user authentication, role-based access, and attendance tracking. It prioritizes authorization independence by storing user roles directly in the user document and leverages path-based ownership for attendance records and leave requests to simplify security rules and enable atomic operations. The structure is segregated based on role and data type.  QAPs are supported through path-based ownership, allowing secure listing of user-specific data (attendance, leave requests).  Denormalization is implemented by storing user role information directly within the user document, eliminating the need for complex `get()` calls in security rules. The use of explicit state modeling for LeaveRequests (status field) ensures clarity and predictability."
+  }
+}
