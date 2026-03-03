@@ -270,7 +270,7 @@ export default function LoginPage() {
           </DialogContent>
         </Dialog>
         <footer className="mt-8 text-center text-xs text-muted-foreground">
-            ©smpn5lr 2026
+            ©smpn 5 langke rembong 2026
         </footer>
     </div>
   );
