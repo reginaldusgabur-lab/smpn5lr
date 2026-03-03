@@ -189,7 +189,7 @@ export default function KepalaSekolahDashboardPage() {
             
             const allAttendance = attendanceSnap.docs
                 .map(d => ({ ...d.data(), id: d.id }))
-                .filter(att => {
+                .filter((att: any) => {
                     const checkIn = att.checkInTime?.toDate();
                     const role = userMap.get(att.userId);
                     return checkIn && checkIn >= todayStart && checkIn <= todayEnd && role && ['guru', 'kepala_sekolah', 'pegawai'].includes(role);
@@ -197,7 +197,7 @@ export default function KepalaSekolahDashboardPage() {
             
             const allPendingLeave = leaveSnap.docs
                 .map(d => ({ ...d.data(), id: d.id }))
-                .filter(req => {
+                .filter((req: any) => {
                     const role = userMap.get(req.userId);
                     return req.status === 'pending' && role && ['guru', 'kepala_sekolah', 'pegawai'].includes(role);
                 });
@@ -251,11 +251,11 @@ export default function KepalaSekolahDashboardPage() {
 
     const userMap = new Map(usersData.map(u => [u.id, u]));
     const staffAndTeachers = usersData.filter(u => ['guru', 'kepala_sekolah', 'pegawai'].includes(u.role));
-    const presentStaffIds = new Set(allAttendanceData.map(att => att.userId));
+    const presentStaffIds = new Set(allAttendanceData.map((att: any) => att.userId));
     
-    const sortedRecentAttendance = [...allAttendanceData].sort((a, b) => (b.checkInTime?.toDate().getTime() || 0) - (a.checkInTime?.toDate().getTime() || 0));
+    const sortedRecentAttendance = [...allAttendanceData].sort((a: any, b: any) => (b.checkInTime?.toDate().getTime() || 0) - (a.checkInTime?.toDate().getTime() || 0));
 
-    const enrichedRecentAttendance = sortedRecentAttendance.map((att, index) => {
+    const enrichedRecentAttendance = sortedRecentAttendance.map((att: any, index) => {
         return {
             ...att,
             sequence: index + 1,
@@ -454,7 +454,7 @@ export default function KepalaSekolahDashboardPage() {
                     </TableHeader>
                     <TableBody>
                         {recentStaffAttendance.length > 0 ? (
-                            recentStaffAttendance.map(item => (
+                            recentStaffAttendance.map((item: any) => (
                                 <TableRow key={item.id}>
                                     <TableCell className="text-center font-medium">{item.sequence}</TableCell>
                                     <TableCell className="font-medium">{item.name}</TableCell>
