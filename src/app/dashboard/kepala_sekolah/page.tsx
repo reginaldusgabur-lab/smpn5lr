@@ -219,7 +219,7 @@ export default function KepalaSekolahDashboardPage() {
     };
 
     fetchDashboardData();
-  }, [isHeadmaster, firestore, isUsersLoading, toast]);
+  }, [isHeadmaster, firestore, usersData, isUsersLoading, toast]);
 
   const isLoading = isRoleLoading || isConfigLoading || isAttendanceLoading || isUsersLoading || isDashboardDataLoading;
   

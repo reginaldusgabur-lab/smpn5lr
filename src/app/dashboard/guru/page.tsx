@@ -13,13 +13,14 @@ import { Button } from '@/components/ui/button';
 import { Loader2, CalendarOff, Check, FileText, Thermometer, LogIn, LogOut } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, collection, query, where, Timestamp, orderBy, limit } from 'firebase/firestore';
-import { format, isBefore, addDays, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
+import { format, isBefore, addDays, startOfDay, endOfDay, eachDayOfInterval, subDays } from 'date-fns';
 import { id } from 'date-fns/locale';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
+import { AttendanceChart } from '@/components/dashboard/AttendanceChart';
 
 function LiveClock() {
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
@@ -107,6 +108,9 @@ const DashboardSkeleton = () => (
           </CardContent>
         </Card>
       </div>
+      <div className="grid gap-6 lg:grid-cols-1">
+        <Skeleton className="h-[400px] w-full" />
+      </div>
     </div>
 );
 
@@ -174,6 +178,28 @@ export default function GuruDashboardPage() {
     );
   }, [user, firestore]);
   const { data: leaveHistory, isLoading: isLeaveLoading } = useCollection(user, leaveHistoryQuery);
+
+  const monthlyAttendanceQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    const last30DaysStart = startOfDay(subDays(new Date(), 30));
+    return query(
+        collection(firestore, 'users', user.uid, 'attendanceRecords'),
+        where('checkInTime', '>=', Timestamp.fromDate(last30DaysStart)),
+        orderBy('checkInTime', 'desc')
+    );
+  }, [user, firestore]);
+  const { data: monthlyAttendance, isLoading: isMonthlyAttendanceLoading } = useCollection(user, monthlyAttendanceQuery);
+
+  const monthlyLeaveQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    const last30DaysStart = startOfDay(subDays(new Date(), 30));
+    return query(
+        collection(firestore, 'users', user.uid, 'leaveRequests'),
+        where('startDate', '>=', Timestamp.fromDate(last30DaysStart)),
+        orderBy('startDate', 'desc')
+    );
+  }, [user, firestore]);
+  const { data: monthlyLeave, isLoading: isMonthlyLeaveLoading } = useCollection(user, monthlyLeaveQuery);
   
   const pendingLeaveQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -187,7 +213,7 @@ export default function GuruDashboardPage() {
     pendingLeaveQuery
   );
 
-  const isLoading = isAuthLoading || isUserDataLoading || isConfigLoading || isAttendanceLoading || isHistoryLoading || isLeaveLoading || isPendingLeaveLoading;
+  const isLoading = isAuthLoading || isUserDataLoading || isConfigLoading || isAttendanceLoading || isHistoryLoading || isLeaveLoading || isPendingLeaveLoading || isMonthlyAttendanceLoading || isMonthlyLeaveLoading;
   
   const recentActivity = useMemo(() => {
     if (!attendanceHistory || !leaveHistory) return [];
@@ -246,6 +272,70 @@ export default function GuruDashboardPage() {
 
     return combined;
   }, [attendanceHistory, leaveHistory]);
+
+  const attendanceChartData = useMemo(() => {
+    if (!monthlyAttendance || !monthlyLeave || !schoolConfig) return [];
+
+    const thirtyDaysAgo = startOfDay(subDays(new Date(), 29)); // Include today
+    const today = endOfDay(new Date());
+    const dateRange = eachDayOfInterval({ start: thirtyDaysAgo, end: today });
+
+    const offDays: number[] = schoolConfig.offDays ?? [0, 6]; // Default Sunday, Saturday
+    const workDays = dateRange.filter(day => !offDays.includes(day.getDay()));
+
+    const attendanceDates = new Set(monthlyAttendance.map(rec => format(rec.checkInTime.toDate(), 'yyyy-MM-dd')));
+    
+    const leaveMap = new Map<string, string>();
+    monthlyLeave
+        .filter(l => l.status === 'approved')
+        .forEach(rec => {
+            try {
+                if (!rec.startDate?.toDate || !rec.endDate?.toDate) return;
+                const sDate = startOfDay(rec.startDate.toDate());
+                const eDate = endOfDay(rec.endDate.toDate());
+                 if (isBefore(eDate, sDate)) return;
+
+                const interval = { start: sDate, end: eDate };
+                eachDayOfInterval(interval).forEach(day => {
+                    leaveMap.set(format(day, 'yyyy-MM-dd'), rec.type);
+                });
+            } catch(e) {
+                console.error("Error processing leave for chart:", e, rec)
+            }
+        });
+
+    let hadir = 0;
+    let izin = 0;
+    let sakit = 0;
+    let dinas = 0;
+    let alpa = 0;
+
+    for (const day of workDays) {
+        const dayStr = format(day, 'yyyy-MM-dd');
+        
+        // Skip future dates within the 30 day range if any
+        if (isBefore(today, day)) continue;
+
+        if (attendanceDates.has(dayStr)) {
+            hadir++;
+        } else if (leaveMap.has(dayStr)) {
+            const leaveType = leaveMap.get(dayStr);
+            if (leaveType === 'Izin') izin++;
+            else if (leaveType === 'Sakit') sakit++;
+            else if (leaveType === 'Dinas') dinas++;
+        } else {
+            alpa++;
+        }
+    }
+
+    return [
+      { name: 'Hadir', total: hadir },
+      { name: 'Izin', total: izin },
+      { name: 'Sakit', total: sakit },
+      { name: 'Dinas', total: dinas },
+      { name: 'Alpa', total: alpa },
+    ];
+  }, [monthlyAttendance, monthlyLeave, schoolConfig]);
   
   const isHoliday = useMemo(() => {
     if (!schoolConfig) return false;
@@ -437,6 +527,9 @@ export default function GuruDashboardPage() {
                   )}
               </CardContent>
           </Card>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-1">
+            <AttendanceChart data={attendanceChartData} />
         </div>
     </div>
   );
