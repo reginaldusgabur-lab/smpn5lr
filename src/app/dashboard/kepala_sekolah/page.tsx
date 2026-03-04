@@ -236,8 +236,8 @@ export default function KepalaSekolahDashboardPage() {
       ...att,
       sequence: index + 1,
       name: userMap.get(att.userId)?.name || 'Pengguna tidak dikenal',
-      checkInTimeFormatted: att.checkInTime ? att.checkInTime.toDate().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-',
-      checkOutTimeFormatted: att.checkOutTime ? att.checkOutTime.toDate().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-',
+      checkInTimeFormatted: att.checkInTime ? att.checkInTime.toDate().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : 'Belum absen masuk',
+      checkOutTimeFormatted: att.checkOutTime ? att.checkOutTime.toDate().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : 'Belum absen pulang',
       status: 'Hadir',
       statusVariant: 'default',
     }));
@@ -274,14 +274,25 @@ export default function KepalaSekolahDashboardPage() {
     isEarly = checkOutTime < earlyTime;
   }
 
-  let personalButtonAction;
-  if (checkInTime && !checkOutTime) {
-    personalButtonAction = <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Pulang</Link></Button>;
-  } else if (!checkInTime) {
-    personalButtonAction = <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Masuk</Link></Button>;
-  } else {
-    personalButtonAction = <Button disabled size="lg" className="w-full">Absensi Selesai</Button>;
-  }
+    let isPastCheckInTime = false;
+    if (schoolConfig?.useTimeValidation && schoolConfig?.checkInEndTime && !checkInTime) {
+        const now = new Date();
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+        const [inEndH, inEndM] = schoolConfig.checkInEndTime.split(':').map(Number);
+        const checkInEndTime = inEndH * 60 + inEndM;
+        if (currentTime > checkInEndTime) {
+            isPastCheckInTime = true;
+        }
+    }
+
+    let personalButtonAction;
+    if ((checkInTime && !checkOutTime) || isPastCheckInTime) {
+      personalButtonAction = <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Pulang</Link></Button>;
+    } else if (!checkInTime) {
+      personalButtonAction = <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Masuk</Link></Button>;
+    } else {
+      personalButtonAction = <Button disabled size="lg" className="w-full">Absensi Selesai</Button>;
+    }
   
   if (isHoliday) {
     return (

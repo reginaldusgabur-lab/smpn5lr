@@ -140,11 +140,25 @@ export default function SiswaDashboardPage() {
       if (checkOutTime < earlyTime) isEarly = true;
     }
 
-    let buttonAction = checkInTime && !checkOutTime 
-      ? <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Pulang</Link></Button>
-      : !checkInTime 
-      ? <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Masuk</Link></Button>
-      : <Button disabled size="lg" className="w-full">Absensi Selesai</Button>;
+    let isPastCheckInTime = false;
+    if (schoolConfig?.useTimeValidation && schoolConfig?.checkInEndTime && !checkInTime) {
+        const now = new Date();
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+        const [inEndH, inEndM] = schoolConfig.checkInEndTime.split(':').map(Number);
+        const checkInEndTime = inEndH * 60 + inEndM;
+        if (currentTime > checkInEndTime) {
+            isPastCheckInTime = true;
+        }
+    }
+
+    let buttonAction;
+    if ((checkInTime && !checkOutTime) || isPastCheckInTime) {
+      buttonAction = <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Pulang</Link></Button>;
+    } else if (!checkInTime) {
+      buttonAction = <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Masuk</Link></Button>;
+    } else {
+      buttonAction = <Button disabled size="lg" className="w-full">Absensi Selesai</Button>;
+    }
 
     return (
       <>

@@ -324,10 +324,7 @@ export default function AbsenPage() {
         setStatus('error_already_in');
         return;
     }
-    if (isCheckOutTime && !todaysRecord) {
-        setStatus('error_not_checked_in');
-        return;
-    }
+
     if (isCheckOutTime && todaysRecord?.checkOutTime) {
         setStatus('error_already_out');
         return;
@@ -386,12 +383,24 @@ export default function AbsenPage() {
             });
             setStatus('success_in');
         } else if (isCheckOutTime) {
-            const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', todaysRecord!.id);
-            await updateDoc(recordRef, {
-                checkOutTime: now,
-                checkOutLatitude: latitude,
-                checkOutLongitude: longitude,
-            });
+            if (todaysRecord) {
+                 const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', todaysRecord.id);
+                 await updateDoc(recordRef, {
+                    checkOutTime: now,
+                    checkOutLatitude: latitude,
+                    checkOutLongitude: longitude,
+                });
+            } else {
+                await addDoc(collection(firestore, 'users', user.uid, 'attendanceRecords'), {
+                    userId: user.uid,
+                    checkInTime: null,
+                    checkInLatitude: null,
+                    checkInLongitude: null,
+                    checkOutTime: now,
+                    checkOutLatitude: latitude,
+                    checkOutLongitude: longitude,
+                });
+            }
             setStatus('success_out');
         }
     } catch (error: any) {
