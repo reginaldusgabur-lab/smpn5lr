@@ -1,4 +1,3 @@
-'''
 // src/app/api/quote/route.ts
 import { getQuote } from '@/ai/flows/quoteFlow';
 import { NextRequest, NextResponse } from 'next/server';
@@ -30,4 +29,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: 'Failed to fetch quote', error: error.message }, { status: 500 });
   }
 }
-'''

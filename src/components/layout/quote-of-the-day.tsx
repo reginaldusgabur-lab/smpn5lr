@@ -1,9 +1,9 @@
-'''
 'use client';
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertCircle, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Quote {
   content: string;
@@ -97,4 +97,3 @@ export function QuoteOfTheDay({ category }: { category: string | null | undefine
     </Card>
   );
 }
-'''
