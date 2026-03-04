@@ -436,7 +436,7 @@ function EditAttendanceDialog({
             checkInTime: Timestamp.fromDate(finalCheckInTime),
             checkOutTime: Timestamp.fromDate(finalCheckOutTime),
             checkInLatitude: null, checkInLongitude: null, checkOutLatitude: null, checkOutLongitude: null,
-            keterangan: 'Tepat waktu',
+            keterangan: 'Diisi oleh Admin',
         };
         
         const attendanceCollectionRef = collection(firestore, 'users', user.id, 'attendanceRecords');
@@ -659,7 +659,7 @@ function DetailDialog({
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : details.length > 0 ? (
-              <div className="overflow-x-auto">
+              <div className="relative w-full overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
