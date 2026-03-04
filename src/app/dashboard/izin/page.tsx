@@ -18,20 +18,25 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useUser, useFirestore, FirestorePermissionError, errorEmitter, useCollection, useMemoFirebase } from '@/firebase';
-import { addDoc, collection, serverTimestamp, query, where, Timestamp } from 'firebase/firestore';
+import { useUser, useFirestore, FirestorePermissionError, errorEmitter } from '@/firebase';
+import { addDoc, collection, serverTimestamp, query, where, Timestamp, getDocs, Firestore } from 'firebase/firestore';
+import { User } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Info, Loader2 } from 'lucide-react';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { Loader2 } from 'lucide-react';
+import { format, startOfDay, endOfDay, addDays } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect, useMemo } from 'react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 const leaveRequestSchema = z.object({
+  dateOption: z.enum(['today', 'tomorrow'], {
+      required_error: 'Anda harus memilih tanggal izin.'
+  }),
   type: z.enum(['Sakit', 'Izin', 'Dinas'], {
     required_error: 'Jenis pengajuan wajib dipilih.',
   }),
@@ -39,10 +44,40 @@ const leaveRequestSchema = z.object({
   proofUrl: z.string().url({ message: 'URL bukti tidak valid.' }).optional().or(z.literal('')),
 });
 
+async function checkExistingData(firestore: Firestore, user: User | null, selectedDate: Date) {
+    if (!user || !firestore) return { attendance: [], leave: [] };
+
+    const dayStart = startOfDay(selectedDate);
+    const dayEnd = endOfDay(selectedDate);
+
+    const attendanceQuery = query(
+        collection(firestore, 'users', user.uid, 'attendanceRecords'),
+        where('checkInTime', '>=', Timestamp.fromDate(dayStart)),
+        where('checkInTime', '<', Timestamp.fromDate(dayEnd))
+    );
+
+    const leaveQuery = query(
+        collection(firestore, 'users', user.uid, 'leaveRequests'),
+        where('startDate', '>=', Timestamp.fromDate(dayStart)),
+        where('startDate', '<=', Timestamp.fromDate(dayEnd))
+    );
+
+    const [attendanceSnapshot, leaveSnapshot] = await Promise.all([
+        getDocs(attendanceQuery),
+        getDocs(leaveQuery)
+    ]);
+
+    return {
+        attendance: attendanceSnapshot.docs.map(doc => doc.data()),
+        leave: leaveSnapshot.docs.map(doc => doc.data())
+    };
+}
+
 export default function IzinPage() {
     const form = useForm<z.infer<typeof leaveRequestSchema>>({
         resolver: zodResolver(leaveRequestSchema),
         defaultValues: {
+            dateOption: 'today',
             type: undefined,
             reason: '',
             proofUrl: '',
@@ -53,70 +88,50 @@ export default function IzinPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [todayFormatted, setTodayFormatted] = useState('');
+    
+    const selectedDateOption = form.watch('dateOption');
+    
+    const selectedDate = useMemo(() => {
+        const today = startOfDay(new Date());
+        return selectedDateOption === 'tomorrow' ? addDays(today, 1) : today;
+    }, [selectedDateOption]);
 
-    useEffect(() => {
-        setTodayFormatted(format(new Date(), 'eeee, d MMMM yyyy', { locale: id }));
-    }, []);
-
-    const todaysRecordsQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        const today = new Date();
-        const todayStart = startOfDay(today);
-        const todayEnd = endOfDay(today);
-
-        return query(
-            collection(firestore, 'users', user.uid, 'attendanceRecords'),
-            where('checkInTime', '>=', Timestamp.fromDate(todayStart)),
-            where('checkInTime', '<', Timestamp.fromDate(todayEnd))
-        );
-    }, [user, firestore]);
-    const { data: todaysAttendance, isLoading: isAttendanceLoading } = useCollection(user, todaysRecordsQuery);
-
-    const todaysLeaveQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        const today = new Date();
-        const todayStart = startOfDay(today);
-        const todayEnd = endOfDay(today);
-
-        return query(
-            collection(firestore, 'users', user.uid, 'leaveRequests'),
-            where('startDate', '>=', Timestamp.fromDate(todayStart)),
-            where('startDate', '<=', Timestamp.fromDate(todayEnd))
-        );
-    }, [user, firestore]);
-    const { data: todaysLeave, isLoading: isLeaveLoading } = useCollection(user, todaysLeaveQuery);
-
+    const { data: existingData, isLoading: isChecking } = useQuery({
+        queryKey: ['leave-requests', user?.uid, selectedDate.toISOString()],
+        queryFn: () => checkExistingData(firestore, user, selectedDate),
+        enabled: !!user && !!firestore,
+    });
 
     async function onSubmit(values: z.infer<typeof leaveRequestSchema>) {
-        if (!user || !firestore) return;
+        if (!user || !firestore || !existingData) return;
+        
+        const finalDate = values.dateOption === 'tomorrow' ? addDays(new Date(), 1) : new Date();
 
-        if (todaysAttendance && todaysAttendance.length > 0) {
+        if (existingData.attendance.length > 0) {
             toast({
                 variant: 'destructive',
                 title: 'Gagal Mengirim Pengajuan',
-                description: 'Anda sudah melakukan absensi hari ini. Tidak dapat mengajukan izin.',
+                description: `Anda sudah melakukan absensi pada ${format(finalDate, 'd MMMM yyyy')}. Tidak dapat mengajukan izin.`,
             });
             return;
         }
 
-        if (todaysLeave && todaysLeave.length > 0) {
+        if (existingData.leave.length > 0) {
             toast({
                 variant: 'destructive',
                 title: 'Gagal Mengirim Pengajuan',
-                description: 'Anda sudah pernah mengajukan izin untuk hari ini.',
+                description: `Anda sudah pernah mengajukan izin untuk tanggal ${format(finalDate, 'd MMMM yyyy')}.`,
             });
             return;
         }
 
         setIsSubmitting(true);
-        const today = new Date();
-
+        
         const dataToSave = {
             userId: user.uid,
             type: values.type,
-            startDate: Timestamp.fromDate(startOfDay(today)),
-            endDate: Timestamp.fromDate(endOfDay(today)),
+            startDate: Timestamp.fromDate(startOfDay(finalDate)),
+            endDate: Timestamp.fromDate(endOfDay(finalDate)),
             reason: values.reason,
             proofUrl: values.proofUrl || null,
             status: 'pending',
@@ -154,27 +169,52 @@ export default function IzinPage() {
             });
     }
 
-    const isChecking = isAttendanceLoading || isLeaveLoading;
-
     return (
-        <div className="flex justify-center">
+        <div className="flex justify-center p-4">
             <Card className="w-full max-w-2xl">
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                         <CardHeader>
                             <CardTitle>Formulir Pengajuan Izin/Sakit</CardTitle>
                             <CardDescription>
-                                Isi formulir di bawah ini untuk mengajukan ketidakhadiran untuk hari ini.
+                                Pilih tanggal, jenis pengajuan, dan isi alasan Anda untuk mengajukan ketidakhadiran.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                             <Alert variant="default" className="bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-950/50 dark:border-blue-800 dark:text-blue-300 [&>svg]:text-blue-600 dark:[&>svg]:text-blue-400">
-                                <Info className="h-4 w-4" />
-                                <AlertTitle>Informasi Tanggal</AlertTitle>
-                                <AlertDescription>
-                                    Pengajuan izin ini secara otomatis berlaku untuk hari ini: <span className="font-semibold">{todayFormatted || 'Memuat tanggal...'}</span>.
-                                </AlertDescription>
-                            </Alert>
+                            <FormField
+                                control={form.control}
+                                name="dateOption"
+                                render={({ field }) => (
+                                    <FormItem className="space-y-3">
+                                        <FormLabel>Pilih Tanggal Izin</FormLabel>
+                                        <FormControl>
+                                            <RadioGroup
+                                                onValueChange={field.onChange}
+                                                defaultValue={field.value}
+                                                className="flex items-center space-x-4"
+                                            >
+                                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                                    <FormControl>
+                                                        <RadioGroupItem value="today" />
+                                                    </FormControl>
+                                                    <FormLabel className="font-normal">
+                                                        Hari Ini ({format(new Date(), "d MMM")})
+                                                    </FormLabel>
+                                                </FormItem>
+                                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                                    <FormControl>
+                                                        <RadioGroupItem value="tomorrow" />
+                                                    </FormControl>
+                                                    <FormLabel className="font-normal">
+                                                        Besok ({format(addDays(new Date(), 1), "d MMM")})
+                                                    </FormLabel>
+                                                </FormItem>
+                                            </RadioGroup>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                             <FormField
                                 control={form.control}
                                 name="type"
@@ -195,8 +235,7 @@ export default function IzinPage() {
                                         </Select>
                                         <FormMessage />
                                     </FormItem>
-                                )}
-                            />
+                                )}/>
                            
                             <FormField
                                 control={form.control}
@@ -212,8 +251,7 @@ export default function IzinPage() {
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
-                                )}
-                            />
+                                )}/>
                              <FormField
                                 control={form.control}
                                 name="proofUrl"
@@ -228,11 +266,9 @@ export default function IzinPage() {
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
-                                )}
-                            />
-
+                                )}/>
                         </CardContent>
-                        <CardFooter className="border-t pt-6">
+                        <CardFooter>
                             <Button type="submit" disabled={isSubmitting || isChecking}>
                                {(isSubmitting || isChecking) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                {isChecking ? 'Memeriksa data...' : 'Kirim Pengajuan'}

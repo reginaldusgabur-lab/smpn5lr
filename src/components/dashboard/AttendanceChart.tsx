@@ -1,7 +1,10 @@
 'use client';
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { useMemo } from 'react'; // Ensure this import is correctly processed
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { format, parse } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 interface ChartData {
     name: string;
@@ -10,22 +13,30 @@ interface ChartData {
 
 interface AttendanceChartProps {
     data: ChartData[];
+    selectedMonth: string; // Expecting a 'yyyy-MM' string
 }
 
 const COLORS = {
-    'Hadir': '#22c55e', // green-500
-    'Izin': '#f97316',  // orange-500
-    'Sakit': '#ef4444', // red-500
-    'Dinas': '#3b82f6', // blue-500
-    'Alpa': '#6b7280',  // gray-500
+    'Hadir': '#22c55e',      // green-500
+    'Terlambat': '#f59e0b', // amber-500
+    'Izin': '#f97316',       // orange-500
+    'Sakit': '#ef4444',      // red-500
+    'Dinas': '#3b82f6',      // blue-500
+    'Alpa': '#6b7280',       // gray-500
 };
 
-export function AttendanceChart({ data }: AttendanceChartProps) {
+export function AttendanceChart({ data, selectedMonth }: AttendanceChartProps) {
+  const monthDescription = useMemo(() => {
+    // Handles case where selectedMonth might be initially undefined
+    const dateToFormat = selectedMonth ? parse(selectedMonth, 'yyyy-MM', new Date()) : new Date();
+    return format(dateToFormat, 'MMMM yyyy', { locale: id });
+  }, [selectedMonth]);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Grafik Kehadiran</CardTitle>
-        <CardDescription>Ringkasan kehadiran Anda dalam 30 hari kerja terakhir.</CardDescription>
+        <CardDescription>Ringkasan kehadiran Anda di bulan {monthDescription}.</CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
@@ -55,12 +66,15 @@ export function AttendanceChart({ data }: AttendanceChartProps) {
               labelStyle={{
                   color: "hsl(var(--foreground))"
               }}
+              itemStyle={{
+                  color: "hsl(var(--foreground))"
+              }}
+              formatter={(value, name) => [value, name]}
             />
             <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                 {data.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[entry.name as keyof typeof COLORS] || '#8884d8'} />
-                ))}
-            </Bar>
+                ))}</Bar>
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

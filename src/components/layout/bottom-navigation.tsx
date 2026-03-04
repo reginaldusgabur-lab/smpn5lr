@@ -28,6 +28,16 @@ const headmasterNavItems = [
   { href: '/dashboard/admin/laporan', icon: FileText, label: 'Laporan' },
 ];
 
+// A list of all possible homepage paths
+const homepaths = [
+    '/dashboard',
+    '/dashboard/guru',
+    '/dashboard/pegawai',
+    '/dashboard/siswa',
+    '/dashboard/admin',
+    '/dashboard/kepala_sekolah',
+];
+
 export function BottomNavigation() {
   const pathname = usePathname();
   const { user } = useUser();
@@ -61,22 +71,23 @@ export function BottomNavigation() {
     <div className="sm:hidden fixed bottom-0 left-0 z-50 w-full h-16 bg-card border-t border-border">
         <div className={cn("grid h-full max-w-lg mx-auto font-medium", gridColsClass)}>
             {navItems.map((item) => {
-                const isBeranda = item.label === 'Beranda';
-                let isActive;
-
-                if (isBeranda) {
-                  // Logika baru: Anggap aktif jika path saat ini adalah halaman utama dasbor sesuai peran pengguna.
-                  const userHomePage = userData?.role ? `/dashboard/${userData.role}` : null;
-                  isActive = userHomePage ? pathname === userHomePage : pathname === '/dashboard';
+                const isBerandaItem = item.label === 'Beranda';
+                const isHomepage = homepaths.includes(pathname);
+                
+                let isActive = false;
+                if (isBerandaItem) {
+                    // The "Beranda" item is active if the current path is any of the defined homepages.
+                    isActive = isHomepage;
                 } else {
-                  // Logika lama yang sudah benar untuk halaman lain.
-                  isActive = pathname.startsWith(item.href);
+                    // Other items are active if the path starts with their href, BUT not on a homepage.
+                    // This prevents "Absen" and "Beranda" from being active at the same time.
+                    isActive = !isHomepage && pathname.startsWith(item.href);
                 }
 
                 return (
                     <Link
                         key={item.label}
-                        href={item.href} // href tidak diubah, redirector akan menangani /dashboard
+                        href={item.href}
                         className={cn(
                             'inline-flex flex-col items-center justify-center px-5 hover:bg-muted group transition-colors duration-200',
                             isActive ? 'text-primary' : 'text-muted-foreground'

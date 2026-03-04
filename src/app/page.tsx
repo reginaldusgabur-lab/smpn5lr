@@ -163,9 +163,9 @@ export default function LoginPage() {
                       data-ai-hint={appLogo?.imageHint}
                   />
               </div>
-              <CardTitle className="text-3xl font-bold tracking-wider">E-SPENLI</CardTitle>
-              <CardDescription>
-                  Absensi Online SMPN 5 Langke Rembong
+              <CardTitle className="text-4xl font-extrabold tracking-tight">Absensi Online</CardTitle>
+              <CardDescription className="text-md text-muted-foreground">
+                  SMPN 5 Langke Rembong
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -270,7 +270,8 @@ export default function LoginPage() {
           </DialogContent>
         </Dialog>
         <footer className="mt-8 text-center text-xs text-muted-foreground">
-            ©smpn 5 langke rembong 2026
+          <div>© 2026 SMPN 5 LANGKE REMBONG</div>
+          <div>Created by Operator Team</div>
         </footer>
     </div>
   );

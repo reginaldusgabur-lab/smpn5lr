@@ -1,12 +1,13 @@
 'use client';
-    
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import {
   DocumentReference,
   onSnapshot,
   DocumentData,
   FirestoreError,
   DocumentSnapshot,
+  Unsubscribe,
 } from 'firebase/firestore';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { getAuth, type User } from 'firebase/auth';
@@ -28,31 +29,35 @@ export function useDoc<T = any>(
     isLoading: true,
     error: null,
   });
+  const unsubscribeRef = useRef<Unsubscribe | null>(null);
 
   useEffect(() => {
-    setResult({ data: null, isLoading: true, error: null });
-    let isMounted = true; // Flag to track mount status
-
-    if (!memoizedDocRef) {
-      if (isMounted) {
-        setResult({ data: null, isLoading: false, error: null });
+    // If there's no doc ref, or the user logs out, clean up and reset the state.
+    if (!memoizedDocRef || !userForSubscription) {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
       }
+      setResult({ data: null, isLoading: false, error: null });
       return;
     }
-    
-    // Capture the UID for which this subscription is being made.
-    const subscriptionUid = userForSubscription?.uid;
 
-    const unsubscribe = onSnapshot(
+    // If a listener is already active, no need to set up a new one.
+    if (unsubscribeRef.current) {
+      return;
+    }
+
+    setResult({ data: null, isLoading: true, error: null });
+
+    const subscriptionUid = userForSubscription.uid;
+
+    unsubscribeRef.current = onSnapshot(
       memoizedDocRef,
       (snapshot: DocumentSnapshot<DocumentData>) => {
-        if (!isMounted) return; // Prevent state update on unmounted component
-
-        // Before processing the data, ensure the user hasn't changed.
         const currentAuthUser = getAuth().currentUser;
         if (currentAuthUser?.uid !== subscriptionUid) {
-            // This is a stale result from a previous user's subscription. Ignore it.
-            return;
+          // Stale data from a previous user. Ignore.
+          return;
         }
         
         if (snapshot.exists()) {
@@ -63,19 +68,13 @@ export function useDoc<T = any>(
         }
       },
       (error: FirestoreError) => {
-        if (!isMounted) return; // Prevent state update on unmounted component
-        
-        // In the error callback, we explicitly check if the user has changed since
-        // the subscription was created. This is the core of the race condition fix.
         const currentAuthUser = getAuth().currentUser;
         if (currentAuthUser?.uid !== subscriptionUid) {
-            console.warn('Ignoring stale Firestore error after user change.', {
-                subscriptionUid,
-                currentUid: currentAuthUser?.uid,
-            });
-            // If the user has changed, this is not a "real" error for the current session.
-            // We can safely ignore it to prevent the app from crashing.
-            return;
+          console.warn('Ignoring stale Firestore error after user change.', {
+            subscriptionUid,
+            currentUid: currentAuthUser?.uid,
+          });
+          return;
         }
 
         const contextualError = new FirestorePermissionError({
@@ -87,9 +86,12 @@ export function useDoc<T = any>(
       }
     );
 
+    // Cleanup function for when the component unmounts or dependencies change
     return () => {
-        isMounted = false;
-        unsubscribe();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
     };
   }, [memoizedDocRef, userForSubscription]);
 

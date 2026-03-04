@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
 
 const defaultNavItems = [
   { href: '/dashboard', icon: Home, label: 'Beranda' },
@@ -46,6 +47,14 @@ const headmasterNavItems = [
     { href: '/dashboard/pengaturan', icon: Settings, label: 'Pengaturan' },
 ];
 
+const homepaths = [
+    '/dashboard',
+    '/dashboard/guru',
+    '/dashboard/pegawai',
+    '/dashboard/siswa',
+    '/dashboard/admin',
+    '/dashboard/kepala_sekolah',
+];
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -79,10 +88,17 @@ export function AppSidebar() {
       <SidebarContent className="p-2 pt-4 flex flex-col">
         <SidebarMenu>
           {navItems.map((item) => {
+            const isBerandaItem = item.label === 'Beranda';
+            const isHomepage = homepaths.includes(pathname);
+            
             let isActive = false;
-            if (item.href === '/dashboard' || item.href === '/dashboard/admin' || item.href === '/dashboard/kepala_sekolah') {
-                isActive = pathname === item.href;
+            if (isBerandaItem) {
+                isActive = isHomepage;
             } else {
+                isActive = pathname.startsWith(item.href) && !homepaths.includes(pathname);
+            }
+            
+            if (item.href === '/dashboard/pengaturan') {
                 isActive = pathname.startsWith(item.href);
             }
             

@@ -52,6 +52,43 @@ service cloud.firestore {
       return request.resource.data.userId == resource.data.userId;
     }
 
+    function getMonthlyConfig(date) {
+      let year = string(date.year());
+      let month = date.month() < 10 ? '0' + string(date.month()) : string(date.month());
+      let docId = year + '-' + month;
+      return get(/databases/$(database)/documents/monthlyConfigs/$(docId)).data;
+    }
+
+    function isWithinCheckInTime() {
+      let config = getMonthlyConfig(request.time);
+      let endTimeParts = config.checkInEndTime.split(':');
+      let endHour = int(endTimeParts[0]);
+      let endMinute = int(endTimeParts[1]);
+      let requestHour = request.time.inZone('Asia/Makassar').hours;
+      let requestMinute = request.time.inZone('Asia/Makassar').minutes;
+      return requestHour < endHour || (requestHour == endHour && requestMinute < endMinute);
+    }
+
+    function hasNoExistingRecordForDate(userId, date) {
+      let year = date.year();
+      let month = date.month();
+      let day = date.day();
+      let dayStart = timestamp.date(year, month, day);
+      let dayEnd = dayStart.add(duration.time(24, 0, 0, 0));
+
+      let hasExistingLeave = get(/databases/$(database)/documents/users/$(userId)/leaveRequests
+                                .where('startDate', '>=', dayStart)
+                                .where('startDate', '<', dayEnd)
+                             ).size() > 0;
+
+      let hasExistingAttendance = get(/databases/$(database)/documents/users/$(userId)/attendanceRecords
+                                    .where('checkInTime', '>=', dayStart)
+                                    .where('checkInTime', '<', dayEnd)
+                                  ).size() > 0;
+
+      return !hasExistingLeave && !hasExistingAttendance;
+    }
+
     match /users/{userId} {
       allow get: if isOwner(userId) || isPrivileged();
       allow list: if isPrivileged();
@@ -61,13 +98,13 @@ service cloud.firestore {
 
       match /attendanceRecords/{attendanceRecordId} {
         allow get, list: if isOwner(userId) || isPrivileged();
-        allow create: if (isOwner(userId) && incomingSubDocIsValid(userId)) || isAdmin();
+        allow create: if (isOwner(userId) && incomingSubDocIsValid(userId) && hasNoExistingRecordForDate(userId, request.resource.data.checkInTime) && isWithinCheckInTime()) || isAdmin();
         allow update, delete: if isOwner(userId) || isAdmin();
       }
 
       match /leaveRequests/{leaveRequestId} {
         allow get, list: if isOwner(userId) || isPrivileged();
-        allow create: if isOwner(userId) && incomingSubDocIsValid(userId);
+        allow create: if isOwner(userId) && incomingSubDocIsValid(userId) && hasNoExistingRecordForDate(userId, request.resource.data.startDate);
         allow update: if isHeadmaster() || (isOwner(userId) && subDocOwnerIsImmutable());
         allow delete: if isOwner(userId) || isAdmin();
       }

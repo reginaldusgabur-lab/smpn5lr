@@ -17,7 +17,6 @@ import { doc, collection, query, where, Timestamp, orderBy, getDocs, getDoc, typ
 import { format, isBefore, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns';
 import { id } from 'date-fns/locale';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
@@ -43,45 +42,19 @@ function LiveClock() {
   );
 }
 
-const ActivityItem = ({ icon: Icon, title, date, details, status, statusVariant }: { icon: React.ElementType, title: string, date: string, details?: string, status: string, statusVariant: 'default' | 'secondary' | 'destructive' }) => (
-    <div className="flex items-start space-x-4 p-2 hover:bg-muted/50 rounded-lg">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted shrink-0 mt-1">
-            <Icon className="h-5 w-5 text-muted-foreground" />
-        </div>
-        <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-center gap-2">
-                <p className="font-medium text-sm truncate">{title}</p>
-                <Badge variant={statusVariant} className="text-xs shrink-0">{status}</Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">{date}</p>
-            {details && <p className="text-xs text-muted-foreground truncate" title={details}>{details}</p>}
-        </div>
-    </div>
-);
-
 const DashboardSkeleton = () => (
     <div className="space-y-6 animate-pulse">
       <div className="space-y-1"><Skeleton className="h-8 w-1/2" /><Skeleton className="h-6 w-1/3" /><Skeleton className="h-4 w-3/4 !mt-2" /></div>
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="w-full lg:col-span-2">
+        <Card className="w-full lg:col-span-3">
           <CardHeader><Skeleton className="h-6 w-1/2" /><Skeleton className="h-4 w-3/4" /></CardHeader>
           <CardContent className="space-y-6 flex flex-col items-center justify-center pt-8"><Skeleton className="h-[72px] w-1/2" /><div className="grid grid-cols-2 gap-4 text-center w-full max-w-sm pt-4"><Skeleton className="h-[88px] w-full" /><Skeleton className="h-[88px] w-full" /></div></CardContent>
           <CardFooter className="flex flex-col gap-2"><Skeleton className="h-11 w-full" /><Skeleton className="h-10 w-full" /></CardFooter>
         </Card>
-        <Card className="w-full"><CardHeader><Skeleton className="h-6 w-3/4" /><Skeleton className="h-4 w-1/2" /></CardHeader><CardContent className="space-y-4">{[...Array(3)].map((_, i) => (<div key={i} className="flex items-start space-x-4 p-2"><Skeleton className="h-10 w-10 rounded-lg" /><div className="flex-1 space-y-2"><div className="flex justify-between"><Skeleton className="h-4 w-1/4" /><Skeleton className="h-5 w-12 rounded-full" /></div><Skeleton className="h-3 w-1/2" /></div></div>))}</CardContent></Card>
       </div>
     </div>
 );
 
-const getStartOfLastNWorkDays = (n: number): Date => {
-    let date = new Date();
-    let workDaysFound = 0;
-    while (workDaysFound < n) {
-        if (date.getDay() !== 0 && date.getDay() !== 6) { workDaysFound++; }
-        if (workDaysFound < n) { date.setDate(date.getDate() - 1); }
-    }
-    return startOfDay(date);
-};
 
 // --- Firestore Fetching Functions ---
 
@@ -130,65 +103,15 @@ export default function SiswaDashboardPage() {
     enabled: !!user && !!firestore
   });
 
-  const { data: historyData, isLoading: isHistoryLoading } = useQuery<{ attendance: DocumentData[], leaves: DocumentData[] } | undefined>({
-    queryKey: ['activityHistory', user?.uid],
-    queryFn: async () => {
-        const last6WorkDaysStart = getStartOfLastNWorkDays(6);
-        const [attendance, leaves] = await Promise.all([
-            fetchUserSubcollection(firestore, user!.uid, 'attendanceRecords', [
-                where('checkInTime', '>=', Timestamp.fromDate(last6WorkDaysStart)),
-                orderBy('checkInTime', 'desc')
-            ]),
-            fetchUserSubcollection(firestore, user!.uid, 'leaveRequests', [
-                where('startDate', '>=', Timestamp.fromDate(last6WorkDaysStart)),
-                orderBy('startDate', 'desc')
-            ])
-        ]);
-        return { attendance, leaves };
-    },
-    enabled: !!user && !!firestore
-  });
-
   const { data: pendingLeaveRequests, isLoading: isPendingLeaveLoading } = useQuery<DocumentData[]>({
       queryKey: ['pendingLeave', user?.uid],
       queryFn: () => fetchUserSubcollection(firestore, user!.uid, 'leaveRequests', [where('status', '==', 'pending')]),
       enabled: !!user && !!firestore,
   });
 
-  const isLoading = isAuthLoading || isUserDataLoading || isConfigLoading || isAttendanceLoading || isHistoryLoading || isPendingLeaveLoading;
+  const isLoading = isAuthLoading || isUserDataLoading || isConfigLoading || isAttendanceLoading || isPendingLeaveLoading;
 
   // --- Data Processing (Memos) ---
-
-  const recentActivity = useMemo(() => {
-    if (!historyData) return [];
-    const { attendance: attendanceHistory, leaves: leaveHistory } = historyData;
-
-    const attendanceRecords = attendanceHistory.map(rec => {
-        const checkInTime = rec.checkInTime?.toDate();
-        const checkOutTime = rec.checkOutTime?.toDate();
-        let detailsText = checkInTime && checkOutTime ? `Jam: ${format(checkInTime, 'HH:mm')} - ${format(checkOutTime, 'HH:mm')}` : checkInTime ? `Jam Masuk: ${format(checkInTime, 'HH:mm')}` : undefined;
-        return { id: rec.id, date: checkInTime, type: 'Hadir', details: detailsText, status: 'Hadir' };
-    });
-
-    const leaveRecords = leaveHistory.filter(l => l.status === 'approved').flatMap(rec => {
-        try {
-            const sDate = rec.startDate.toDate();
-            const eDate = rec.endDate.toDate();
-            if (isBefore(eDate, sDate)) return [];
-            return eachDayOfInterval({ start: startOfDay(sDate), end: endOfDay(eDate) }).map(loopDate => ({
-                id: `${rec.id}-${format(loopDate, 'yyyy-MM-dd')}`,
-                date: loopDate,
-                type: rec.type,
-                details: rec.reason,
-                status: rec.type,
-            }));
-        } catch (e) { return []; }
-    });
-
-    const combined = [...attendanceRecords, ...leaveRecords];
-    combined.sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
-    return combined;
-  }, [historyData]);
   
   const isHoliday = useMemo(() => {
     if (!schoolConfig) return false;
@@ -251,13 +174,6 @@ export default function SiswaDashboardPage() {
     );
   }
 
-  const activityConfig: { [key: string]: { icon: React.ElementType, variant: 'default' | 'secondary' | 'destructive' } } = {
-    'Hadir': { icon: Check, variant: 'default' },
-    'Sakit': { icon: Thermometer, variant: 'destructive' },
-    'Izin': { icon: FileText, variant: 'secondary' },
-    'Dinas': { icon: FileText, variant: 'secondary' },
-  };
-
   return (
     <div className="space-y-6">
        <div className="space-y-1">
@@ -274,19 +190,7 @@ export default function SiswaDashboardPage() {
         )}
 
         <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="w-full lg:col-span-2">{renderAttendanceContent()}</Card>
-      
-          <Card className="w-full">
-              <CardHeader><CardTitle>Aktivitas Terkini</CardTitle><CardDescription>Catatan kehadiran &amp; izin dalam 6 hari kerja terakhir.</CardDescription></CardHeader>
-              <CardContent className="space-y-2">{
-                  recentActivity.length > 0 ? (
-                      recentActivity.map(activity => {
-                          const config = activityConfig[activity.type] || activityConfig['Hadir'];
-                          return <ActivityItem key={activity.id} icon={config.icon} title={activity.type} date={activity.date ? format(activity.date, 'eeee, d MMM yyyy', { locale: id }) : 'Tanggal tidak valid'} details={activity.details} status={activity.status} statusVariant={config.variant}/>;
-                      })
-                  ) : <div className="flex flex-col items-center justify-center text-center p-6 text-muted-foreground h-full"><p className="text-sm">Belum ada aktivitas.</p></div>
-              }</CardContent>
-          </Card>
+          <Card className="w-full lg:col-span-3">{renderAttendanceContent()}</Card>
         </div>
     </div>
   );

@@ -559,10 +559,10 @@ export default function AbsenPage() {
 
     if (status === 'idle') {
       return (
-        <Card className="w-full max-w-md bg-primary text-primary-foreground">
+        <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold">Pindai QR Code Absensi</CardTitle>
-            <CardDescription className="text-primary-foreground/80">Arahkan kamera ke QR Code yang ditampilkan oleh Admin.</CardDescription>
+            <CardDescription>Arahkan kamera ke QR Code yang ditampilkan oleh Admin.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-4 p-2 sm:p-6">
             <div className="relative w-full aspect-square bg-black/50 rounded-lg overflow-hidden backdrop-blur-sm">
