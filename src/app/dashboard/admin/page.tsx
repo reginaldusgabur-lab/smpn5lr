@@ -121,6 +121,9 @@ export default function AdminDashboardPage() {
   const { data: dashboardData, isLoading: isDashboardDataLoading } = useQuery<{ allAttendanceData: DocumentData[], pendingLeaveRequests: DocumentData[] } | undefined>({
     queryKey: ['adminDashboardData', usersData], // Rerun when usersData is available
     queryFn: async () => {
+        if (!usersData) {
+            return { allAttendanceData: [], pendingLeaveRequests: [] };
+        }
         try {
             const todayStart = startOfDay(new Date());
             const todayEnd = endOfDay(new Date());
@@ -130,7 +133,7 @@ export default function AdminDashboardPage() {
                 fetchGroup(firestore, 'leaveRequests', [where('status', '==', 'pending')])
             ]);
 
-            const userMap = new Map(usersData!.map((u: DocumentData) => [u.id, u.role]));
+            const userMap = new Map(usersData.map((u: DocumentData) => [u.id, u.role]));
 
             const allPendingLeave = leaveDocs.filter((req: DocumentData) => {
                 const userRole = userMap.get(req.userId);
