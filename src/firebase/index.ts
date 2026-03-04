@@ -3,13 +3,17 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache } from 'firebase/firestore';
 
 // Create a singleton instance of Firebase services.
 // This ensures that Firebase is initialized only once across the entire application.
 const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const firestore = getFirestore(app);
+
+// Initialize Firestore with persistence
+const firestore = initializeFirestore(app, {
+  localCache: persistentLocalCache({})
+});
 
 // Export the initialized services directly for use in other parts of the app.
 export { app as firebaseApp, auth, firestore };
