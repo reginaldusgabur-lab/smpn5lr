@@ -645,65 +645,69 @@ function DetailDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="flex h-full flex-col p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-3xl">
+        <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>Detail Kehadiran: {user.name}</DialogTitle>
           <DialogDescription>
             Menampilkan seluruh riwayat kehadiran dan pengajuan izin untuk pengguna ini.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4">
-          <ScrollArea className="h-96">
-            {isLoading ? (
-              <div className="flex h-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : details.length > 0 ? (
-              <div className="relative w-full overflow-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="px-2 sm:px-4">Tanggal</TableHead>
-                      <TableHead className="text-center px-2 sm:px-4">Masuk</TableHead>
-                      <TableHead className="text-center px-2 sm:px-4">Pulang</TableHead>
-                      <TableHead className="text-center px-2 sm:px-4">Status</TableHead>
-                      <TableHead className="px-2 sm:px-4">Keterangan</TableHead>
-                       <TableHead className="px-2 sm:px-4 text-center">Aksi</TableHead>
+
+        <div className="flex-1 overflow-y-auto">
+          {isLoading ? (
+            <div className="flex h-96 items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : details.length > 0 ? (
+            <div className="overflow-x-auto p-6">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">Tanggal</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Masuk</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Pulang</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Keterangan</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {details.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium whitespace-nowrap">{item.dateString}</TableCell>
+                      <TableCell className="text-center whitespace-nowrap">{item.checkIn}</TableCell>
+                      <TableCell className="text-center whitespace-nowrap">{item.checkOut}</TableCell>
+                      <TableCell className="text-center whitespace-nowrap">
+                        <Badge variant={statusVariant[item.status] || 'default'}>{item.status}</Badge>
+                        {item.approvalStatus && (
+                          <Badge variant={approvalStatusVariant[item.approvalStatus] || 'secondary'} className="capitalize">
+                            {item.approvalStatus}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell title={item.description} className="whitespace-nowrap">{item.description}</TableCell>
+                      <TableCell className="text-center whitespace-nowrap">
+                        {item.status === 'Alpa' && (
+                          <Button size="sm" variant="outline" onClick={() => onAddAttendance(item.date)}>
+                            <CalendarPlus className="mr-2 h-4 w-4" />
+                            Isi Absen
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {details.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="whitespace-nowrap font-medium p-2 sm:p-4">{item.dateString}</TableCell>
-                        <TableCell className="text-center p-2 sm:p-4">{item.checkIn}</TableCell>
-                        <TableCell className="text-center p-2 sm:p-4">{item.checkOut}</TableCell>
-                        <TableCell className="text-center space-x-1 whitespace-nowrap p-2 sm:p-4">
-                          <Badge variant={statusVariant[item.status] || 'default'}>{item.status}</Badge>
-                          {item.approvalStatus && (
-                              <Badge variant={approvalStatusVariant[item.approvalStatus] || 'secondary'} className="capitalize">
-                                  {item.approvalStatus}
-                              </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap p-2 sm:p-4" title={item.description}>{item.description}</TableCell>
-                         <TableCell className="text-center p-2 sm:p-4">
-                          {item.status === 'Alpa' && (
-                            <Button size="sm" variant="outline" onClick={() => onAddAttendance(item.date)}>
-                              <CalendarPlus className="mr-2 h-4 w-4" />
-                              Isi Absen
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <p className="text-center text-muted-foreground p-8">Tidak ada data untuk ditampilkan.</p>
-            )}
-          </ScrollArea>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="flex h-96 items-center justify-center">
+                <p className="text-center text-muted-foreground p-8">Tidak ada data untuk ditampilkan.</p>
+            </div>
+          )}
         </div>
+        <DialogFooter className="p-6 pt-4 border-t">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Tutup</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
