@@ -41,7 +41,7 @@ const getCurrentPosition = (options?: PositionOptions): Promise<GeolocationPosit
     const [isQuoteLoading, setIsQuoteLoading] = useState(false);
     let icon, title, description, cardClassName, titleClassName, descriptionClassName;
 
-    const showQuote = status.startsWith('success_');
+    const showQuote = status.startsWith('success_') && userData?.role !== 'admin';
 
     useEffect(() => {
         const fetchQuote = async () => {
