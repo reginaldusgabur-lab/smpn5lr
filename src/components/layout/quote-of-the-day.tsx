@@ -1,9 +1,9 @@
+'''
 'use client';
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertCircle, X } from 'lucide-react';
-import { getQuote, type QuoteOutput } from '@/ai/flows/quoteFlow';
 
 interface Quote {
   content: string;
@@ -22,8 +22,8 @@ export function QuoteOfTheDay({ category }: { category: string | null | undefine
       return;
     }
 
+    const today = new Date().toDateString();
     const lastShown = localStorage.getItem('quoteLastShown');
-    const today = new Date().toISOString().split('T')[0];
 
     if (lastShown === today) {
       setIsLoading(false);
@@ -34,14 +34,18 @@ export function QuoteOfTheDay({ category }: { category: string | null | undefine
       setIsLoading(true);
       setError(null);
       try {
-        const quoteResult: QuoteOutput = await getQuote({ category });
-        if (quoteResult && quoteResult.quote) {
-          // Assuming the author is the AI for now
-          setQuote({ content: quoteResult.quote, author: 'AI' });
-          setIsVisible(true);
-          localStorage.setItem('quoteLastShown', today);
+        const response = await fetch(`/api/quote?category=${encodeURIComponent(category)}`);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: 'Gagal mengambil kutipan' }));
+          throw new Error(errorData.message || 'Gagal mengambil kutipan');
+        }
+        const data = await response.json();
+        if (data.content && data.author) {
+            setQuote({ content: data.content, author: data.author });
+            setIsVisible(true);
+            localStorage.setItem('quoteLastShown', today);
         } else {
-          throw new Error('Gagal mendapatkan kutipan dari flow');
+            setIsVisible(false);
         }
       } catch (e: any) {
         console.error("Error fetching quote:", e);
@@ -63,7 +67,7 @@ export function QuoteOfTheDay({ category }: { category: string | null | undefine
     return (
       <Card className="mb-6 relative bg-red-50 border-red-200 dark:bg-red-950/50 dark:border-red-800">
         <CardContent className="p-4">
-            <p className="font-medium text-red-900 dark:text-red-200">Error: {error}</p>
+            <p className="font-medium text-red-900 dark:text-red-200">Info: {error}</p>
         </CardContent>
       </Card>
     )
@@ -74,25 +78,23 @@ export function QuoteOfTheDay({ category }: { category: string | null | undefine
   }
 
   return (
-    <Card className="mb-6 relative bg-sky-50 border-sky-200 dark:bg-sky-950/50 dark:border-sky-800">
-      <CardContent className="p-4">
-        <button
-          onClick={() => setIsVisible(false)}
-          className="absolute top-2 right-2 text-sky-600 dark:text-sky-400 hover:text-sky-800 dark:hover:text-sky-200"
-          aria-label="Tutup kutipan"
+    <Card className="mb-6 relative group">
+         <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-1 right-1 h-6 w-6 text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={() => setIsVisible(false)}
         >
-          <X className="h-4 w-4" />
-        </button>
-        <div className="flex items-start gap-4">
-          <AlertCircle className="h-5 w-5 text-sky-600 dark:text-sky-400 mt-1 flex-shrink-0" />
-          <div>
-            <p className="font-medium text-sky-900 dark:text-sky-200">
-              \"{quote.content}\"
-            </p>
-            <footer className="text-xs text-sky-700 dark:text-sky-500 mt-1">- {quote.author}</footer>
-          </div>
-        </div>
-      </CardContent>
+            <X className="h-4 w-4" />
+            <span className="sr-only">Tutup kutipan</span>
+        </Button>
+        <CardContent className="p-4">
+            <blockquote className="text-center italic text-sm text-muted-foreground">
+            &ldquo;{quote.content}&rdquo;
+            <footer className="mt-2 text-xs not-italic text-right">~ {quote.author}</footer>
+            </blockquote>
+        </CardContent>
     </Card>
   );
 }
+'''

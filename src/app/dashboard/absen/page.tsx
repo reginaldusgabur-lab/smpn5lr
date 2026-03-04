@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -11,7 +10,6 @@ import { doc, collection, query, where, Timestamp, addDoc, updateDoc } from 'fir
 import { useToast } from '../../../hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { getQuote, type QuoteOutput } from '@/ai/flows/quoteFlow';
 import { Skeleton } from '@/components/ui/skeleton';
 
 type AttendanceStatus = 'idle' | 'loading' | 'locating' | 'success_in' | 'success_out' | 'error_radius' | 'error_time' | 'error_already_in' | 'error_not_checked_in' | 'error_already_out' | 'error_generic' | 'error_location';
@@ -63,12 +61,18 @@ const getCurrentPosition = (options?: PositionOptions): Promise<GeolocationPosit
                         : 'semangat belajar untuk siswa';
                 }
                 
-                const quoteResult: QuoteOutput = await getQuote({ category });
-                if (quoteResult.quote) {
-                  setQuote(quoteResult.quote);
+                const response = await fetch(`/api/quote?category=${encodeURIComponent(category)}`);
+                if (!response.ok) {
+                    throw new Error('Gagal memuat kutipan dari server');
                 }
-            } catch (quoteError) {
-                console.error("Failed to fetch quote:", quoteError);
+                const data = await response.json();
+                if (data.content) {
+                  setQuote(data.content);
+                } else {
+                  setQuote(null);
+                }
+            } catch (quoteError: any) {
+                console.error("Failed to fetch quote:", quoteError.message);
                 setQuote(null); // Clear quote on error
             } finally {
                 setIsQuoteLoading(false);

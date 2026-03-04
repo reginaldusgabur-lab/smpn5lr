@@ -1,25 +1,33 @@
-import { NextResponse } from 'next/server';
+'''
+// src/app/api/quote/route.ts
+import { getQuote } from '@/ai/flows/quoteFlow';
+import { NextRequest, NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
+// Pastikan Genkit diinisialisasi
+import '@/ai/genkit';
 
-export async function GET() {
+export const dynamic = 'force-dynamic'; // Penting untuk Vercel
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get('category');
+
+  if (!category) {
+    return NextResponse.json({ message: 'Category is required' }, { status: 400 });
+  }
+
   try {
-    // Mengembalikan ke API quotable.io yang stabil
-    const response = await fetch('https://api.quotable.io/random?maxLength=100&tags=technology|inspirational|work', {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      // cache: 'no-store' memastikan kutipan baru setiap kali
-      cache: 'no-store',
-    });
-
-    if (!response.ok) {
-      return NextResponse.json({ error: 'Failed to fetch quote' }, { status: response.status });
+    const result = await getQuote({ category });
+    
+    if (result && result.quote) {
+      // Menyesuaikan dengan format yang diharapkan komponen: { content, author }
+      return NextResponse.json({ content: result.quote, author: 'AI' });
+    } else {
+      throw new Error('Failed to get a valid quote from the AI flow.');
     }
-
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  } catch (error: any) {
+    console.error(`Error in /api/quote: ${error.message}`);
+    return NextResponse.json({ message: 'Failed to fetch quote', error: error.message }, { status: 500 });
   }
 }
+'''
