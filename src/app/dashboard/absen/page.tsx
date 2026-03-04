@@ -11,7 +11,7 @@ import { doc, collection, query, where, Timestamp, addDoc, updateDoc } from 'fir
 import { useToast } from '../../../hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { getQuote } from '@/ai/flows/quoteFlow';
+import { getQuote, type QuoteOutput } from '@/ai/flows/quoteFlow';
 import { Skeleton } from '@/components/ui/skeleton';
 
 type AttendanceStatus = 'idle' | 'loading' | 'locating' | 'success_in' | 'success_out' | 'error_radius' | 'error_time' | 'error_already_in' | 'error_not_checked_in' | 'error_already_out' | 'error_generic' | 'error_location';
@@ -38,12 +38,172 @@ const getCurrentPosition = (options?: PositionOptions): Promise<GeolocationPosit
     navigator.geolocation.getCurrentPosition(resolve, reject, options);
   });
 
+  const StatusFeedbackCard = ({ status, locationVerified, locationError, onClose, userData }: { status: AttendanceStatus, locationVerified: boolean, locationError: string | null, onClose: () => void, userData: any }) => {
+    const [quote, setQuote] = useState<string | null>(null);
+    const [isQuoteLoading, setIsQuoteLoading] = useState(false);
+    let icon, title, description, cardClassName, titleClassName, descriptionClassName;
+
+    const showQuote = status.startsWith('success_');
+
+    useEffect(() => {
+        const fetchQuote = async () => {
+            if (!showQuote) return;
+            setIsQuoteLoading(true);
+            try {
+                let category = 'seseorang di lingkungan sekolah'; // Default category
+                const userRole = userData?.role;
+
+                if (userRole === 'guru' || userRole === 'kepala_sekolah' || userRole === 'pegawai') {
+                    category = Math.random() > 0.5 
+                        ? 'seorang pendidik atau staf sekolah yang berdedikasi'
+                        : 'humor singkat yang relevan dengan kehidupan guru atau pegawai sekolah';
+                } else if (userRole === 'siswa') {
+                    category = Math.random() > 0.5
+                        ? 'pelajar SMP yang sedang berjuang meraih mimpi'
+                        : 'semangat belajar untuk siswa';
+                }
+                
+                const quoteResult: QuoteOutput = await getQuote({ category });
+                if (quoteResult.quote) {
+                  setQuote(quoteResult.quote);
+                }
+            } catch (quoteError) {
+                console.error("Failed to fetch quote:", quoteError);
+                setQuote(null); // Clear quote on error
+            } finally {
+                setIsQuoteLoading(false);
+            }
+        };
+
+        fetchQuote();
+    }, [showQuote, userData]);
+
+    switch (status) {
+        case 'success_in':
+            icon = <CheckCircle className="h-16 w-16 text-green-500" />;
+            title = 'Absen Masuk Berhasil';
+            description = 'Kehadiran Anda telah terekam.';
+            if (locationVerified) {
+                description += ' Lokasi Anda berhasil diverifikasi di dalam area sekolah.';
+            }
+            description += ' Selamat beraktivitas!';
+            cardClassName = 'bg-green-50 dark:bg-green-950/50 border-green-300 dark:border-green-800';
+            titleClassName = 'text-green-900 dark:text-green-200';
+            descriptionClassName = 'text-green-700 dark:text-green-400';
+            break;
+        case 'success_out':
+            icon = <CheckCircle className="h-16 w-16 text-blue-500" />;
+            title = 'Absen Pulang Berhasil';
+            description = 'Absen pulang terekam.';
+             if (locationVerified) {
+                description += ' Lokasi Anda berhasil diverifikasi di dalam area sekolah.';
+            }
+            description += ' Hati-hati di jalan!';
+            cardClassName = 'bg-blue-50 dark:bg-blue-950/50 border-blue-300 dark:border-blue-800';
+            titleClassName = 'text-blue-900 dark:text-blue-200';
+            descriptionClassName = 'text-blue-700 dark:text-blue-400';
+            break;
+        case 'error_radius':
+            icon = <MapPin className="h-16 w-16 text-destructive" />;
+            title = 'Gagal: Di Luar Radius';
+            description = 'Anda harus berada di dalam area sekolah untuk melakukan absensi.';
+            cardClassName = 'bg-destructive/10 border-destructive';
+            titleClassName = 'text-destructive';
+            descriptionClassName = 'text-destructive/80';
+            break;
+        case 'error_time':
+            icon = <Clock className="h-16 w-16 text-destructive" />;
+            title = 'Gagal: Di Luar Jam Absen';
+            description = 'Waktu absensi belum dibuka atau sudah ditutup.';
+            cardClassName = 'bg-destructive/10 border-destructive';
+            titleClassName = 'text-destructive';
+            descriptionClassName = 'text-destructive/80';
+            break;
+        case 'error_already_in':
+            icon = <X className="h-16 w-16 text-destructive" />;
+            title = 'Gagal: Sudah Absen Masuk';
+            description = 'Anda sudah melakukan absensi masuk untuk hari ini.';
+            cardClassName = 'bg-destructive/10 border-destructive';
+            titleClassName = 'text-destructive';
+            descriptionClassName = 'text-destructive/80';
+            break;
+        case 'error_not_checked_in':
+            icon = <X className="h-16 w-16 text-destructive" />;
+            title = 'Gagal: Belum Absen Masuk';
+            description = 'Anda harus melakukan absensi masuk terlebih dahulu sebelum absen pulang.';
+            cardClassName = 'bg-destructive/10 border-destructive';
+            titleClassName = 'text-destructive';
+            descriptionClassName = 'text-destructive/80';
+            break;
+        case 'error_already_out':
+            icon = <X className="h-16 w-16 text-destructive" />;
+            title = 'Gagal: Sudah Absen Pulang';
+            description = 'Anda sudah melakukan absensi pulang untuk hari ini.';
+            cardClassName = 'bg-destructive/10 border-destructive';
+            titleClassName = 'text-destructive';
+            descriptionClassName = 'text-destructive/80';
+            break;
+        case 'error_location':
+            icon = <MapPin className="h-16 w-16 text-destructive" />;
+            title = 'Gagal: Lokasi Tidak Ditemukan';
+            description = locationError || 'Pastikan GPS atau layanan lokasi di perangkat Anda aktif dan berikan izin akses.';
+            cardClassName = 'bg-destructive/10 border-destructive';
+            titleClassName = 'text-destructive';
+            descriptionClassName = 'text-destructive/80';
+            break;
+        case 'error_generic':
+            icon = <AlertTriangle className="h-16 w-16 text-destructive" />;
+            title = 'Gagal: Terjadi Kesalahan';
+            description = 'Terjadi kesalahan yang tidak diketahui. Silakan coba lagi.';
+            cardClassName = 'bg-destructive/10 border-destructive';
+            titleClassName = 'text-destructive';
+            descriptionClassName = 'text-destructive/80';
+            break;
+        default:
+            return null;
+    }
+
+    return (
+        <Card className={cn("w-full max-w-md text-center transition-all relative", cardClassName)}>
+             <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 text-current/60 hover:text-current/90"
+                onClick={onClose}
+            >
+                <X className="h-5 w-5" />
+                <span className="sr-only">Tutup</span>
+            </Button>
+            <CardHeader className="items-center pt-8">
+                <div className="mb-4">{icon}</div>
+                <CardTitle className={cn("text-2xl font-bold", titleClassName)}>{title}</CardTitle>
+            </CardHeader>
+            <CardContent className="pb-8 space-y-6">
+                <p className={cn("text-muted-foreground", descriptionClassName)}>{description}</p>
+                {showQuote && (
+                    <div className="border-t border-current/20 pt-4 space-y-2">
+                        <p className="text-sm font-semibold flex items-center justify-center gap-2"><Sparkles className="h-4 w-4" /> Kutipan Hari Ini</p>
+                        <div className="pt-1 min-h-[40px]">
+                            {isQuoteLoading ? (
+                                <div className="space-y-2 pt-1">
+                                    <Skeleton className="h-4 w-full bg-current/20" />
+                                    <Skeleton className="h-4 w-3/4 mx-auto bg-current/20" />
+                                </div>
+                            ) : quote ? (
+                                <blockquote className="text-sm italic">\"{quote}\"</blockquote>
+                            ) : null}
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+  };
+
 export default function AbsenPage() {
   const [status, setStatus] = useState<AttendanceStatus>('idle');
   const [locationVerified, setLocationVerified] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [quote, setQuote] = useState<string | null>(null);
-  const [isQuoteLoading, setIsQuoteLoading] = useState(false);
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -115,7 +275,6 @@ export default function AbsenPage() {
     setStatus('loading');
     setLocationVerified(false);
     setLocationError(null);
-    setQuote(null);
     
     if (!user || !firestore || !schoolConfig) {
         toast({ title: 'Gagal', description: 'Data pengguna atau konfigurasi tidak siap.', variant: 'destructive' });
@@ -212,33 +371,6 @@ export default function AbsenPage() {
         
         setStatus('loading');
 
-        const fetchQuote = async () => {
-          setIsQuoteLoading(true);
-          try {
-            let category = 'seseorang di lingkungan sekolah'; // Default category
-            const userRole = userData?.role;
-
-            if (userRole === 'guru' || userRole === 'kepala_sekolah' || userRole === 'pegawai') {
-                category = Math.random() > 0.5 
-                    ? 'seorang pendidik atau staf sekolah yang berdedikasi'
-                    : 'humor singkat yang relevan dengan kehidupan guru atau pegawai sekolah';
-            } else if (userRole === 'siswa') {
-                category = Math.random() > 0.5
-                    ? 'pelajar SMP yang sedang berjuang meraih mimpi'
-                    : 'semangat belajar untuk siswa';
-            }
-            
-            const quoteResult = await getQuote({ category });
-            if (quoteResult.quote) {
-              setQuote(quoteResult.quote);
-            }
-          } catch (quoteError) {
-            console.error("Failed to fetch quote:", quoteError);
-          } finally {
-            setIsQuoteLoading(false);
-          }
-        };
-
         const now = new Date();
         if (isCheckInTime) {
             await addDoc(collection(firestore, 'users', user.uid, 'attendanceRecords'), {
@@ -249,7 +381,6 @@ export default function AbsenPage() {
                 checkOutTime: null,
             });
             setStatus('success_in');
-            fetchQuote();
         } else if (isCheckOutTime) {
             const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', todaysRecord!.id);
             await updateDoc(recordRef, {
@@ -258,14 +389,13 @@ export default function AbsenPage() {
                 checkOutLongitude: longitude,
             });
             setStatus('success_out');
-            fetchQuote();
         }
     } catch (error: any) {
         console.error("Firestore write error:", error);
         setStatus('error_generic');
         toast({ title: 'Gagal Menyimpan Data', description: 'Terjadi kesalahan sistem saat menyimpan data absensi.', variant: 'destructive' });
     }
-  }, [user, firestore, schoolConfig, todaysAttendance, toast, userData]);
+  }, [user, firestore, schoolConfig, todaysAttendance, toast]);
   
   // Create refs to hold the latest state and callback function to prevent stale closures.
   const statusRef = useRef(status);
@@ -362,134 +492,6 @@ export default function AbsenPage() {
     };
   }, [hasCameraPermission, status, isHoliday, onScanSuccess, toast]);
   
-  const StatusFeedbackCard = ({ status, locationVerified, locationError, quote, isQuoteLoading, onClose }: { status: AttendanceStatus, locationVerified: boolean, locationError: string | null, quote: string | null, isQuoteLoading: boolean, onClose: () => void }) => {
-    let icon, title, description, cardClassName, titleClassName, descriptionClassName;
-
-    switch (status) {
-        case 'success_in':
-            icon = <CheckCircle className="h-16 w-16 text-green-500" />;
-            title = 'Absen Masuk Berhasil';
-            description = 'Kehadiran Anda telah terekam.';
-            if (locationVerified) {
-                description += ' Lokasi Anda berhasil diverifikasi di dalam area sekolah.';
-            }
-            description += ' Selamat beraktivitas!';
-            cardClassName = 'bg-green-50 dark:bg-green-950/50 border-green-300 dark:border-green-800';
-            titleClassName = 'text-green-900 dark:text-green-200';
-            descriptionClassName = 'text-green-700 dark:text-green-400';
-            break;
-        case 'success_out':
-            icon = <CheckCircle className="h-16 w-16 text-blue-500" />;
-            title = 'Absen Pulang Berhasil';
-            description = 'Absen pulang terekam.';
-             if (locationVerified) {
-                description += ' Lokasi Anda berhasil diverifikasi di dalam area sekolah.';
-            }
-            description += ' Hati-hati di jalan!';
-            cardClassName = 'bg-blue-50 dark:bg-blue-950/50 border-blue-300 dark:border-blue-800';
-            titleClassName = 'text-blue-900 dark:text-blue-200';
-            descriptionClassName = 'text-blue-700 dark:text-blue-400';
-            break;
-        case 'error_radius':
-            icon = <MapPin className="h-16 w-16 text-destructive" />;
-            title = 'Gagal: Di Luar Radius';
-            description = 'Anda harus berada di dalam area sekolah untuk melakukan absensi.';
-            cardClassName = 'bg-destructive/10 border-destructive';
-            titleClassName = 'text-destructive';
-            descriptionClassName = 'text-destructive/80';
-            break;
-        case 'error_time':
-            icon = <Clock className="h-16 w-16 text-destructive" />;
-            title = 'Gagal: Di Luar Jam Absen';
-            description = 'Waktu absensi belum dibuka atau sudah ditutup.';
-            cardClassName = 'bg-destructive/10 border-destructive';
-            titleClassName = 'text-destructive';
-            descriptionClassName = 'text-destructive/80';
-            break;
-        case 'error_already_in':
-            icon = <X className="h-16 w-16 text-destructive" />;
-            title = 'Gagal: Sudah Absen Masuk';
-            description = 'Anda sudah melakukan absensi masuk untuk hari ini.';
-            cardClassName = 'bg-destructive/10 border-destructive';
-            titleClassName = 'text-destructive';
-            descriptionClassName = 'text-destructive/80';
-            break;
-        case 'error_not_checked_in':
-            icon = <X className="h-16 w-16 text-destructive" />;
-            title = 'Gagal: Belum Absen Masuk';
-            description = 'Anda harus melakukan absensi masuk terlebih dahulu sebelum absen pulang.';
-            cardClassName = 'bg-destructive/10 border-destructive';
-            titleClassName = 'text-destructive';
-            descriptionClassName = 'text-destructive/80';
-            break;
-        case 'error_already_out':
-            icon = <X className="h-16 w-16 text-destructive" />;
-            title = 'Gagal: Sudah Absen Pulang';
-            description = 'Anda sudah melakukan absensi pulang untuk hari ini.';
-            cardClassName = 'bg-destructive/10 border-destructive';
-            titleClassName = 'text-destructive';
-            descriptionClassName = 'text-destructive/80';
-            break;
-        case 'error_location':
-            icon = <MapPin className="h-16 w-16 text-destructive" />;
-            title = 'Gagal: Lokasi Tidak Ditemukan';
-            description = locationError || 'Pastikan GPS atau layanan lokasi di perangkat Anda aktif dan berikan izin akses.';
-            cardClassName = 'bg-destructive/10 border-destructive';
-            titleClassName = 'text-destructive';
-            descriptionClassName = 'text-destructive/80';
-            break;
-        case 'error_generic':
-            icon = <AlertTriangle className="h-16 w-16 text-destructive" />;
-            title = 'Gagal: Terjadi Kesalahan';
-            description = 'Terjadi kesalahan yang tidak diketahui. Silakan coba lagi.';
-            cardClassName = 'bg-destructive/10 border-destructive';
-            titleClassName = 'text-destructive';
-            descriptionClassName = 'text-destructive/80';
-            break;
-        default:
-            return null;
-    }
-
-    const showQuote = status.startsWith('success_');
-
-    return (
-        <Card className={cn("w-full max-w-md text-center transition-all relative", cardClassName)}>
-             <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-2 right-2 text-current/60 hover:text-current/90"
-                onClick={onClose}
-            >
-                <X className="h-5 w-5" />
-                <span className="sr-only">Tutup</span>
-            </Button>
-            <CardHeader className="items-center pt-8">
-                <div className="mb-4">{icon}</div>
-                <CardTitle className={cn("text-2xl font-bold", titleClassName)}>{title}</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-8 space-y-6">
-                <p className={cn("text-muted-foreground", descriptionClassName)}>{description}</p>
-                {showQuote && (
-                    <div className="border-t border-current/20 pt-4 space-y-2">
-                        <p className="text-sm font-semibold flex items-center justify-center gap-2"><Sparkles className="h-4 w-4" /> Kutipan Hari Ini</p>
-                        <div className="pt-1 min-h-[40px]">
-                            {isQuoteLoading ? (
-                                <div className="space-y-2 pt-1">
-                                    <Skeleton className="h-4 w-full bg-current/20" />
-                                    <Skeleton className="h-4 w-3/4 mx-auto bg-current/20" />
-                                </div>
-                            ) : quote ? (
-                                <blockquote className="text-sm italic">"{quote}"</blockquote>
-                            ) : null}
-                        </div>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
-  };
-
-
   const isLoading = isUserLoading || isUserDataLoading || isConfigLoading || isAttendanceLoading || hasCameraPermission === null || isMonthlyConfigLoading;
 
   const renderContent = () => {
@@ -547,12 +549,10 @@ export default function AbsenPage() {
             status={status} 
             locationVerified={locationVerified} 
             locationError={locationError} 
-            quote={quote} 
-            isQuoteLoading={isQuoteLoading}
+            userData={userData}
             onClose={() => {
                 setStatus('idle');
                 setLocationError(null);
-                setQuote(null);
             }} 
         />;
     }
