@@ -83,11 +83,12 @@ interface DetailedEntry {
 
 const statusVariant: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
     'Hadir': 'default',
-    'Sakit': 'destructive',
+    'Sakit': 'secondary',
     'Izin': 'secondary',
     'Dinas': 'secondary',
-    'Terlambat': 'outline',
+    'Terlambat': 'destructive',
     'Alpa': 'destructive',
+    'Libur': 'outline',
 };
 
 const approvalStatusVariant: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
@@ -426,8 +427,8 @@ function EditAttendanceDialog({
             finalCheckInTime = getRandomTime(date, checkInStartTime, checkInEndTime);
             finalCheckOutTime = getRandomTime(date, checkOutStartTime, checkOutEndTime);
         } else {
-            finalCheckInTime = getRandomTime(date, '07:00', '07:30');
-            finalCheckOutTime = getRandomTime(date, '13:00', '14:00');
+            finalCheckInTime = getRandomTime(date, '07:00', '08:00');
+            finalCheckOutTime = getRandomTime(date, '12:55', '13:10');
         }
 
         const newRecord = {
@@ -517,11 +518,13 @@ function DetailDialog({
   isOpen,
   onOpenChange,
   schoolConfig,
+  onAddAttendance,
 }: { 
   user: UserReport | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   schoolConfig: DocumentData;
+  onAddAttendance: (date: Date) => void;
 }) {
   const [details, setDetails] = useState<DetailedEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -547,8 +550,8 @@ function DetailDialog({
         
         const [attendanceSnap, leaveSnap] = await Promise.all([getDocs(attendanceQuery), getDocs(leaveQuery)]);
 
-        const userAttendanceRecords = attendanceSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const userLeaveRecords = leaveSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const userAttendanceRecords = attendanceSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as DocumentData[];
+        const userLeaveRecords = leaveSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as DocumentData[];
 
         const attendanceRecordsProcessed: DetailedEntry[] = userAttendanceRecords.map(rec => {
             const checkInTime = (rec.checkInTime as Timestamp)?.toDate();
@@ -601,11 +604,33 @@ function DetailDialog({
                     }));
             } catch(e) { console.error("Admin Laporan Detail: Error processing leave record:", rec, e); return []; }
         });
+        
+        const alpaRecords: DetailedEntry[] = (user.alpaDays || []).map(day => ({
+            id: `alpa-${format(day, 'yyyy-MM-dd')}`,
+            date: day,
+            dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
+            checkIn: '-',
+            checkOut: '-',
+            status: 'Alpa',
+            description: 'Tidak ada catatan kehadiran atau izin.',
+            approvalStatus: undefined,
+        }));
 
-        const combinedData = [...attendanceRecordsProcessed, ...leaveRecordsProcessed];
+        const combinedData = [...attendanceRecordsProcessed, ...leaveRecordsProcessed, ...alpaRecords];
         combinedData.sort((a, b) => b.date.getTime() - a.date.getTime());
+        
+        const finalDetails: DetailedEntry[] = [];
+        const processedDates = new Set<string>();
+        for (const item of combinedData) {
+            const dateStr = format(item.date, 'yyyy-MM-dd');
+            if (processedDates.has(dateStr)) {
+                continue;
+            }
+            finalDetails.push(item);
+            processedDates.add(dateStr);
+        }
 
-        setDetails(combinedData);
+        setDetails(finalDetails);
       } catch (error) {
         console.error("Failed to fetch detail dialog data:", error);
       } finally {
@@ -643,12 +668,13 @@ function DetailDialog({
                       <TableHead className="text-center px-2 sm:px-4">Pulang</TableHead>
                       <TableHead className="text-center px-2 sm:px-4">Status</TableHead>
                       <TableHead className="px-2 sm:px-4">Keterangan</TableHead>
+                       <TableHead className="px-2 sm:px-4 text-center">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {details.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell className="whitespace-nowrap p-2 sm:p-4">{item.dateString}</TableCell>
+                        <TableCell className="whitespace-nowrap font-medium p-2 sm:p-4">{item.dateString}</TableCell>
                         <TableCell className="text-center p-2 sm:p-4">{item.checkIn}</TableCell>
                         <TableCell className="text-center p-2 sm:p-4">{item.checkOut}</TableCell>
                         <TableCell className="text-center space-x-1 whitespace-nowrap p-2 sm:p-4">
@@ -660,6 +686,14 @@ function DetailDialog({
                           )}
                         </TableCell>
                         <TableCell className="whitespace-nowrap p-2 sm:p-4" title={item.description}>{item.description}</TableCell>
+                         <TableCell className="text-center p-2 sm:p-4">
+                          {item.status === 'Alpa' && (
+                            <Button size="sm" variant="outline" onClick={() => onAddAttendance(item.date)}>
+                              <CalendarPlus className="mr-2 h-4 w-4" />
+                              Isi Absen
+                            </Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -670,6 +704,119 @@ function DetailDialog({
             )}
           </ScrollArea>
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const getRandomTimeString = (startStr: string, endStr: string) => {
+    const [startH, startM] = startStr.split(':').map(Number);
+    const [endH, endM] = endStr.split(':').map(Number);
+    const startTotalMinutes = startH * 60 + startM;
+    const endTotalMinutes = endH * 60 + endM;
+
+    if (startTotalMinutes >= endTotalMinutes) {
+        return startStr; 
+    }
+
+    const randomTotalMinutes = Math.floor(startTotalMinutes + Math.random() * (endTotalMinutes - startTotalMinutes + 1));
+    const randomH = Math.floor(randomTotalMinutes / 60);
+    const randomM = randomTotalMinutes % 60;
+    
+    const paddedH = String(randomH).padStart(2, '0');
+    const paddedM = String(randomM).padStart(2, '0');
+
+    return `${paddedH}:${paddedM}`;
+};
+
+function ManualAttendanceDialog({
+  isOpen,
+  onOpenChange,
+  user,
+  date,
+  onSuccess,
+}: {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  user: UserReport;
+  date: Date;
+  onSuccess: () => void;
+}) {
+  const [checkIn, setCheckIn] = useState(() => getRandomTimeString('07:00', '08:00'));
+  const [checkOut, setCheckOut] = useState(() => getRandomTimeString('12:55', '13:10'));
+  const [isSaving, setIsSaving] = useState(false);
+  const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const handleSave = async () => {
+    if (!checkIn || !checkOut) {
+      toast({ variant: 'destructive', title: 'Input tidak valid', description: 'Jam masuk dan pulang harus diisi.' });
+      return;
+    }
+    const [inH, inM] = checkIn.split(':').map(Number);
+    const [outH, outM] = checkOut.split(':').map(Number);
+    if (isNaN(inH) || isNaN(inM) || isNaN(outH) || isNaN(outM) || inH < 0 || inH > 23 || outH < 0 || outH > 23 || inM < 0 || inM > 59 || outM < 0 || outM > 59) {
+        toast({ variant: 'destructive', title: 'Format jam tidak valid', description: 'Gunakan format HH:mm.' });
+        return;
+    }
+
+    setIsSaving(true);
+    const checkInTime = new Date(date);
+    checkInTime.setHours(inH, inM, 0, 0);
+    const checkOutTime = new Date(date);
+    checkOutTime.setHours(outH, outM, 0, 0);
+
+    if (checkInTime >= checkOutTime) {
+      toast({ variant: 'destructive', title: 'Input tidak valid', description: 'Jam masuk harus sebelum jam pulang.' });
+      setIsSaving(false);
+      return;
+    }
+
+    try {
+      const attendanceCollectionRef = collection(firestore, 'users', user.id, 'attendanceRecords');
+      await addDoc(attendanceCollectionRef, {
+        userId: user.id,
+        checkInTime: Timestamp.fromDate(checkInTime),
+        checkOutTime: Timestamp.fromDate(checkOutTime),
+        keterangan: 'Diisi oleh Admin',
+        checkInLatitude: null, checkInLongitude: null, checkOutLatitude: null, checkOutLongitude: null,
+      });
+      toast({ title: 'Berhasil', description: `Absensi untuk ${user.name} pada ${format(date, 'd MMM yyyy')} telah disimpan.` });
+      onSuccess();
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Failed to save manual attendance:", error);
+      toast({ variant: 'destructive', title: 'Gagal', description: 'Terjadi kesalahan saat menyimpan data.' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Isi Absensi Manual</DialogTitle>
+          <DialogDescription>
+            Input kehadiran untuk <span className="font-semibold text-foreground">{user.name}</span> pada hari <span className="font-semibold text-foreground">{format(date, 'eeee, d MMMM yyyy', { locale: id })}</span>.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="check-in-time" className="text-right">Jam Masuk</Label>
+            <Input id="check-in-time" type="time" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="check-out-time" className="text-right">Jam Pulang</Label>
+            <Input id="check-out-time" type="time" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="col-span-3" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Simpan
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -858,6 +1005,8 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
   const [editingUser, setEditingUser] = useState<UserReport | null>(null);
   const [isDetailViewOpen, setIsDetailViewOpen] = useState(false);
   const [viewingUser, setViewingUser] = useState<UserReport | null>(null);
+  const [isManualAttendanceOpen, setIsManualAttendanceOpen] = useState(false);
+  const [manualAttendanceData, setManualAttendanceData] = useState<{ user: UserReport, date: Date } | null>(null);
 
   const usersQuery = useMemoFirebase(() => (isAllowed && firestore) ? query(collection(firestore, 'users')) : null, [firestore, isAllowed]);
   const { data: usersData, isLoading: isUsersLoading } = useCollection<User>(user, usersQuery);
@@ -974,7 +1123,7 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
         const [attendanceSnap, leaveSnap] = await Promise.all([getDocs(attendanceQuery), getDocs(leaveQuery)]);
 
         const attendanceRecords = attendanceSnap.docs.map(d => {
-            const data = d.data();
+            const data = d.data() as DocumentData;
             const checkInTime = (data.checkInTime as Timestamp).toDate();
             let keterangan = data.keterangan as string || 'Hadir';
             if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
@@ -994,8 +1143,8 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
             }
         });
 
-        const leaveRecords = leaveSnap.docs.filter(d => (d.data().endDate as Timestamp).toDate() >= startDate).flatMap(doc => {
-            const leave = doc.data();
+        const leaveRecords = leaveSnap.docs.filter(d => (d.data() as DocumentData).endDate >= startDate).flatMap(doc => {
+            const leave = doc.data() as DocumentData;
             const leaveStartDate = (leave.startDate as Timestamp).toDate();
             const leaveEndDate = (leave.endDate as Timestamp).toDate();
             return eachDayOfInterval({start: leaveStartDate, end: leaveEndDate})
@@ -1114,6 +1263,12 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
     setViewingUser(user);
     setIsDetailViewOpen(true);
   };
+  
+  const handleAddAttendance = (date: Date) => {
+    if (!viewingUser) return;
+    setManualAttendanceData({ user: viewingUser, date });
+    setIsManualAttendanceOpen(true);
+  };
 
   if (isUsersLoading || isConfigLoading) {
       return <div className="flex items-center justify-center h-48"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -1217,6 +1372,19 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
           isOpen={isDetailViewOpen}
           onOpenChange={setIsDetailViewOpen}
           schoolConfig={schoolConfig!}
+          onAddAttendance={handleAddAttendance}
+        />
+      )}
+      {isManualAttendanceOpen && manualAttendanceData && (
+        <ManualAttendanceDialog
+          isOpen={isManualAttendanceOpen}
+          onOpenChange={setIsManualAttendanceOpen}
+          user={manualAttendanceData.user}
+          date={manualAttendanceData.date}
+          onSuccess={() => {
+            forceRefetch();
+            setIsDetailViewOpen(false);
+          }}
         />
       )}
     </>
