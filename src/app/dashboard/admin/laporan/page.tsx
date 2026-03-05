@@ -828,7 +828,7 @@ function ManualAttendanceDialog({
 
 // --- DATA FETCHING HOOK ---
 
-function useReportData(currentDate: Date, isAllowed: boolean, firestore: any, usersData: DocumentData[] | null, schoolConfig: DocumentData | null, toast: any) {
+function useReportData(currentDate: Date, isAllowed: boolean, firestore: any, usersData: DocumentData[] | null, schoolConfig: DocumentData | null, toast: any, role: string) {
   const [processedUserData, setProcessedUserData] = useState<UserReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dataVersion, setDataVersion] = useState(0);
@@ -844,10 +844,11 @@ function useReportData(currentDate: Date, isAllowed: boolean, firestore: any, us
   }, []);
 
   useEffect(() => {
-    if (!isAllowed || !firestore || !usersData || !schoolConfig) {
+    if (!isAllowed || !firestore || !usersData || !schoolConfig || !role) {
       if (usersData && schoolConfig) {
           setIsLoading(false);
       }
+      setProcessedUserData([]);
       return;
     }
 
@@ -870,7 +871,7 @@ function useReportData(currentDate: Date, isAllowed: boolean, firestore: any, us
         
         const workDaysInMonth = monthlyConfigData?.manualWorkDays > 0 ? monthlyConfigData.manualWorkDays : allPotentialWorkDays.length;
 
-        const usersToDisplay = usersData.filter(u => u.role !== 'admin');
+        const usersToDisplay = usersData.filter(u => u.role === role);
         const userDataMap = new Map<string, any>();
 
         usersToDisplay.forEach(u => {
@@ -979,7 +980,7 @@ function useReportData(currentDate: Date, isAllowed: boolean, firestore: any, us
     };
 
     fetchDataAndProcess();
-  }, [isAllowed, firestore, usersData, schoolConfig, dateRange, toast, dataVersion]);
+  }, [isAllowed, firestore, usersData, schoolConfig, dateRange, toast, dataVersion, role]);
 
   return { processedUserData, isLoadingData: isLoading, forceRefetch, dateRange };
 }
@@ -1018,7 +1019,7 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
   const schoolConfigRef = useMemoFirebase(() => (isAllowed && firestore) ? doc(firestore, 'schoolConfig', 'default') : null, [firestore, isAllowed]);
   const { data: schoolConfig, isLoading: isConfigLoading } = useDoc(user, schoolConfigRef);
 
-  const { processedUserData, isLoadingData, forceRefetch, dateRange } = useReportData(currentDate, isAllowed, firestore, usersData, schoolConfig, toast);
+  const { processedUserData, isLoadingData, forceRefetch, dateRange } = useReportData(currentDate, isAllowed, firestore, usersData, schoolConfig, toast, activeTab);
 
   const generateAndDownloadFile = useCallback(async (formatType: 'pdf' | 'excel', title: string, generatorFn: () => Promise<void>) => {
       const { dismiss } = toast({ description: `Menyiapkan ${title}...` });
@@ -1245,18 +1246,11 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
   }, [firestore, schoolConfig, dateRange, generateAndDownloadFile, toast]);
 
   const filteredData = useMemo(() => {
-    const dataForTab = processedUserData.filter(u => {
-        if (activeTab === 'guru') return u.role === 'guru';
-        if (activeTab === 'pegawai') return u.role === 'pegawai';
-        if (activeTab === 'siswa') return u.role === 'siswa';
-        if (activeTab === 'kepala_sekolah') return u.role === 'kepala_sekolah';
-        return false;
-    });
-    if (!searchQuery) return dataForTab;
-    return dataForTab.filter((user) =>
+    if (!searchQuery) return processedUserData;
+    return processedUserData.filter((user) =>
       user.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [searchQuery, activeTab, processedUserData]);
+  }, [searchQuery, processedUserData]);
 
   const handleOpenEditAttendance = (user: UserReport) => {
     setEditingUser(user);

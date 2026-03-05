@@ -11,6 +11,7 @@ import { useToast } from '../../../hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useQuote } from '../../../hooks/use-quote';
 
 type AttendanceStatus = 'idle' | 'loading' | 'locating' | 'success_in' | 'success_out' | 'error_radius' | 'error_time' | 'error_already_in' | 'error_not_checked_in' | 'error_already_out' | 'error_generic' | 'error_location';
 
@@ -37,50 +38,27 @@ const getCurrentPosition = (options?: PositionOptions): Promise<GeolocationPosit
   });
 
   const StatusFeedbackCard = ({ status, locationVerified, locationError, onClose, userData }: { status: AttendanceStatus, locationVerified: boolean, locationError: string | null, onClose: () => void, userData: any }) => {
-    const [quote, setQuote] = useState<string | null>(null);
-    const [isQuoteLoading, setIsQuoteLoading] = useState(false);
     let icon, title, description, cardClassName, titleClassName, descriptionClassName;
 
-    const showQuote = status.startsWith('success_') && userData?.role !== 'admin';
+    const showQuote = status.startsWith('success_') && userData?.role && ['guru', 'pegawai', 'siswa', 'kepala_sekolah'].includes(userData.role);
 
-    useEffect(() => {
-        const fetchQuote = async () => {
-            if (!showQuote) return;
-            setIsQuoteLoading(true);
-            try {
-                let category = 'seseorang di lingkungan sekolah'; // Default category
-                const userRole = userData?.role;
+    const category = useMemo(() => {
+        if (!showQuote) return null;
+        const userRole = userData?.role;
 
-                if (userRole === 'guru' || userRole === 'kepala_sekolah' || userRole === 'pegawai') {
-                    category = Math.random() > 0.5 
-                        ? 'seorang pendidik atau staf sekolah yang berdedikasi'
-                        : 'humor singkat yang relevan dengan kehidupan guru atau pegawai sekolah';
-                } else if (userRole === 'siswa') {
-                    category = Math.random() > 0.5
-                        ? 'pelajar SMP yang sedang berjuang meraih mimpi'
-                        : 'semangat belajar untuk siswa';
-                }
-                
-                const response = await fetch(`/api/quote?category=${encodeURIComponent(category)}`);
-                if (!response.ok) {
-                    throw new Error('Gagal memuat kutipan dari server');
-                }
-                const data = await response.json();
-                if (data.content) {
-                  setQuote(data.content);
-                } else {
-                  setQuote(null);
-                }
-            } catch (quoteError: any) {
-                console.error("Failed to fetch quote:", quoteError.message);
-                setQuote(null); // Clear quote on error
-            } finally {
-                setIsQuoteLoading(false);
-            }
-        };
-
-        fetchQuote();
+        if (userRole === 'guru' || userRole === 'kepala_sekolah' || userRole === 'pegawai') {
+            return Math.random() > 0.5 
+                ? 'seorang pendidik atau staf sekolah yang berdedikasi'
+                : 'humor singkat yang relevan dengan kehidupan guru atau pegawai sekolah';
+        } else if (userRole === 'siswa') {
+            return Math.random() > 0.5
+                ? 'pelajar SMP yang sedang berjuang meraih mimpi'
+                : 'semangat belajar untuk siswa';
+        }
+        return 'seseorang di lingkungan sekolah';
     }, [showQuote, userData]);
+
+    const { quote, isLoading: isQuoteLoading, error: quoteError } = useQuote({ category, enabled: showQuote });
 
     switch (status) {
         case 'success_in':
@@ -187,14 +165,19 @@ const getCurrentPosition = (options?: PositionOptions): Promise<GeolocationPosit
                 {showQuote && (
                     <div className="border-t border-current/20 pt-4 space-y-2">
                         <p className="text-sm font-semibold flex items-center justify-center gap-2"><Sparkles className="h-4 w-4" /> Kutipan Hari Ini</p>
-                        <div className="pt-1 min-h-[40px]">
+                        <div className="pt-1 min-h-[60px] flex items-center justify-center">
                             {isQuoteLoading ? (
-                                <div className="space-y-2 pt-1">
+                                <div className="space-y-2 pt-1 w-full">
                                     <Skeleton className="h-4 w-full bg-current/20" />
                                     <Skeleton className="h-4 w-3/4 mx-auto bg-current/20" />
                                 </div>
                             ) : quote ? (
-                                <blockquote className="text-sm italic">\"{quote}\"</blockquote>
+                                <blockquote className="text-sm italic text-center">
+                                    &ldquo;{quote.content}&rdquo;
+                                    <footer className="mt-2 text-xs not-italic">~ {quote.author}</footer>
+                                </blockquote>
+                            ) : quoteError ? (
+                                <p className='text-xs text-red-500/80'>Gagal memuat kutipan.</p>
                             ) : null}
                         </div>
                     </div>
@@ -599,7 +582,7 @@ export default function AbsenPage() {
   };
 
   return (
-    <div className="flex flex-col items-start gap-6 p-4">
+    <div className="flex flex-col items-start gap-6">
       {renderContent()}
     </div>
   );

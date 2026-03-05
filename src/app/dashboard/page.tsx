@@ -4,9 +4,9 @@ import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import GuruDashboardPage from './guru/page';
-import PegawaiDashboardPage from './pegawai/page';
-import SiswaDashboardPage from './siswa/page';
+
+// Import the consolidated dashboard and other specific dashboards
+import PersonalDashboard from '@/components/dashboard/PersonalDashboard'; // CORRECTED IMPORT
 import AdminDashboardPage from './admin/page';
 import KepalaSekolahDashboardPage from './kepala_sekolah/page';
 
@@ -27,11 +27,11 @@ export default function DashboardPage() {
   // --- Conditional Rendering based on Role ---
   switch (user.role) {
     case 'guru':
-      return <GuruDashboardPage />;
+      return <PersonalDashboard showChart={true} />;
     case 'pegawai':
-      return <PegawaiDashboardPage />;
+      return <PersonalDashboard showChart={true} />;
     case 'siswa':
-      return <SiswaDashboardPage />;
+      return <PersonalDashboard showChart={false} />;
     case 'admin':
       return <AdminDashboardPage />;
     case 'kepala_sekolah':

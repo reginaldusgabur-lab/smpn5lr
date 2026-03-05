@@ -16,19 +16,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc, where, Timestamp } from 'firebase/firestore';
-import { format, isBefore, eachDayOfInterval, startOfDay, endOfDay, getMonth, getYear, startOfMonth } from 'date-fns';
+import { format, isBefore, isAfter, eachDayOfInterval, startOfDay, endOfDay, getMonth, getYear, startOfMonth, lastDayOfMonth, addMonths, subMonths } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { AttendanceChart } from '@/components/dashboard/AttendanceChart';
 
@@ -52,7 +45,21 @@ export default function LaporanPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
 
-  const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+
+  const { isPrevMonthNavDisabled } = useMemo(() => {
+    const startOfSelectedMonth = startOfMonth(currentDate);
+    const projectStartDate = new Date(2026, 0, 1); // Lock navigation before January 2026
+    return {
+      isPrevMonthNavDisabled: !isAfter(startOfSelectedMonth, projectStartDate)
+    };
+  }, [currentDate]);
+
+  const dateRange = useMemo(() => {
+    const start = startOfMonth(currentDate);
+    const end = lastDayOfMonth(currentDate);
+    return { start, end };
+  }, [currentDate]);
 
   const schoolConfigRef = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -62,30 +69,27 @@ export default function LaporanPage() {
 
   const attendanceHistoryQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, 'users', user.uid, 'attendanceRecords'), orderBy('checkInTime', 'desc'));
-  }, [user, firestore]);
+    return query(
+      collection(firestore, 'users', user.uid, 'attendanceRecords'),
+      where('checkInTime', '>=', Timestamp.fromDate(dateRange.start)),
+      where('checkInTime', '<=', Timestamp.fromDate(dateRange.end)),
+      orderBy('checkInTime', 'desc')
+    );
+  }, [user, firestore, dateRange]);
 
   const leaveHistoryQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, 'users', user.uid, 'leaveRequests'), orderBy('startDate', 'desc'));
-  }, [user, firestore]);
+    return query(
+      collection(firestore, 'users', user.uid, 'leaveRequests'),
+      where('endDate', '>=', Timestamp.fromDate(dateRange.start)),
+      orderBy('endDate', 'desc')
+    );
+  }, [user, firestore, dateRange]);
 
   const { data: attendanceHistory, isLoading: isHistoryLoading } = useCollection(user, attendanceHistoryQuery);
   const { data: leaveHistory, isLoading: isLeaveLoading } = useCollection(user, leaveHistoryQuery);
 
   const isLoading = isAuthLoading || isHistoryLoading || isLeaveLoading || isConfigLoading;
-  
-  const allMonths = useMemo(() => {
-    if (!attendanceHistory || !leaveHistory) return [];
-    const months = new Set<string>();
-    [...attendanceHistory, ...leaveHistory].forEach(rec => {
-      const date = rec.checkInTime?.toDate() || rec.startDate?.toDate();
-      if (date) {
-        months.add(format(date, 'yyyy-MM'));
-      }
-    });
-    return Array.from(months);
-  }, [attendanceHistory, leaveHistory]);
 
   const reportData = useMemo(() => {
     if (!attendanceHistory || !leaveHistory || !schoolConfig) {
@@ -115,9 +119,8 @@ export default function LaporanPage() {
           description = 'Data tidak lengkap';
         }
 
-
         return {
-            id: rec.id, // Pass ID for key
+            id: rec.id,
             date: checkInTime,
             dateString: checkInTime ? format(checkInTime, 'eee, dd/MM/yy', { locale: id }) : '-',
             checkIn: checkInTime ? format(checkInTime, 'HH:mm') : '-',
@@ -128,22 +131,26 @@ export default function LaporanPage() {
         };
     });
 
-    const leaveRecords = leaveHistory.flatMap(rec => {
+    const leaveRecords = leaveHistory
+        .filter(rec => rec.startDate.toDate() <= dateRange.end) // Filter leaves starting after the month ends
+        .flatMap(rec => {
         try {
-            if (!rec || !rec.startDate || typeof rec.startDate.toDate !== 'function' || !rec.endDate || typeof rec.endDate.toDate !== 'function') {
-                console.warn('Laporan Page: Skipping invalid leave record (malformed or missing dates):', rec);
+            if (!rec || !rec.startDate?.toDate || !rec.endDate?.toDate) {
+                console.warn('Laporan Page: Skipping invalid leave record', rec);
                 return [];
             }
             const sDate = rec.startDate.toDate();
             const eDate = rec.endDate.toDate();
             
-            if (isBefore(eDate, sDate)) {
-                console.warn("Laporan Page: End date is before start date, skipping", rec);
-                return [];
-            }
+            if (isBefore(eDate, sDate)) return [];
             
-            const interval = { start: startOfDay(sDate), end: endOfDay(eDate) };
-            return eachDayOfInterval(interval).map(loopDate => ({
+            // Clip interval to current month to avoid creating extra dates
+            const intervalStart = isBefore(sDate, dateRange.start) ? dateRange.start : sDate;
+            const intervalEnd = isAfter(eDate, dateRange.end) ? dateRange.end : eDate;
+
+            if (isBefore(intervalEnd, intervalStart)) return [];
+
+            return eachDayOfInterval({ start: intervalStart, end: intervalEnd }).map(loopDate => ({
                 id: `${rec.id}-${format(loopDate, 'yyyy-MM-dd')}`,
                 date: loopDate,
                 dateString: format(loopDate, 'eee, dd/MM/yy', { locale: id }),
@@ -155,7 +162,7 @@ export default function LaporanPage() {
             }));
 
         } catch(e) {
-             console.error("Laporan Page: Error processing leave record, skipping:", rec, e);
+             console.error("Laporan Page: Error processing leave record:", rec, e);
              return [];
         }
     });
@@ -163,14 +170,22 @@ export default function LaporanPage() {
     const combined = [...attendanceRecords, ...leaveRecords];
     combined.sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
 
-    const [year, month] = selectedMonth.split('-').map(Number);
+    // Remove duplicates, giving preference to non-leave records
+    const uniqueRecords = [];
+    const processedDates = new Set();
+    for (const record of combined) {
+        if (record.date) {
+            const dateString = format(record.date, 'yyyy-MM-dd');
+            if (!processedDates.has(dateString)) {
+                uniqueRecords.push(record);
+                processedDates.add(dateString);
+            }
+        }
+    }
 
-    return combined.filter(rec => {
-        if (!rec.date) return false;
-        return getYear(rec.date) === year && getMonth(rec.date) === month - 1;
-    });
+    return uniqueRecords;
 
-  }, [attendanceHistory, leaveHistory, schoolConfig, selectedMonth]);
+  }, [attendanceHistory, leaveHistory, schoolConfig, dateRange]);
 
   const chartData = useMemo(() => {
     const summary = {
@@ -209,29 +224,24 @@ export default function LaporanPage() {
   
   return (
     <div className="space-y-4">
-    <AttendanceChart data={chartData} selectedMonth={selectedMonth} />
+    <AttendanceChart data={chartData} selectedMonth={format(currentDate, 'yyyy-MM')} />
     <Card>
-      <CardHeader className="flex-row items-center justify-between">
+      <CardHeader className="flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <CardTitle>Riwayat Absensi &amp; Izin</CardTitle>
           <CardDescription>
           Berikut adalah catatan kehadiran dan pengajuan izin Anda.
           </CardDescription>
         </div>
-        {allMonths.length > 0 && (
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Pilih Bulan" />
-                </SelectTrigger>
-                <SelectContent>
-                    {allMonths.map(month => (
-                        <SelectItem key={month} value={month}>
-                            {format(new Date(month + '-02'), 'MMMM yyyy', { locale: id })}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        )}
+        <div className="flex items-center gap-2 self-end sm:self-center">
+            <Button variant="outline" size="icon" onClick={() => setCurrentDate(subMonths(currentDate, 1))} disabled={isPrevMonthNavDisabled}>
+                <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="font-semibold text-center w-32">{format(currentDate, 'MMMM yyyy', { locale: id })}</span>
+            <Button variant="outline" size="icon" onClick={() => setCurrentDate(addMonths(currentDate, 1))}>
+                <ChevronRight className="h-4 w-4" />
+            </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">

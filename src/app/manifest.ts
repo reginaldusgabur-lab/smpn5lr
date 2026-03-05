@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Aplikasi Absensi Digital untuk SMPN 5 LANGKE REMBONG',
     start_url: '/dashboard',
     display: 'standalone',
-    background_color: '#ffffff',
-    theme_color: '#3F51B5',
+    background_color: '#000000',
+    theme_color: '#ffffff',
     icons: [
       {
         src: '/logofix.png',

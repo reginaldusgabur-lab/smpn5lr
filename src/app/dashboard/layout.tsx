@@ -6,9 +6,10 @@ import { Header } from '@/components/layout/header';
 import { BottomNavigation } from '@/components/layout/bottom-navigation';
 import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-import { Loader2, ShieldAlert } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,7 +19,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { QuoteOfTheDay } from '@/components/layout/quote-of-the-day';
 
 export default function DashboardLayout({
   children,
@@ -28,13 +28,13 @@ export default function DashboardLayout({
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const isMobile = useIsMobile();
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
     return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
 
-  // data userData sudah berisi informasi peran (role)
   const { data: userData, isLoading: isUserDataLoading } = useDoc<{ role: string, hasSeenRules?: boolean }>(user, userDocRef);
 
   const [showRulesDialog, setShowRulesDialog] = useState(false);
@@ -47,6 +47,20 @@ export default function DashboardLayout({
       router.replace('/');
     }
   }, [isUserLoading, user, router]);
+
+  useEffect(() => {
+    if (isMobile) {
+      const handlePopState = () => {
+        router.replace('/dashboard');
+      };
+
+      window.addEventListener('popstate', handlePopState);
+
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, [isMobile, router]);
 
   useEffect(() => {
     if (userData && userData.hasSeenRules === false) {
@@ -67,7 +81,6 @@ export default function DashboardLayout({
     }
   };
 
-
   if (isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -85,8 +98,20 @@ export default function DashboardLayout({
         <AlertDialog open={showRulesDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              {/* ... Konten Dialog Aturan ... */}
+              <AlertDialogTitle>Peraturan Aplikasi</AlertDialogTitle>
+              <AlertDialogDescription>
+                Selamat datang! Sebelum melanjutkan, harap baca dan setujui peraturan berikut:
+                1. Dilarang menyalahgunakan aplikasi untuk tujuan ilegal.
+                2. Data absensi Anda akan direkam dan dipantau.
+                3. Jaga kerahasiaan akun Anda.
+              </AlertDialogDescription>
             </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={handleAcknowledgeRules} disabled={isUpdatingRules}>
+                {isUpdatingRules ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Saya Mengerti & Setuju
+              </AlertDialogAction>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
 
@@ -96,8 +121,6 @@ export default function DashboardLayout({
                 <Header />
                 <main className="flex-1 overflow-y-auto p-4 pb-20 sm:p-6">
                     <div className="mx-auto w-full max-w-7xl">
-                        {/* Peran pengguna (userData.role) kini diteruskan sebagai `category` */}
-                        <QuoteOfTheDay category={userData?.role} />
                         {children}
                     </div>
                 </main>

@@ -1,22 +1,5 @@
 'use client';
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { UserCheck, Users, FileWarning, ShieldAlert } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { useMemo, useEffect } from 'react';
 import { useUser, useFirestore } from '@/firebase';
 import { doc, collection, query, where, Timestamp, getDocs, type DocumentData, collectionGroup } from 'firebase/firestore';
@@ -24,56 +7,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { startOfDay, endOfDay } from 'date-fns';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
-
-const statusVariant: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
-    'Hadir': 'default', 'Sakit': 'destructive', 'Izin': 'secondary', 'Terlambat': 'outline',
-}
-
-const AdminDashboardSkeletons = () => (
-    <div className="space-y-6 animate-pulse">
-        <div className="space-y-1">
-            <Skeleton className="h-8 w-1/2" />
-            <Skeleton className="h-6 w-1/3" />
-            <Skeleton className="h-4 w-3/4 !mt-2" />
-        </div>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <Card className="lg:col-span-2">
-                <CardHeader>
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-2">
-                        {[...Array(3)].map((_, i) => (
-                             <div key={i} className="flex items-center space-x-4 p-2 border-b">
-                                <Skeleton className="h-4 w-1/3 flex-1" />
-                                <Skeleton className="h-4 w-1/4" />
-                                <Skeleton className="h-5 w-16 rounded-full" />
-                            </div>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
-            <div className="space-y-6">
-                 {[...Array(3)].map((_, i) => (
-                    <Card key={i}>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <Skeleton className="h-4 w-1/2" />
-                            <Skeleton className="h-5 w-5 rounded-full" />
-                        </CardHeader>
-                        <CardContent>
-                            <Skeleton className="h-8 w-1/4" />
-                            <Skeleton className="h-3 w-3/4 mt-1" />
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-        </div>
-    </div>
-);
+import { ShieldAlert } from 'lucide-react';
+import { AdminDashboardSkeletons } from '@/components/dashboard/admin/AdminDashboardSkeletons';
+import { StatCards } from '@/components/dashboard/admin/StatCards';
+import { RecentActivityTable } from '@/components/dashboard/admin/RecentActivityTable';
 
 async function fetchCollection(firestore: any, collectionName: string, constraints: any[] = []): Promise<DocumentData[]> {
     const q = query(collection(firestore, collectionName), ...constraints);
@@ -86,7 +25,6 @@ async function fetchGroup(firestore: any, groupName: string, constraints: any[] 
     const snapshot = await getDocs(q);
     return snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
 }
-
 
 export default function AdminDashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -216,79 +154,10 @@ export default function AdminDashboardPage() {
             </Alert>
         )}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <Card className="lg:col-span-2">
-                <CardHeader>
-                    <CardTitle>Aktivitas Pengguna Terbaru</CardTitle>
-                    <CardDescription>Aktivitas kehadiran semua pengguna yang tercatat hari ini.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[50px] text-center">No.</TableHead>
-                                    <TableHead>Nama</TableHead>
-                                    <TableHead>Peran</TableHead>
-                                    <TableHead className="text-center">Waktu Masuk</TableHead>
-                                    <TableHead className="text-center">Waktu Pulang</TableHead>
-                                    <TableHead className="text-center">Status</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {stats.recentUserActivity.length > 0 ? stats.recentUserActivity.map((item: any) => (
-                                    <TableRow key={item.id}>
-                                        <TableCell className="text-center font-medium">{item.sequence}</TableCell>
-                                        <TableCell className="font-medium">{item.name}</TableCell>
-                                        <TableCell className="capitalize">{item.role}</TableCell>
-                                        <TableCell className="text-center">{item.checkInTimeFormatted}</TableCell>
-                                        <TableCell className="text-center">{item.checkOutTimeFormatted}</TableCell>
-                                        <TableCell className="text-center"><Badge variant={statusVariant[item.status] || 'default'}>{item.status}</Badge></TableCell>
-                                    </TableRow>
-                                )) : (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center">Belum ada aktivitas kehadiran hari ini.</TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <div className="space-y-6">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Guru & Staf Hadir</CardTitle>
-                        <UserCheck className="h-5 w-5 text-green-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold">{stats.staffPresentToday}<span className="text-xl font-normal text-muted-foreground">/{stats.totalStaff}</span></div>
-                        <p className="text-xs text-muted-foreground">Total guru & staf yang tercatat masuk hari ini</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium">Permintaan Izin Tertunda</CardTitle>
-                    <FileWarning className="h-5 w-5 text-amber-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold">{stats.pendingLeaveRequestsCount}</div>
-                    <p className="text-xs text-muted-foreground">Permintaan izin/sakit menunggu persetujuan</p>
-                  </CardContent>
-                </Card>
-                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Total Pengguna Aktif</CardTitle>
-                        <Users className="h-5 w-5 text-primary" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold">{stats.totalUsers}</div>
-                        <p className="text-xs text-muted-foreground">{stats.kepalaSekolahCount} Kepsek, {stats.guruCount} Guru, {stats.pegawaiCount} Pegawai, {stats.siswaCount} Siswa</p>
-                    </CardContent>
-                </Card>
-            </div>
+          <RecentActivityTable activity={stats.recentUserActivity} />
+          <StatCards stats={stats} />
         </div>
-    </div>
+      </div>
     </div>
   );
 }
