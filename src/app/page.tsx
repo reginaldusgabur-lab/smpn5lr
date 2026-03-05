@@ -38,7 +38,6 @@ import { useRouter } from 'next/navigation';
 import { auth } from '@/firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import Link from 'next/link';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Format email tidak valid" }),
@@ -57,8 +56,6 @@ export default function LoginPage() {
 
   const { toast } = useToast();
   const router = useRouter();
-
-  const appLogo = PlaceHolderImages.find(p => p.id === 'app-logo');
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -155,12 +152,11 @@ export default function LoginPage() {
             <CardHeader className="text-center space-y-2">
               <div className="flex justify-center mb-2">
                   <Image
-                      src={appLogo?.imageUrl || "/logofix.png"}
+                      src={"/logofix.png"}
                       alt="Logo SMPN 5 Langke Rembong"
                       width={80}
                       height={80}
                       priority
-                      data-ai-hint={appLogo?.imageHint}
                   />
               </div>
               <CardTitle className="text-4xl font-extrabold tracking-tight">Absensi Online</CardTitle>
