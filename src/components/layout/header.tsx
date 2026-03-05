@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,8 +31,6 @@ export function Header() {
   const { user } = useUser();
   const auth = useAuth();
   const router = useRouter();
-
-  const appLogo = PlaceHolderImages.find(p => p.id === 'app-logo');
 
   const userDocRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -112,12 +109,11 @@ export function Header() {
         <DialogTrigger asChild>
           <button className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full">
             <Image
-              src={appLogo?.imageUrl || '/logofix.png'}
+              src={"/logofix.png"} // FIXED: Directly use the correct logo path
               alt="App Logo"
               width={36}
               height={36}
               priority
-              data-ai-hint="app logo"
             />
           </button>
         </DialogTrigger>
