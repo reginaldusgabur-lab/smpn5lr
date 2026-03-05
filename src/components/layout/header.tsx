@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import Link from 'next/link';
-// import Image from 'next/image';
+import Image from 'next/image';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -25,7 +25,7 @@ import { LogOut, Settings, ShieldAlert } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { ModeToggle } from '@/components/theme-toggle';
-// import appLogo from '@/assets/logo-espenli.png';
+import appLogo from '@/assets/logo-espenli.png';
 
 export function Header() {
   const firestore = useFirestore();
@@ -109,13 +109,13 @@ export function Header() {
       <Dialog>
         <DialogTrigger asChild>
           <button className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full">
-            {/* <Image
+            <Image
               src={appLogo}
               alt="App Logo"
               width={36}
               height={36}
               priority
-            /> */}
+            />
           </button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md">
