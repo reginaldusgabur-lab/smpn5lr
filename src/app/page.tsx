@@ -152,7 +152,7 @@ export default function LoginPage() {
             <CardHeader className="text-center space-y-2">
               <div className="flex justify-center mb-2">
                   <Image
-                      src={"/logofix.png"}
+                      src={"/logo-espenli.png"}
                       alt="Logo SMPN 5 Langke Rembong"
                       width={80}
                       height={80}

@@ -109,7 +109,7 @@ export function Header() {
         <DialogTrigger asChild>
           <button className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full">
             <Image
-              src={"/logofix.png"} // FIXED: Directly use the correct logo path
+              src={"/logo-espenli.png"}
               alt="App Logo"
               width={36}
               height={36}
