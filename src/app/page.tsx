@@ -1,7 +1,7 @@
 'use client';
 // Trigger deployment
 import { useState } from 'react';
-import Image from 'next/image';
+// import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,7 +38,7 @@ import { useRouter } from 'next/navigation';
 import { auth } from '@/firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import Link from 'next/link';
-import appLogo from '@/assets/logo-espenli.png';
+// import appLogo from '@/assets/logo-espenli.png';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Format email tidak valid" }),
@@ -151,7 +151,7 @@ export default function LoginPage() {
         <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
           <Card className="w-full max-w-md bg-card">
             <CardHeader className="text-center space-y-2">
-              <div className="flex justify-center mb-2">
+              {/* <div className="flex justify-center mb-2">
                   <Image
                       src={appLogo}
                       alt="Logo SMPN 5 Langke Rembong"
@@ -159,7 +159,7 @@ export default function LoginPage() {
                       height={80}
                       priority
                   />
-              </div>
+              </div> */}
               <CardTitle className="text-4xl font-extrabold tracking-tight">Absensi Online</CardTitle>
               <CardDescription className="text-md text-muted-foreground">
                   SMPN 5 Langke Rembong
