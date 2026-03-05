@@ -38,6 +38,7 @@ import { useRouter } from 'next/navigation';
 import { auth } from '@/firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import Link from 'next/link';
+import appLogo from '@/assets/logo-espenli.png';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Format email tidak valid" }),
@@ -152,7 +153,7 @@ export default function LoginPage() {
             <CardHeader className="text-center space-y-2">
               <div className="flex justify-center mb-2">
                   <Image
-                      src={"/logo-espenli.png"}
+                      src={appLogo}
                       alt="Logo SMPN 5 Langke Rembong"
                       width={80}
                       height={80}
