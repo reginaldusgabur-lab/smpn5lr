@@ -1,6 +1,6 @@
 'use client';
 // Trigger deployment
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,6 +67,19 @@ export default function LoginPage() {
       resolver: zodResolver(resetPasswordSchema),
       defaultValues: { email: '' },
   });
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const emailValue = (document.getElementById('email') as HTMLInputElement)?.value;
+      const passwordValue = (document.getElementById('password') as HTMLInputElement)?.value;
+      if (emailValue && passwordValue && !loginForm.formState.isDirty) {
+        loginForm.setValue('email', emailValue, { shouldDirty: true });
+        loginForm.setValue('password', passwordValue, { shouldDirty: true });
+      }
+    }, 500); // 500ms delay to allow autofill
+
+    return () => clearTimeout(timer);
+  }, [loginForm]);
 
   const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     setIsLoginLoading(true);

@@ -32,7 +32,7 @@ import { createUserWithEmailAndPassword, sendEmailVerification, signOut } from '
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, firestore } from '@/firebase';
 import { Label } from '@/components/ui/label';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
+import appLogo from '@/assets/logo-espenli.png';
 
 const registerSchema = z
   .object({
@@ -63,8 +63,6 @@ export default function RegisterPage() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  const appLogo = PlaceHolderImages.find(p => p.id === 'app-logo');
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
@@ -117,7 +115,7 @@ export default function RegisterPage() {
         sequenceNumber: null,
       };
 
-      if (values.role === 'guru') {
+      if (values.role === 'guru' || values.role === 'pegawai') {
         userDoc.nip = values.nip?.trim() || null;
       }
       
@@ -194,12 +192,11 @@ export default function RegisterPage() {
         <CardHeader className="text-center space-y-2">
           <div className="flex justify-center mb-2">
             <Image
-              src={appLogo?.imageUrl || "/logofix.png"}
+              src={appLogo}
               alt="Logo SMPN 5 Langke Rembong"
-              width={64}
-              height={64}
+              width={80}
+              height={80}
               priority
-              data-ai-hint={appLogo?.imageHint}
             />
           </div>
           <CardTitle className="text-3xl font-bold tracking-wider">E-SPENLI</CardTitle>
@@ -247,7 +244,7 @@ export default function RegisterPage() {
                   <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="email.aktif@anda.com" {...field} /></FormControl><FormMessage /></FormItem>
               )}/>
 
-              {(selectedRole === 'guru') && (
+              {(selectedRole === 'guru' || selectedRole === 'pegawai') && (
                 <FormField control={form.control} name="nip" render={({ field }) => (
                     <FormItem><FormLabel>NIP <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><Input placeholder="Masukkan NIP Anda" {...field} /></FormControl><FormMessage /></FormItem>
                 )}/>

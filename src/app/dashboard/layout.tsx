@@ -96,7 +96,7 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
         <AlertDialog open={showRulesDialog}>
-          <AlertDialogContent>
+          <AlertDialogContent className="mx-4 rounded-lg">
             <AlertDialogHeader>
               <AlertDialogTitle>Peraturan Aplikasi</AlertDialogTitle>
               <AlertDialogDescription>

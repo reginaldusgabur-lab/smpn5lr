@@ -146,6 +146,7 @@ const getCurrentPosition = (options?: PositionOptions): Promise<GeolocationPosit
     }
 
     return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <Card className={cn("w-full max-w-md text-center transition-all relative", cardClassName)}>
              <Button
                 variant="ghost"
@@ -184,6 +185,7 @@ const getCurrentPosition = (options?: PositionOptions): Promise<GeolocationPosit
                 )}
             </CardContent>
         </Card>
+      </div>
     );
   };
 
