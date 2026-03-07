@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, orderBy, doc, where, Timestamp, getDoc, getDocs, type DocumentData } from 'firebase/firestore';
