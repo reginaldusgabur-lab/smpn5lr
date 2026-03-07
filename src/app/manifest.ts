@@ -1,35 +1,28 @@
-import { type MetadataRoute } from 'next'
+'''
+import { MetadataRoute } from 'next'
  
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'E-SPENLI Absensi',
+    name: 'E-SPENLI',
     short_name: 'E-SPENLI',
-    description: 'Aplikasi Absensi Digital untuk SMPN 5 LANGKE REMBONG',
-    start_url: '/dashboard',
+    description: 'Aplikasi Absensi Digital Modern untuk SMPN 5 Langke Rembong',
+    start_url: '/',
     display: 'standalone',
-    background_color: '#000000',
-    theme_color: '#ffffff',
+    background_color: '#fff',
+    theme_color: '#fff',
     icons: [
       {
-        src: '/logofix.png',
+        src: '/icons/icon-192x192.png',
         sizes: '192x192',
         type: 'image/png',
-        purpose: 'any',
       },
       {
-        src: '/logofix.png',
+        src: '/icons/icon-512x512.png',
         sizes: '512x512',
         type: 'image/png',
-        purpose: 'any',
-      },
-       {
-        src: '/logofix.png',
-        sizes: '192x192',
-        type: 'image/png',
-        purpose: 'maskable',
       },
       {
-        src: '/logofix.png',
+        src: '/icons/icon-512x512.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',
@@ -37,3 +30,4 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
   }
 }
+'''

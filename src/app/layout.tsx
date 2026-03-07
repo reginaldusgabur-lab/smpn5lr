@@ -1,37 +1,36 @@
+'''
 import type {Metadata, Viewport} from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
 import { ThemeProvider } from "@/components/theme-provider";
-import QueryProvider from '@/components/QueryProvider'; // Import QueryProvider
+import QueryProvider from '@/components/QueryProvider';
+
+const APP_NAME = "E-SPENLI";
+const APP_DESCRIPTION = "Aplikasi Absensi Digital Modern untuk SMPN 5 Langke Rembong";
 
 export const metadata: Metadata = {
-  title: 'E-SPENLI',
-  description: 'Aplikasi Absensi Digital untuk SMPN 5 Langke Rembong',
-  manifest: '/manifest.webmanifest',
-  applicationName: 'E-SPENLI',
+  applicationName: APP_NAME,
+  title: APP_NAME,
+  description: APP_DESCRIPTION,
+  manifest: "/manifest.ts",
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
-    title: 'E-SPENLI',
+    statusBarStyle: "default",
+    title: APP_NAME,
   },
   formatDetection: {
     telephone: false,
   },
   icons: {
-    icon: '/logofix.png',
-    apple: '/logofix.png',
-  }
+    shortcut: "/icons/icon-512x512.png",
+    apple: [{ url: "/icons/icon-512x512.png" }],
+  },
 };
 
 export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' },
-  ]
-}
+  themeColor: "#FFFFFF",
+};
 
 export default function RootLayout({
   children,
@@ -58,3 +57,4 @@ export default function RootLayout({
     </html>
   );
 }
+'''
