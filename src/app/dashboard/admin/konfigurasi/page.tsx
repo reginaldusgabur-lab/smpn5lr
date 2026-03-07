@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -16,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Download, Loader2, RefreshCw, LocateFixed, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Loader2, RefreshCw, LocateFixed, ChevronLeft, ChevronRight, BookUp } from 'lucide-react'; // Added BookUp icon
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useDoc, useMemoFirebase, useUser, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
@@ -126,7 +125,7 @@ function MonthlyConfigCalendar({ user, schoolConfig }: { user: any, schoolConfig
     setHolidays(prev => 
         checked 
         ? [...prev, day]
-        : prev.filter(d => format(d, 'yyyy-MM-dd') !== format(day, 'yyyy-MM-dd'))
+        : prev.filter(d => format(d, 'yyyy-MM-dd') !== format(d, 'yyyy-MM-dd'))
     );
     setManualWorkDays(''); 
   };
@@ -238,10 +237,7 @@ export default function KonfigurasiAbsenPage() {
   const [isQrLoading, setIsQrLoading] = useState(true);
 
   // Form State
-  const [holidayMode, setHolidayMode] = useState(false);
-  
   const [offDays, setOffDays] = useState<number[]>([]);
-
   const [useLocationValidation, setUseLocationValidation] = useState(true);
   const [useTimeValidation, setUseTimeValidation] = useState(true);
   const [latitude, setLatitude] = useState('-8.58333');
@@ -252,7 +248,8 @@ export default function KonfigurasiAbsenPage() {
   const [checkOutStart, setCheckOutStart] = useState('14:00');
   const [checkOutEnd, setCheckOutEnd] = useState('16:00');
   const [qrCodeValue, setQrCodeValue] = useState('');
-  
+  const [googleSheetsUrl, setGoogleSheetsUrl] = useState('');
+
   const schoolConfigRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, 'schoolConfig', 'default');
@@ -277,9 +274,7 @@ export default function KonfigurasiAbsenPage() {
 
   useEffect(() => {
     if (schoolConfigData) {
-      setHolidayMode(schoolConfigData.isAttendanceActive === false);
-      setOffDays(schoolConfigData.offDays ?? [0, 6]); // Default to Sunday, Saturday off
-
+      setOffDays(schoolConfigData.offDays ?? [0, 6]);
       setUseLocationValidation(schoolConfigData.useLocationValidation ?? true);
       setUseTimeValidation(schoolConfigData.useTimeValidation ?? true);
       setLatitude(schoolConfigData.latitude?.toString() ?? '-8.58333');
@@ -289,11 +284,11 @@ export default function KonfigurasiAbsenPage() {
       setCheckInEnd(schoolConfigData.checkInEndTime ?? '08:00');
       setCheckOutStart(schoolConfigData.checkOutStartTime ?? '14:00');
       setCheckOutEnd(schoolConfigData.checkOutEndTime ?? '16:00');
+      setGoogleSheetsUrl(schoolConfigData.googleSheetsUrl ?? '');
 
       if (schoolConfigData.qrCodeValue) {
         setQrCodeValue(schoolConfigData.qrCodeValue);
       } else if (user && schoolConfigRef && !isConfigLoading) {
-        // If no QR code exists on load, generate and save one.
         const newQrValue = Math.random().toString(36).substring(2, 15);
         setQrCodeValue(newQrValue);
         updateDocumentNonBlocking(schoolConfigRef, { qrCodeValue: newQrValue });
@@ -417,7 +412,6 @@ export default function KonfigurasiAbsenPage() {
     if (!user || !schoolConfigRef) return;
     setIsSaving(true);
     setDocumentNonBlocking(schoolConfigRef, {
-      isAttendanceActive: !holidayMode,
       offDays: offDays,
       useLocationValidation,
       useTimeValidation,
@@ -428,6 +422,7 @@ export default function KonfigurasiAbsenPage() {
       checkInEndTime: checkInEnd,
       checkOutStartTime: checkOutStart,
       checkOutEndTime: checkOutEnd,
+      googleSheetsUrl: googleSheetsUrl,
     }, { merge: true });
     toast({
       title: 'Pengaturan Disimpan',
@@ -482,36 +477,49 @@ export default function KonfigurasiAbsenPage() {
           <CardDescription>Atur parameter untuk sistem absensi di seluruh sekolah.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 p-4 sm:p-6">
-          <div className="rounded-lg border p-4 space-y-4">
+           <div className="rounded-lg border p-4 space-y-4">
               <div className="flex items-center justify-between">
-                  <div>
-                      <Label htmlFor="holiday-mode" className="font-semibold">Mode Libur Manual</Label>
-                      <p className="text-sm text-muted-foreground">Jika diaktifkan, sistem absensi akan non-aktif untuk semua.</p>
+                  <div className="flex items-center gap-3">
+                     <BookUp className="h-6 w-6" />
+                      <div>
+                          <Label htmlFor="google-sheets-url" className="font-semibold">Integrasi & Backup</Label>
+                          <p className="text-sm text-muted-foreground">Simpan URL Google Apps Script untuk backup laporan.</p>
+                      </div>
                   </div>
-                  <Switch
-                      id="holiday-mode"
-                      checked={holidayMode}
-                      onCheckedChange={setHolidayMode}
-                  />
               </div>
               <div className="space-y-4 pt-4 border-t">
-                  <Label className='font-medium'>Hari Libur Rutin</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Pilih hari dalam seminggu yang dianggap sebagai hari libur. Sistem absensi akan non-aktif pada hari-hari ini.
-                  </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {daysOfWeek.map(day => (
-                        <div key={day.value} className="flex items-center space-x-2">
-                        <Checkbox
-                            id={`day-${day.value}`}
-                            checked={offDays.includes(day.value)}
-                            onCheckedChange={(checked) => handleDayToggle(day.value, checked)}
-                            disabled={holidayMode}
-                        />
-                        <Label htmlFor={`day-${day.value}`} className="font-normal">{day.label}</Label>
-                        </div>
-                    ))}
+                   <div className="space-y-2">
+                      <Label htmlFor="google-sheets-url">URL Google Apps Script</Label>
+                      <Input 
+                          id="google-sheets-url" 
+                          type="url" 
+                          value={googleSheetsUrl} 
+                          onChange={(e) => setGoogleSheetsUrl(e.target.value)} 
+                          placeholder="https://script.google.com/macros/s/xxxxxxxxxx/exec"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                          URL ini didapat setelah mempublikasikan skrip (disediakan di langkah berikutnya).
+                      </p>
                   </div>
+              </div>
+          </div>
+
+          <div className="rounded-lg border p-4 space-y-4">
+              <Label className='font-medium'>Hari Libur Rutin</Label>
+              <p className="text-sm text-muted-foreground">
+                Pilih hari dalam seminggu yang dianggap sebagai hari libur.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {daysOfWeek.map(day => (
+                    <div key={day.value} className="flex items-center space-x-2">
+                    <Checkbox
+                        id={`day-${day.value}`}
+                        checked={offDays.includes(day.value)}
+                        onCheckedChange={(checked) => handleDayToggle(day.value, checked)}
+                    />
+                    <Label htmlFor={`day-${day.value}`} className="font-normal">{day.label}</Label>
+                    </div>
+                ))}
               </div>
           </div>
 
@@ -521,14 +529,14 @@ export default function KonfigurasiAbsenPage() {
                 <Label htmlFor="use-location" className="font-semibold">Gunakan Validasi Lokasi</Label>
                 <p className="text-sm text-muted-foreground">Wajibkan pengguna berada di area sekolah untuk absen.</p>
               </div>
-              <Switch id="use-location" checked={useLocationValidation} onCheckedChange={setUseLocationValidation} disabled={holidayMode} />
+              <Switch id="use-location" checked={useLocationValidation} onCheckedChange={setUseLocationValidation} />
             </div>
             {useLocationValidation && (
               <div className="space-y-4 pt-4 border-t">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-4">
                     <Label>Koordinat Lokasi Sekolah</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={handleGetCurrentLocation} disabled={isLocating || holidayMode}>
+                    <Button type="button" variant="outline" size="sm" onClick={handleGetCurrentLocation} disabled={isLocating}>
                       {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LocateFixed className="mr-2 h-4 w-4" />}
                       Dapatkan Lokasi
                     </Button>
@@ -536,33 +544,18 @@ export default function KonfigurasiAbsenPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <Label htmlFor="latitude" className="text-xs text-muted-foreground">Latitude</Label>
-                        <Input id="latitude" type="text" value={latitude} onChange={(e) => setLatitude(e.target.value)} placeholder="Contoh: -8.58333" disabled={holidayMode || isLocating} />
+                        <Input id="latitude" type="text" value={latitude} onChange={(e) => setLatitude(e.target.value)} placeholder="Contoh: -8.58333" disabled={isLocating} />
                     </div>
                     <div>
                         <Label htmlFor="longitude" className="text-xs text-muted-foreground">Longitude</Label>
-                        <Input id="longitude" type="text" value={longitude} onChange={(e) => setLongitude(e.target.value)} placeholder="Contoh: 120.46667" disabled={holidayMode || isLocating} />
+                        <Input id="longitude" type="text" value={longitude} onChange={(e) => setLongitude(e.target.value)} placeholder="Contoh: 120.46667" disabled={isLocating} />
                     </div>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="radius">Radius Sekolah (meter)</Label>
-                  <Input id="radius" type="number" value={radius} onChange={(e) => setRadius(Number(e.target.value))} placeholder="Contoh: 100" disabled={holidayMode} />
+                  <Input id="radius" type="number" value={radius} onChange={(e) => setRadius(Number(e.target.value))} placeholder="Contoh: 100" />
                   <p className="text-sm text-muted-foreground">Jarak maksimal dari titik pusat sekolah yang dianggap valid.</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Pratinjau Lokasi di Peta</Label>
-                  <div className="aspect-video w-full overflow-hidden rounded-lg border">
-                    <iframe
-                      key={`${latitude}-${longitude}`}
-                      width="100%"
-                      height="100%"
-                      loading="lazy"
-                      allowFullScreen
-                      referrerPolicy="no-referrer-when-downgrade"
-                      src={`https://maps.google.com/maps?q=${latitude},${longitude}&hl=id&z=15&output=embed`}
-                      title="Pratinjau Lokasi Peta"
-                    ></iframe>
-                  </div>
                 </div>
               </div>
             )}
@@ -571,31 +564,31 @@ export default function KonfigurasiAbsenPage() {
           <div className="rounded-lg border p-4 space-y-4">
               <div className="flex items-center justify-between">
                   <div>
-                      <Label htmlFor="use-time" className="font-semibold">Gunakan Validasi Jam Kerja</Label>
-                      <p className="text-sm text-muted-foreground">Wajibkan pengguna absen di dalam jam kerja yang ditentukan.</p>
+                      <Label htmlFor="time-restriction-mode" className="font-semibold">Mode Pembatasan Jam Absensi (Hemat Database)</Label>
+                      <p className="text-sm text-muted-foreground">Batasi absensi hanya pada jam kerja yang telah ditentukan.</p>
                   </div>
-                  <Switch id="use-time" checked={useTimeValidation} onCheckedChange={setUseTimeValidation} disabled={holidayMode} />
+                  <Switch id="time-restriction-mode" checked={useTimeValidation} onCheckedChange={setUseTimeValidation} />
               </div>
               {useTimeValidation && (
                   <div className="space-y-4 pt-4 border-t">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                               <Label htmlFor="checkin-start">Jam Mulai Masuk</Label>
-                              <Input id="checkin-start" type="time" value={checkInStart} onChange={e => setCheckInStart(e.target.value)} disabled={holidayMode} />
+                              <Input id="checkin-start" type="time" value={checkInStart} onChange={e => setCheckInStart(e.target.value)} />
                           </div>
                           <div className="space-y-2">
                               <Label htmlFor="checkin-end">Jam Selesai Masuk</Label>
-                              <Input id="checkin-end" type="time" value={checkInEnd} onChange={e => setCheckInEnd(e.target.value)} disabled={holidayMode} />
+                              <Input id="checkin-end" type="time" value={checkInEnd} onChange={e => setCheckInEnd(e.target.value)} />
                           </div>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                               <Label htmlFor="checkout-start">Jam Mulai Pulang</Label>
-                              <Input id="checkout-start" type="time" value={checkOutStart} onChange={e => setCheckOutStart(e.target.value)} disabled={holidayMode} />
+                              <Input id="checkout-start" type="time" value={checkOutStart} onChange={e => setCheckOutStart(e.target.value)} />
                           </div>
                           <div className="space-y-2">
                               <Label htmlFor="checkout-end">Jam Selesai Pulang</Label>
-                              <Input id="checkout-end" type="time" value={checkOutEnd} onChange={e => setCheckOutEnd(e.target.value)} disabled={holidayMode} />
+                              <Input id="checkout-end" type="time" value={checkOutEnd} onChange={e => setCheckOutEnd(e.target.value)} />
                           </div>
                       </div>
                   </div>

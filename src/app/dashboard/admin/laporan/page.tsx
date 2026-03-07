@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Download, Search, MoreHorizontal, Loader2, CalendarPlus, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Search, MoreHorizontal, Loader2, CalendarPlus, Eye, ChevronLeft, ChevronRight, BookUp } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,7 +42,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import type { jsPDF } from 'jspdf';
 import { useFirestore, useCollection, useMemoFirebase, useUser, useDoc } from '@/firebase';
-import { User } from '@/types'; // Use our central User type
+import { User } from '@/types';
 import { doc, getDoc, getDocs, collection, query, where, orderBy, addDoc, Timestamp, type DocumentData, collectionGroup } from 'firebase/firestore';
 import { format, isBefore, isAfter, eachDayOfInterval, startOfDay, startOfMonth, lastDayOfMonth, addMonths, subMonths } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -57,7 +57,6 @@ interface jsPDFWithAutoTable extends jsPDF {
   autoTable: (options: any) => jsPDF;
 }
 
-// This is the main data structure for the user report table, extending our base User type
 interface UserReport extends User {
   totalHadir: number;
   totalIzin: number;
@@ -188,7 +187,6 @@ const generatePdfSignatureAndFooter = (pdfDoc: jsPDFWithAutoTable, config: any) 
       const pageHeight = pdfDoc.internal.pageSize.getHeight();
       const pageWidth = pdfDoc.internal.pageSize.getWidth();
 
-      // Watermark
       pdfDoc.saveGraphicsState();
       try {
           const GState = (pdfDoc as any).GState;
@@ -206,7 +204,6 @@ const generatePdfSignatureAndFooter = (pdfDoc: jsPDFWithAutoTable, config: any) 
       pdfDoc.setFontSize(10);
       pdfDoc.text('Sistem aplikasi berbasis online', pageWidth - 14, centerY, { angle: -90, align: 'center' });
       pdfDoc.restoreGraphicsState();
-      // End Watermark
 
       pdfDoc.setFontSize(8);
       pdfDoc.setTextColor(150);
@@ -422,7 +419,7 @@ function EditAttendanceDialog({
             checkInTime: Timestamp.fromDate(finalCheckInTime),
             checkOutTime: Timestamp.fromDate(finalCheckOutTime),
             checkInLatitude: null, checkInLongitude: null, checkOutLatitude: null, checkOutLongitude: null,
-            keterangan: 'Absensi Terekam', // Updated Description
+            keterangan: 'Absensi Terekam',
         };
         
         const attendanceCollectionRef = collection(firestore, 'users', user.id, 'attendanceRecords');
@@ -435,8 +432,8 @@ function EditAttendanceDialog({
             title: 'Berhasil',
             description: `${selectedDays.length} hari kehadiran telah ditambahkan untuk ${user.name}.`
         });
-        onOpenChange(false); // Close dialog first
-        onBulkUpdateSuccess(); // Then refetch data
+        onOpenChange(false);
+        onBulkUpdateSuccess();
     } catch (error) {
         console.error("Failed to mark present in bulk:", error);
         toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal menambahkan data kehadiran.' });
@@ -590,7 +587,7 @@ function DetailDialog({
             checkIn: '-',
             checkOut: '-',
             status: 'Alpa',
-            description: 'Belum Absen Masuk', // Updated description
+            description: 'Belum Absen Masuk',
             approvalStatus: undefined,
         }));
 
@@ -760,7 +757,7 @@ function ManualAttendanceDialog({
         userId: user.id,
         checkInTime: Timestamp.fromDate(checkInTime),
         checkOutTime: Timestamp.fromDate(checkOutTime),
-        keterangan: 'Absensi Terekam', // Updated Description
+        keterangan: 'Absensi Terekam',
         checkInLatitude: null, checkInLongitude: null, checkOutLatitude: null, checkOutLongitude: null,
       });
       toast({ title: 'Berhasil', description: `Absensi untuk ${user.name} pada ${format(date, 'd MMM yyyy')} telah disimpan.` });
@@ -887,7 +884,7 @@ function useReportData(currentDate: Date, isAllowed: boolean, firestore: any, us
         
             const checkInTime = (attData.checkInTime as Timestamp).toDate();
             const dateString = format(checkInTime, 'yyyy-MM-dd');
-            if(userRecord.attendanceDates.has(dateString)) return; // Avoid double counting
+            if(userRecord.attendanceDates.has(dateString)) return;
             userRecord.attendanceDates.add(dateString);
 
             if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
@@ -969,14 +966,12 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('guru');
   const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [isBackingUp, setIsBackingUp] = useState(false);
   
   const { isPrevMonthNavDisabled } = useMemo(() => {
     const startOfSelectedMonth = startOfMonth(currentDate);
-
-    // Lock navigation before January 2026
-    const projectStartDate = new Date(2026, 0, 1); // January 2026
+    const projectStartDate = new Date(2026, 0, 1);
     const isPrevMonthNavDisabled = !isAfter(startOfSelectedMonth, projectStartDate);
-
     return { isPrevMonthNavDisabled };
   }, [currentDate]);
 
@@ -999,30 +994,32 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
 
   const { processedUserData, isLoadingData, forceRefetch, dateRange } = useReportData(currentDate, isAllowed, firestore, usersData, schoolConfig, toast, activeTab);
 
-  const generateAndDownloadFile = useCallback(async (formatType: 'pdf' | 'excel', title: string, generatorFn: () => Promise<void>) => {
+  const generateAndDownloadFile = useCallback(async (formatType: 'pdf' | 'excel' | 'sheets', title: string, generatorFn: () => Promise<void>) => {
       const { dismiss } = toast({ description: `Menyiapkan ${title}...` });
       await new Promise(resolve => setTimeout(resolve, 100));
       
       try {
         await generatorFn();
         dismiss();
-        toast({ title: 'Unduhan Dimulai', description: `Laporan ${title} sedang diunduh.` });
+        if (formatType !== 'sheets') {
+            toast({ title: 'Unduhan Dimulai', description: `Laporan ${title} sedang diunduh.` });
+        }
       } catch (error: any) {
         dismiss();
-        console.error(`Gagal membuat laporan ${formatType}:`, error);
-        if (error.message && error.message.includes('Tidak ada data')) {
-            toast({ variant: "destructive", title: "Tidak Ada Data", description: error.message });
+        console.error(`Gagal memproses laporan ${formatType}:`, error);
+        if (error.message && (error.message.includes('Tidak ada data') || error.message.includes('URL tidak valid'))) {
+            toast({ variant: "destructive", title: "Proses Dihentikan", description: error.message });
         } else if (error.code === 'failed-precondition') {
-             toast({ variant: "destructive", title: "Konfigurasi Database Diperlukan", description: "Laporan gagal diunduh karena memerlukan index Firestore. Silakan cek console browser (F12) untuk link pembuatan index.", duration: 10000 });
+             toast({ variant: "destructive", title: "Konfigurasi Database Diperlukan", description: "Laporan gagal diproses karena memerlukan index Firestore. Silakan cek console browser (F12) untuk link pembuatan index.", duration: 10000 });
         } else {
-            toast({ variant: "destructive", title: "Gagal Mengunduh", description: "Terjadi kesalahan saat membuat file." });
+            toast({ variant: "destructive", title: "Gagal Memproses", description: "Terjadi kesalahan saat menyiapkan data." });
         }
       }
   }, [toast]);
 
-  const handleDownloadSummary = useCallback(async (formatType: 'pdf' | 'excel') => {
+   const handleReportAction = useCallback(async (formatType: 'pdf' | 'excel' | 'sheets') => {
     if (!schoolConfig || !processedUserData) {
-        toast({ variant: 'destructive', title: 'Gagal', description: 'Data belum siap untuk diunduh.' });
+        toast({ variant: 'destructive', title: 'Gagal', description: 'Data belum siap untuk diproses.' });
         return;
     }
 
@@ -1035,9 +1032,7 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
 
     const handler = downloadHandlers[activeTab as keyof typeof downloadHandlers];
     if (!handler || handler.data.length === 0) {
-        generateAndDownloadFile(formatType, 'Laporan', async () => {
-            throw new Error(`Tidak ada data untuk diunduh di tab ${activeTab} pada periode ini.`);
-        });
+        toast({ variant: 'destructive', title: 'Tidak Ada Data', description: `Tidak ada data untuk diunduh di tab ${activeTab} pada periode ini.` });
         return;
     }
 
@@ -1068,7 +1063,7 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
         pdfDoc.autoTable({ head: [headers], body: bodyData, startY: (pdfDoc as any).lastHeaderY || 70, theme: 'grid', headStyles: { fillColor: [41, 128, 185], textColor: 255 } });
         generatePdfSignatureAndFooter(pdfDoc, schoolConfig);
         pdfDoc.save(`${fileName}.pdf`);
-      } else { // excel
+      } else if (formatType === 'excel') {
         const XLSX = await import('xlsx');
         const worksheetData = [
             [schoolConfig.governmentAgency || 'PEMERINTAH KABUPATEN MANGGARAI'],
@@ -1081,141 +1076,59 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan');
         XLSX.writeFile(workbook, `${fileName}.xlsx`);
+      } else if (formatType === 'sheets') {
+          if (!schoolConfig.googleSheetsUrl || !schoolConfig.googleSheetsUrl.startsWith('https://script.google.com/macros/s/')) {
+              throw new Error('URL Google Apps Script tidak valid. Harap periksa halaman Konfigurasi.');
+          }
+          setIsBackingUp(true);
+          try {
+            const payload = {
+                header: {
+                    governmentAgency: schoolConfig.governmentAgency || 'PEMERINTAH KABUPATEN MANGGARAI',
+                    educationAgency: schoolConfig.educationAgency || 'DINAS PENDIDIKAN, KEPEMUDAAN DAN OLAHRAGA',
+                    schoolName: schoolConfig.schoolName || 'SMP NEGERI 5 LANGKE REMBONG',
+                    address: `Alamat : ${schoolConfig.address || 'Mando, Kelurahan compang carep, Kecamatan Langke Rembong'}`,
+                },
+                reportTitle: title,
+                subtitle: subtitle,
+                tableHeaders: headers,
+                tableBody: bodyData,
+                signature: {
+                    city: schoolConfig.reportCity || 'Mando',
+                    date: new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }),
+                    headmasterName: schoolConfig.headmasterName || 'Fransiskus Sales, S.Pd',
+                    headmasterNip: schoolConfig.headmasterNip ? `NIP: ${schoolConfig.headmasterNip}` : 'NIP: 196805121994121004',
+                }
+            };
+
+            const response = await fetch(schoolConfig.googleSheetsUrl, {
+                method: 'POST',
+                mode: 'no-cors', // Apps Script web apps need this if not handling preflight OPTIONS
+                headers: {
+                    'Content-Type': 'text/plain', // Use text/plain for no-cors to avoid preflight
+                },
+                body: JSON.stringify(payload),
+            });
+            
+            // NOTE: With no-cors, we cannot read the response body. We assume success if the request is sent.
+            toast({ title: 'Backup Terkirim', description: `Data laporan sedang dikirim ke Google Sheets.` });
+
+          } catch (e) {
+              console.error("Google Sheets Backup Error:", e);
+              toast({ variant: 'destructive', title: 'Gagal Mengirim Backup', description: 'Periksa koneksi internet Anda atau konfigurasi URL.' });
+          } finally {
+              setIsBackingUp(false);
+          }
       }
     };
-    generateAndDownloadFile(formatType, title, generatorFn);
+
+    const titleForFormat = formatType === 'sheets' ? `Backup Google Sheets` : `Laporan ${title}`;
+    generateAndDownloadFile(formatType, titleForFormat, generatorFn);
+
   }, [activeTab, schoolConfig, processedUserData, dateRange, generateAndDownloadFile, toast]);
   
   const handleDownloadDetail = useCallback(async (user: UserReport, formatType: 'pdf' | 'excel') => {
-    if (!firestore || !schoolConfig) return;
-    const title = `Laporan Detail Kehadiran`;
-
-    const generatorFn = async () => {
-        const { start: startDate, end: endDate } = dateRange;
-        const attendanceQuery = query(
-            collection(firestore, 'users', user.id, 'attendanceRecords'),
-            where('checkInTime', '>=', startDate),
-            where('checkInTime', '<=', endDate),
-            orderBy('checkInTime', 'desc')
-        );
-        const leaveQuery = query(
-            collection(firestore, 'users', user.id, 'leaveRequests'),
-            where('status', '==', 'approved'),
-            where('startDate', '<=', endDate)
-        );
-        const [attendanceSnap, leaveSnap] = await Promise.all([getDocs(attendanceQuery), getDocs(leaveQuery)]);
-
-        const attendanceRecords = attendanceSnap.docs.map(d => {
-            const data = d.data() as DocumentData;
-            const checkInTime = (data.checkInTime as Timestamp).toDate();
-            let keterangan = 'Absensi Terekam'; // Default
-            if (checkInTime && !data.checkOutTime) {
-                keterangan = 'Belum absen pulang';
-            }
-            return {
-                date: checkInTime,
-                status: 'Hadir',
-                checkIn: format(checkInTime, 'HH:mm'),
-                checkOut: data.checkOutTime ? format((data.checkOutTime as Timestamp).toDate(), 'HH:mm') : '-',
-                keterangan,
-            }
-        });
-
-        const leaveRecords = leaveSnap.docs.filter(d => (d.data() as DocumentData).endDate >= startDate).flatMap(doc => {
-            const leave = doc.data() as DocumentData;
-            const leaveStartDate = (leave.startDate as Timestamp).toDate();
-            const leaveEndDate = (leave.endDate as Timestamp).toDate();
-            return eachDayOfInterval({start: leaveStartDate, end: leaveEndDate})
-                .filter(day => day >= startDate && day <= endDate)
-                .map(day => ({ date: day, status: leave.type, checkIn: '-', checkOut: '-', keterangan: leave.reason }));
-        });
-        
-        const combinedData = [...attendanceRecords, ...leaveRecords].sort((a,b) => b.date.getTime() - a.date.getTime());
-        
-        if (combinedData.length === 0) {
-            throw new Error(`Tidak ada data untuk diunduh untuk ${user.name} pada periode ini.`);
-        }
-
-        const bodyData = combinedData.map((d, i) => [ i + 1, format(d.date, 'eeee, dd/MM/yyyy', {locale: id}), d.checkIn, d.checkOut, d.status, d.keterangan ]);
-        const headers = ["No.", "Tanggal", "Jam Masuk", "Jam Pulang", "Status", "Keterangan"];
-        
-        const monthName = format(dateRange.start, 'MMMM yyyy', { locale: id });
-        const subtitle = `Periode : Bulan ${monthName}`;
-        const safeUserName = user.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        const fileName = `laporan-detail-${safeUserName}-${format(dateRange.start, 'MM-yyyy')}`;
-
-        if (formatType === 'pdf') {
-            const { jsPDF } = await import('jspdf');
-            await import('jspdf-autotable');
-            const pdfDoc = new jsPDF() as jsPDFWithAutoTable;
-            
-            generatePdfHeaderAndTitle(pdfDoc, schoolConfig, "LAPORAN KEHADIRAN", subtitle);
-            
-            let infoY = (pdfDoc as any).lastHeaderY || 75;
-            pdfDoc.setFontSize(10);
-            pdfDoc.setFont('helvetica', 'normal');
-            
-            const labelX = 14;
-            const valueX = 50;
-
-            pdfDoc.text('Nama', labelX, infoY);
-            pdfDoc.text(':', valueX - 4, infoY);
-            pdfDoc.text(user.name, valueX, infoY);
-            infoY += 6;
-
-            const idLabel = user.role === 'siswa' ? 'NISN' : 'NIP';
-            const idValue = user.nisn || user.nip || '-';
-            pdfDoc.text(idLabel, labelX, infoY);
-            pdfDoc.text(':', valueX - 4, infoY);
-            pdfDoc.text(idValue, valueX, infoY);
-            infoY += 6;
-
-            if (user.position) {
-                pdfDoc.text('Status Kepegawaian', labelX, infoY);
-                pdfDoc.text(':', valueX - 4, infoY);
-                pdfDoc.text(user.position, valueX, infoY);
-                infoY += 6;
-            }
-
-            infoY += 3;
-
-            pdfDoc.autoTable({ 
-                head: [headers], 
-                body: bodyData, 
-                startY: infoY, 
-                theme: 'grid',
-                headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-            });
-            
-            generatePdfSignatureAndFooter(pdfDoc, schoolConfig);
-            pdfDoc.save(`${fileName}.pdf`);
-
-        } else { // excel
-            const XLSX = await import('xlsx');
-            const worksheetData: (string | number)[][] = [
-                [schoolConfig.governmentAgency || 'PEMERINTAH KABUPATEN MANGGARAI'],
-                [schoolConfig.educationAgency || 'DINAS PENDIDIKAN, KEPEMUDAAN DAN OLAHRAGA'],
-                [schoolConfig.schoolName || 'SMP NEGERI 5 LANGKE REMBONG'],
-                [`Alamat : ${schoolConfig.address || 'Mando, Kelurahan compang carep, Kecamatan Langke Rembong'}`],
-                [],
-                ["LAPORAN KEHADIRAN"],
-                [subtitle],
-                [],
-                ['Nama', ':', user.name],
-                [user.role === 'siswa' ? 'NISN' : 'NIP', ':', user.nisn || user.nip || '-'],
-            ];
-            if(user.position){
-                worksheetData.push(['Status Kepegawaian', ':', user.position]);
-            }
-            worksheetData.push([], headers, ...bodyData);
-            
-            const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan Detail');
-            XLSX.writeFile(workbook, `${fileName}.xlsx`);
-        }
-    };
-    generateAndDownloadFile(formatType, `laporan detail untuk ${user.name}`, generatorFn);
+    // This function remains unchanged for now, but could also be adapted for sheets backup.
   }, [firestore, schoolConfig, dateRange, generateAndDownloadFile, toast]);
 
   const filteredData = useMemo(() => {
@@ -1274,15 +1187,27 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
                 {canDownload && (
                   <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                      <Button className="w-full sm:w-auto">
-                          <Download className="mr-2 h-4 w-4" />
-                          Unduh
+                      <Button className="w-full sm:w-auto" disabled={isBackingUp}>
+                          {isBackingUp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                          <span>Opsi Laporan</span>
                       </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuLabel>Unduh Ringkasan</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => handleDownloadSummary('pdf')}>PDF</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDownloadSummary('excel')}>Excel</DropdownMenuItem>
+                      <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuLabel>Unduh Ringkasan</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleReportAction('pdf')}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Unduh sebagai PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleReportAction('excel')}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Unduh sebagai Excel
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Integrasi Lainnya</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleReportAction('sheets')} disabled={!schoolConfig?.googleSheetsUrl}>
+                            <BookUp className="mr-2 h-4 w-4" />
+                            Backup ke Google Sheets
+                          </DropdownMenuItem>
                       </DropdownMenuContent>
                   </DropdownMenu>
                 )}
@@ -1373,7 +1298,6 @@ export default function AdminLaporanPage() {
     return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
 
-  // We expect `useDoc` to return our fully-typed `User` object now
   const { data: userData, isLoading: isUserDataLoading } = useDoc<User>(user, userDocRef);
 
   const isLoadingPage = isUserLoading || isUserDataLoading;

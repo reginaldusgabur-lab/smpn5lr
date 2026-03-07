@@ -198,8 +198,15 @@ export default function AbsenPage() {
   const { toast } = useToast();
   
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+
+  useEffect(() => {
+    // Update the time every minute to re-evaluate the attendance window
+    const timerId = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timerId);
+  }, []);
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -220,7 +227,6 @@ export default function AbsenPage() {
   }, [firestore, monthlyConfigId]);
   const { data: monthlyConfig, isLoading: isMonthlyConfigLoading } = useDoc(user, monthlyConfigRef);
 
-
   const todaysAttendanceQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     const todayStart = new Date();
@@ -235,30 +241,48 @@ export default function AbsenPage() {
 
   const { data: todaysAttendance, isLoading: isAttendanceLoading } = useCollection(user, todaysAttendanceQuery);
   
-  const isHoliday = useMemo(() => {
-    if (!schoolConfig) return false;
+  const attendanceSystemStatus = useMemo(() => {
+    if (!schoolConfig) return { disabled: true, reason: 'loading' };
 
-    // Check manual holiday mode first
-    if (schoolConfig.isAttendanceActive === false) {
-      return true;
+    const today = currentTime;
+    
+    // Check 1: Recurring off days (e.g., Sunday)
+    const offDays: number[] = schoolConfig.offDays ?? [];
+    if (offDays.includes(today.getDay())) {
+      return { disabled: true, reason: 'holiday' };
     }
-    
-    const today = new Date();
-    
-    // Check specific holiday dates from monthly config
+
+    // Check 2: Specific holidays from monthly config (e.g., national holidays)
     const todayStr = format(today, 'yyyy-MM-dd');
     if (monthlyConfig?.holidays?.includes(todayStr)) {
-        return true;
+        return { disabled: true, reason: 'holiday' };
     }
 
-    // Then check recurring off days from school config
-    const offDays: number[] = schoolConfig.offDays ?? [0, 6]; // Default to Sunday & Saturday off
-    if (offDays.includes(today.getDay())) {
-      return true;
+    // Check 3: Time-based restriction (Database Saver Mode)
+    if (schoolConfig.useTimeValidation) {
+        const currentTotalMinutes = today.getHours() * 60 + today.getMinutes();
+
+        const [inStartH, inStartM] = schoolConfig.checkInStartTime.split(':').map(Number);
+        const checkInStartTime = inStartH * 60 + inStartM;
+        const [inEndH, inEndM] = schoolConfig.checkInEndTime.split(':').map(Number);
+        const checkInEndTime = inEndH * 60 + inEndM;
+
+        const [outStartH, outStartM] = schoolConfig.checkOutStartTime.split(':').map(Number);
+        const checkOutStartTime = outStartH * 60 + outStartM;
+        const [outEndH, outEndM] = schoolConfig.checkOutEndTime.split(':').map(Number);
+        const checkOutEndTime = outEndH * 60 + outEndM;
+
+        const isWithinCheckIn = currentTotalMinutes >= checkInStartTime && currentTotalMinutes <= checkInEndTime;
+        const isWithinCheckOut = currentTotalMinutes >= checkOutStartTime && currentTotalMinutes <= checkOutEndTime;
+
+        if (!isWithinCheckIn && !isWithinCheckOut) {
+            return { disabled: true, reason: 'time_restriction' };
+        }
     }
 
-    return false;
-  }, [schoolConfig, monthlyConfig]);
+    return { disabled: false, reason: null };
+  }, [schoolConfig, monthlyConfig, currentTime]);
+
 
   const handleAttendance = useCallback(async () => {
     setStatus('loading');
@@ -439,8 +463,7 @@ export default function AbsenPage() {
   }, [schoolConfig, toast]);
 
   useEffect(() => {
-    // This effect handles the lifecycle of the QR code scanner.
-    const shouldScan = hasCameraPermission && status === 'idle' && !isHoliday;
+    const shouldScan = hasCameraPermission && status === 'idle' && !attendanceSystemStatus.disabled;
 
     if (shouldScan) {
         let qrCode: Html5Qrcode;
@@ -450,11 +473,9 @@ export default function AbsenPage() {
             qrCode = new Html5Qrcode('reader', false);
             html5QrCodeRef.current = qrCode;
         } else {
-            // If reader div is not ready, do nothing. The effect will re-run.
             return;
         }
         
-        // Only start if it's not already scanning.
         if (qrCode.getState() !== 2 /* SCANNING */) {
             const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
             qrCode.start({ facingMode: 'environment' }, config, onScanSuccess, () => { /* ignore errors */ })
@@ -474,21 +495,17 @@ export default function AbsenPage() {
         }
     }
     
-    // The cleanup function is the single, reliable place to stop the scanner.
-    // It runs whenever the dependencies change or the component unmounts.
     return () => {
         const scanner = html5QrCodeRef.current;
-        // Check if scanner exists and is actually scanning before trying to stop.
         if (scanner && scanner.getState() === 2 /* SCANNING */) {
             scanner.stop().catch((err) => {
-                // "NotAllowedError" can happen on fast navigation, it's safe to ignore.
                 if (err.name !== 'NotAllowedError') {
                     console.warn("QR scanner failed to stop cleanly.", err);
                 }
             });
         }
     };
-  }, [hasCameraPermission, status, isHoliday, onScanSuccess, toast]);
+  }, [hasCameraPermission, status, attendanceSystemStatus.disabled, onScanSuccess, toast]);
   
   const isLoading = isUserLoading || isUserDataLoading || isConfigLoading || isAttendanceLoading || hasCameraPermission === null || isMonthlyConfigLoading;
 
@@ -507,13 +524,25 @@ export default function AbsenPage() {
       );
     }
 
-    if (isHoliday) {
-      return (
-        <Card className="w-full max-w-md text-center">
-          <CardHeader className="items-center"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50 mb-4"><CalendarOff className="h-8 w-8 text-blue-600 dark:text-blue-400" /></div><CardTitle>Hari Libur</CardTitle><CardDescription>Sistem absensi sedang tidak aktif.</CardDescription></CardHeader>
-          <CardContent><p className="text-muted-foreground">Nikmati hari libur Anda. Absensi tidak diperlukan hari ini.</p></CardContent>
-        </Card>
-      );
+    if (attendanceSystemStatus.disabled) {
+        switch (attendanceSystemStatus.reason) {
+            case 'holiday':
+                return (
+                    <Card className="w-full max-w-md text-center">
+                        <CardHeader className="items-center"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50 mb-4"><CalendarOff className="h-8 w-8 text-blue-600 dark:text-blue-400" /></div><CardTitle>Hari Libur</CardTitle><CardDescription>Sistem absensi sedang tidak aktif.</CardDescription></CardHeader>
+                        <CardContent><p className="text-muted-foreground">Nikmati hari libur Anda. Absensi tidak diperlukan hari ini.</p></CardContent>
+                    </Card>
+                );
+            case 'time_restriction':
+                return (
+                    <Card className="w-full max-w-md text-center">
+                        <CardHeader className="items-center"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/50 mb-4"><Clock className="h-8 w-8 text-yellow-600 dark:text-yellow-400" /></div><CardTitle>Di Luar Jam Kerja</CardTitle><CardDescription>Mode Penghemat Database aktif.</CardDescription></CardHeader>
+                        <CardContent><p className="text-muted-foreground">Absensi hanya dapat dilakukan pada jam kerja yang telah ditentukan. Silakan kembali lagi nanti.</p></CardContent>
+                    </Card>
+                );
+            default:
+                return null; // Or a generic disabled card
+        }
     }
     
     if (!hasCameraPermission) {
