@@ -20,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, orderBy, doc, where, Timestamp, getDoc, getDocs, type DocumentData } from 'firebase/firestore';
@@ -60,6 +61,7 @@ async function fetchUserSubcollection(firestore: any, userId: string, subcollect
 export default function LaporanPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
@@ -70,7 +72,11 @@ export default function LaporanPage() {
 
   const handlePrevMonthClick = () => {
     if (isRestrictedUser) {
-      alert('Akses Riwayat Dibatasi: Riwayat laporan bulan sebelumnya hanya dapat diakses oleh admin.');
+      toast({
+        variant: "destructive",
+        title: "Akses Riwayat Dibatasi",
+        description: "Riwayat laporan bulan sebelumnya hanya dapat diakses oleh admin.",
+      });
       return;
     }
     setCurrentDate(subMonths(currentDate, 1));
@@ -78,7 +84,11 @@ export default function LaporanPage() {
   
   const handleNextMonthClick = () => {
     if (isRestrictedUser) {
-       alert('Akses Riwayat Dibatasi: Anda hanya dapat melihat laporan bulan ini.');
+      toast({
+        variant: "destructive",
+        title: "Akses Riwayat Dibatasi",
+        description: "Anda hanya dapat melihat laporan bulan ini.",
+      });
       return;
     }
     setCurrentDate(addMonths(currentDate, 1));
