@@ -25,7 +25,6 @@ import { LogOut, Settings, ShieldAlert } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { ModeToggle } from '@/components/theme-toggle';
-import appLogo from '@/assets/logo-espenli.png';
 
 export function Header() {
   const firestore = useFirestore();
@@ -110,7 +109,7 @@ export function Header() {
         <DialogTrigger asChild>
           <button className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full">
             <Image
-              src={appLogo}
+              src="/icons/icon-192x192.png"
               alt="App Logo"
               width={36}
               height={36}
