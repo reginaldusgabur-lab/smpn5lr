@@ -2,18 +2,34 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Html5Qrcode, type Html5QrcodeResult } from 'html5-qrcode';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { MapPin, CheckCircle, Clock, X, Loader2, AlertTriangle, CameraOff, CalendarOff, Sparkles } from 'lucide-react';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, Timestamp, addDoc, updateDoc } from 'firebase/firestore';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, collection, query, where, Timestamp, addDoc, updateDoc, getDoc, getDocs, type DocumentData } from 'firebase/firestore';
 import { useToast } from '../../../hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuote } from '../../../hooks/use-quote';
 
 type AttendanceStatus = 'idle' | 'loading' | 'locating' | 'success_in' | 'success_out' | 'error_radius' | 'error_time' | 'error_already_in' | 'error_not_checked_in' | 'error_already_out' | 'error_generic' | 'error_location';
+
+// --- Refactored Firestore Fetching Functions ---
+async function fetchSingleDoc(firestore: any, collectionName: string, docId: string): Promise<DocumentData | null> {
+    if (!firestore || !docId) return null;
+    const docRef = doc(firestore, collectionName, docId);
+    const snapshot = await getDoc(docRef);
+    return snapshot.exists() ? snapshot.data() : null;
+}
+
+async function fetchUserSubcollection(firestore: any, userId: string, subcollectionName: string, queryConstraints: any[] = []): Promise<DocumentData[]> {
+    if (!firestore || !userId) return [];
+    const q = query(collection(firestore, 'users', userId, subcollectionName), ...queryConstraints);
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+}
 
 // Haversine distance function
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -37,7 +53,7 @@ const getCurrentPosition = (options?: PositionOptions): Promise<GeolocationPosit
     navigator.geolocation.getCurrentPosition(resolve, reject, options);
   });
 
-  const StatusFeedbackCard = ({ status, locationVerified, locationError, onClose, userData }: { status: AttendanceStatus, locationVerified: boolean, locationError: string | null, onClose: () => void, userData: any }) => {
+const StatusFeedbackCard = ({ status, locationVerified, locationError, onClose, userData }: { status: AttendanceStatus, locationVerified: boolean, locationError: string | null, onClose: () => void, userData: any }) => {
     let icon, title, description, cardClassName, titleClassName, descriptionClassName;
 
     const showQuote = status.startsWith('success_') && userData?.role && ['guru', 'pegawai', 'siswa', 'kepala_sekolah'].includes(userData.role);
@@ -193,9 +209,10 @@ export default function AbsenPage() {
   const [status, setStatus] = useState<AttendanceStatus>('idle');
   const [locationVerified, setLocationVerified] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [currentTime, setCurrentTime] = useState(() => new Date());
@@ -203,76 +220,80 @@ export default function AbsenPage() {
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
-    // Update the time every minute to re-evaluate the attendance window
     const timerId = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timerId);
   }, []);
 
-  const userDocRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [firestore, user]);
-  const { data: userData, isLoading: isUserDataLoading } = useDoc(user, userDocRef);
+  // --- Standardized Data Fetching with useQuery ---
+  const { data: userData, isLoading: isUserDataLoading } = useQuery<DocumentData | null>({
+    queryKey: ['user', user?.uid],
+    queryFn: () => fetchSingleDoc(firestore, 'users', user!.uid),
+    enabled: !!user && !!firestore,
+  });
 
-  const schoolConfigRef = useMemoFirebase(() => {
-      if (!firestore) return null;
-      return doc(firestore, 'schoolConfig', 'default');
-  }, [firestore]);
-  const { data: schoolConfig, isLoading: isConfigLoading } = useDoc(user, schoolConfigRef);
+  const { data: schoolConfig, isLoading: isConfigLoading } = useQuery<DocumentData | null>({
+    queryKey: ['schoolConfig'],
+    queryFn: () => fetchSingleDoc(firestore, 'schoolConfig', 'default'),
+    enabled: !!firestore,
+  });
 
   const monthlyConfigId = useMemo(() => format(new Date(), 'yyyy-MM'), []);
-  const monthlyConfigRef = useMemoFirebase(() => {
-      if (!firestore) return null;
-      return doc(firestore, 'monthlyConfigs', monthlyConfigId);
-  }, [firestore, monthlyConfigId]);
-  const { data: monthlyConfig, isLoading: isMonthlyConfigLoading } = useDoc(user, monthlyConfigRef);
+  const { data: monthlyConfig, isLoading: isMonthlyConfigLoading } = useQuery<DocumentData | null>({
+    queryKey: ['monthlyConfig', monthlyConfigId],
+    queryFn: () => fetchSingleDoc(firestore, 'monthlyConfigs', monthlyConfigId),
+    enabled: !!firestore,
+  });
 
-  const todaysAttendanceQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
-    return query(
-        collection(firestore, 'users', user.uid, 'attendanceRecords'),
-        where('checkInTime', '>=', Timestamp.fromDate(todayStart)),
-        where('checkInTime', '<', Timestamp.fromDate(todayEnd))
-    );
-  }, [user, firestore]);
+  const { data: todaysAttendance, isLoading: isAttendanceLoading } = useQuery<DocumentData[]>({
+    queryKey: ['todaysAttendance', user?.uid],
+    queryFn: () => {
+        const todayStart = startOfDay(new Date());
+        const todayEnd = endOfDay(new Date());
+        return fetchUserSubcollection(firestore, user!.uid, 'attendanceRecords', [
+            where('checkInTime', '>=', Timestamp.fromDate(todayStart)),
+            where('checkInTime', '<=', Timestamp.fromDate(todayEnd))
+        ]);
+    },
+    enabled: !!user && !!firestore
+  });
 
-  const { data: todaysAttendance, isLoading: isAttendanceLoading } = useCollection(user, todaysAttendanceQuery);
-  
   const attendanceSystemStatus = useMemo(() => {
-    if (!schoolConfig) return { disabled: true, reason: 'loading' };
+    if (isConfigLoading || !schoolConfig) return { disabled: true, reason: 'loading' };
+
+    if (schoolConfig.isManualHoliday) {
+        return { disabled: true, reason: 'holiday' };
+    }
 
     const today = currentTime;
     
-    // Check 1: Recurring off days (e.g., Sunday)
     const offDays: number[] = schoolConfig.offDays ?? [];
     if (offDays.includes(today.getDay())) {
       return { disabled: true, reason: 'holiday' };
     }
 
-    // Check 2: Specific holidays from monthly config (e.g., national holidays)
+    if (isMonthlyConfigLoading) return { disabled: true, reason: 'loading' };
     const todayStr = format(today, 'yyyy-MM-dd');
     if (monthlyConfig?.holidays?.includes(todayStr)) {
         return { disabled: true, reason: 'holiday' };
     }
 
-    // Check 3: Time-based restriction (Database Saver Mode)
     if (schoolConfig.useTimeValidation) {
         const currentTotalMinutes = today.getHours() * 60 + today.getMinutes();
+
+        const [outEndH, outEndM] = schoolConfig.checkOutEndTime.split(':').map(Number);
+        const checkOutEndTime = outEndH * 60 + outEndM;
+        if (currentTotalMinutes > checkOutEndTime) {
+            return { disabled: true, reason: 'workday_over' };
+        }
 
         const [inStartH, inStartM] = schoolConfig.checkInStartTime.split(':').map(Number);
         const checkInStartTime = inStartH * 60 + inStartM;
         const [inEndH, inEndM] = schoolConfig.checkInEndTime.split(':').map(Number);
-        const checkInEndTime = inEndH * 60 + inEndM;
-
+        const checkInEndTimeMinutes = inEndH * 60 + inEndM;
         const [outStartH, outStartM] = schoolConfig.checkOutStartTime.split(':').map(Number);
         const checkOutStartTime = outStartH * 60 + outStartM;
-        const [outEndH, outEndM] = schoolConfig.checkOutEndTime.split(':').map(Number);
-        const checkOutEndTime = outEndH * 60 + outEndM;
 
-        const isWithinCheckIn = currentTotalMinutes >= checkInStartTime && currentTotalMinutes <= checkInEndTime;
+        const isWithinCheckIn = currentTotalMinutes >= checkInStartTime && currentTotalMinutes <= checkInEndTimeMinutes;
         const isWithinCheckOut = currentTotalMinutes >= checkOutStartTime && currentTotalMinutes <= checkOutEndTime;
 
         if (!isWithinCheckIn && !isWithinCheckOut) {
@@ -281,7 +302,7 @@ export default function AbsenPage() {
     }
 
     return { disabled: false, reason: null };
-  }, [schoolConfig, monthlyConfig, currentTime]);
+}, [schoolConfig, isConfigLoading, monthlyConfig, isMonthlyConfigLoading, currentTime]);
 
 
   const handleAttendance = useCallback(async () => {
@@ -412,14 +433,18 @@ export default function AbsenPage() {
             }
             setStatus('success_out');
         }
+
+        // Invalidate queries to refetch data on other components
+        await queryClient.invalidateQueries({ queryKey: ['todaysAttendance', user.uid] });
+        await queryClient.invalidateQueries({ queryKey: ['monthlySummary', user.uid, format(new Date(), 'yyyy-MM')] });
+
     } catch (error: any) {
         console.error("Firestore write error:", error);
         setStatus('error_generic');
         toast({ title: 'Gagal Menyimpan Data', description: 'Terjadi kesalahan sistem saat menyimpan data absensi.', variant: 'destructive' });
     }
-  }, [user, firestore, schoolConfig, todaysAttendance, toast]);
+  }, [user, firestore, schoolConfig, todaysAttendance, toast, queryClient]);
   
-  // Create refs to hold the latest state and callback function to prevent stale closures.
   const statusRef = useRef(status);
   statusRef.current = status;
   const handleAttendanceRef = useRef(handleAttendance);
@@ -451,7 +476,6 @@ export default function AbsenPage() {
   }, []);
 
   const onScanSuccess = useCallback((decodedText: string, decodedResult: Html5QrcodeResult) => {
-    // Only process scan if idle and QR code value is available
     if (statusRef.current === 'idle' && schoolConfig?.qrCodeValue) {
         if (decodedText === schoolConfig.qrCodeValue) {
             toast({ title: 'QR Code Terdeteksi', description: 'Memproses absensi Anda...' });
@@ -507,7 +531,7 @@ export default function AbsenPage() {
     };
   }, [hasCameraPermission, status, attendanceSystemStatus.disabled, onScanSuccess, toast]);
   
-  const isLoading = isUserLoading || isUserDataLoading || isConfigLoading || isAttendanceLoading || hasCameraPermission === null || isMonthlyConfigLoading;
+  const isLoading = isAuthLoading || isUserDataLoading || isConfigLoading || isAttendanceLoading || hasCameraPermission === null || isMonthlyConfigLoading;
 
   const renderContent = () => {
     if (isLoading) {
@@ -533,6 +557,13 @@ export default function AbsenPage() {
                         <CardContent><p className="text-muted-foreground">Nikmati hari libur Anda. Absensi tidak diperlukan hari ini.</p></CardContent>
                     </Card>
                 );
+            case 'workday_over':
+                return (
+                   <Card className="w-full max-w-md text-center">
+                       <CardHeader className="items-center"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50 mb-4"><CheckCircle className="h-8 w-8 text-blue-600 dark:text-blue-400" /></div><CardTitle>Absensi Selesai</CardTitle><CardDescription>Jam kerja untuk hari ini telah berakhir.</CardDescription></CardHeader>
+                       <CardContent><p className="text-muted-foreground">Sistem absensi sudah ditutup. Sampai jumpa besok!</p></CardContent>
+                   </Card>
+               );
             case 'time_restriction':
                 return (
                     <Card className="w-full max-w-md text-center">
@@ -541,7 +572,7 @@ export default function AbsenPage() {
                     </Card>
                 );
             default:
-                return null; // Or a generic disabled card
+                return null;
         }
     }
     
@@ -595,10 +626,8 @@ export default function AbsenPage() {
             <div className="relative w-full aspect-square bg-black/50 rounded-lg overflow-hidden backdrop-blur-sm">
                 <div id="reader" className="w-full h-full" />
 
-                {/* Scanner Line */}
                 <div className="absolute left-0 w-full h-0.5 bg-red-500 shadow-[0_0_10px_2px_theme(colors.red.500)] animate-scan-line pointer-events-none" />
 
-                {/* Corner Brackets */}
                 <div className="absolute top-4 left-4 w-6 h-6 border-t-4 border-l-4 border-white/70 rounded-tl-md pointer-events-none" />
                 <div className="absolute top-4 right-4 w-6 h-6 border-t-4 border-r-4 border-white/70 rounded-tr-md pointer-events-none" />
                 <div className="absolute bottom-4 left-4 w-6 h-6 border-b-4 border-l-4 border-white/70 rounded-bl-md pointer-events-none" />

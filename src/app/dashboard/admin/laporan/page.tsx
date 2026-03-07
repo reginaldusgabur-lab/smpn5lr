@@ -96,6 +96,12 @@ const approvalStatusVariant: { [key: string]: 'default' | 'secondary' | 'destruc
     'rejected': 'destructive',
 };
 
+const approvalStatusIndo: { [key: string]: string } = {
+    approved: 'Disetujui',
+    rejected: 'Ditolak',
+    pending: 'Menunggu',
+};
+
 // --- PDF & UI GENERATION UTILITIES ---
 
 const generatePdfHeaderAndTitle = (pdfDoc: jsPDFWithAutoTable, config: any, title: string, subtitle: string) => {
@@ -502,16 +508,82 @@ function DetailDialog({
   onOpenChange,
   schoolConfig,
   onAddAttendance,
+  dateRange,
 }: { 
   user: UserReport | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   schoolConfig: DocumentData;
   onAddAttendance: (date: Date) => void;
+  dateRange: { start: Date, end: Date };
 }) {
   const [details, setDetails] = useState<DetailedEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBackingUp, setIsBackingUp] = useState(false);
   const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const handleBackupDetailToSheets = async () => {
+    if (!user || !schoolConfig || !schoolConfig.googleSheetsUrl || details.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Gagal',
+        description: 'URL Backup tidak dikonfigurasi atau tidak ada data untuk di-backup.',
+      });
+      return;
+    }
+
+    setIsBackingUp(true);
+
+    try {
+      const monthName = format(dateRange.start, 'MMMM yyyy', { locale: id });
+
+      const payload = {
+        header: {
+          governmentAgency: schoolConfig.governmentAgency || 'PEMERINTAH KABUPATEN MANGGARAI',
+          educationAgency: schoolConfig.educationAgency || 'DINAS PENDIDIKAN, KEPEMUDAAN DAN OLAHRAGA',
+          schoolName: schoolConfig.schoolName || 'SMP NEGERI 5 LANGKE REMBONG',
+          address: `Alamat : ${schoolConfig.address || 'Mando, Kelurahan compang carep, Kecamatan Langke Rembong'}`,
+        },
+        reportTitle: `Laporan Detail Kehadiran`,
+        subtitle: `Nama: ${user.name}, NIP: ${user.nip || user.email || '-'}, Periode: ${monthName}`,
+        tableHeaders: ["No.", "Tanggal", "Masuk", "Pulang", "Status", "Keterangan"],
+        tableBody: details.map((item, index) => {
+            const approvalText = item.approvalStatus ? ` (${approvalStatusIndo[item.approvalStatus] || item.approvalStatus})` : '';
+            const statusText = item.status + approvalText;
+            return [
+                index + 1,
+                format(item.date, 'eeee, d MMMM yyyy', { locale: id }),
+                item.checkIn,
+                item.checkOut,
+                statusText,
+                item.description,
+            ];
+        }),
+        signature: {
+          city: schoolConfig.reportCity || 'Mando',
+          date: new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }),
+          headmasterName: schoolConfig.headmasterName || 'Fransiskus Sales, S.Pd',
+          headmasterNip: schoolConfig.headmasterNip ? `NIP: ${schoolConfig.headmasterNip}` : 'NIP: 196805121994121004',
+        }
+      };
+
+      await fetch(schoolConfig.googleSheetsUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload),
+      });
+
+      toast({ title: 'Backup Terkirim', description: `Laporan detail untuk ${user.name} sedang dikirim ke Google Sheets.` });
+
+    } catch (e) {
+      console.error("Google Sheets Detail Backup Error:", e);
+      toast({ variant: 'destructive', title: 'Gagal Mengirim Backup', description: 'Periksa koneksi internet atau konfigurasi URL.' });
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen || !user || !firestore || !schoolConfig) {
@@ -539,20 +611,15 @@ function DetailDialog({
         const attendanceRecordsProcessed: DetailedEntry[] = userAttendanceRecords.map(rec => {
             const checkInTime = (rec.checkInTime as Timestamp)?.toDate();
             const checkOutTime = (rec.checkOutTime as Timestamp)?.toDate();
-            
             let description = '';
-            if (checkInTime && checkOutTime) {
-              description = 'Absensi Terekam';
-            } else if (checkInTime && !checkOutTime) {
-              description = 'Belum Absen Pulang';
-            } else {
-              description = rec.keterangan || 'Data tidak lengkap';
-            }
+            if (checkInTime && checkOutTime) { description = 'Absensi Terekam'; }
+            else if (checkInTime && !checkOutTime) { description = 'Belum Absen Pulang'; }
+            else { description = rec.keterangan || 'Data tidak lengkap'; }
 
             return {
                 id: rec.id,
                 date: checkInTime,
-                dateString: checkInTime ? format(checkInTime, 'eee, dd/MM/yy', { locale: id }) : '-',
+                dateString: checkInTime ? format(checkInTime, 'eeee, d MMMM yyyy', { locale: id }) : '-',
                 checkIn: checkInTime ? format(checkInTime, 'HH:mm') : '-',
                 checkOut: checkOutTime ? format(checkOutTime, 'HH:mm') : '-',
                 status: 'Hadir',
@@ -560,7 +627,7 @@ function DetailDialog({
             };
         });
 
-        const leaveRecordsProcessed: DetailedEntry[] = userLeaveRecords.flatMap(rec => {
+        const processLeave = (rec: DocumentData): DetailedEntry[] => {
             try {
                 const startDate = (rec.startDate as Timestamp)?.toDate();
                 const endDate = (rec.endDate as Timestamp)?.toDate();
@@ -570,7 +637,7 @@ function DetailDialog({
                     .map(loopDate => ({
                         id: `${rec.id}-${format(loopDate, 'yyyy-MM-dd')}`,
                         date: loopDate,
-                        dateString: format(loopDate, 'eee, dd/MM/yy', { locale: id }),
+                        dateString: format(loopDate, 'eeee, d MMMM yyyy', { locale: id }),
                         checkIn: '-',
                         checkOut: '-',
                         status: rec.type as string,
@@ -578,12 +645,15 @@ function DetailDialog({
                         description: rec.reason as string,
                     }));
             } catch(e) { console.error("Admin Laporan Detail: Error processing leave record:", rec, e); return []; }
-        });
-        
+        };
+
+        const approvedLeaveRecords = userLeaveRecords.filter(r => r.status === 'approved').flatMap(processLeave);
+        const otherLeaveRecords = userLeaveRecords.filter(r => r.status !== 'approved').flatMap(processLeave);
+
         const alpaRecords: DetailedEntry[] = (user.alpaDays || []).map(day => ({
             id: `alpa-${format(day, 'yyyy-MM-dd')}`,
             date: day,
-            dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
+            dateString: format(day, 'eeee, d MMMM yyyy', { locale: id }),
             checkIn: '-',
             checkOut: '-',
             status: 'Alpa',
@@ -591,21 +661,28 @@ function DetailDialog({
             approvalStatus: undefined,
         }));
 
-        const combinedData = [...attendanceRecordsProcessed, ...leaveRecordsProcessed, ...alpaRecords];
-        combinedData.sort((a, b) => b.date.getTime() - a.date.getTime());
+        const combinedData = [
+            ...attendanceRecordsProcessed,
+            ...approvedLeaveRecords,
+            ...alpaRecords,
+            ...otherLeaveRecords
+        ];
         
-        const finalDetails: DetailedEntry[] = [];
+        const uniqueDetails: DetailedEntry[] = [];
         const processedDates = new Set<string>();
         for (const item of combinedData) {
+            if (!item.date) continue;
             const dateStr = format(item.date, 'yyyy-MM-dd');
             if (processedDates.has(dateStr)) {
                 continue;
             }
-            finalDetails.push(item);
+            uniqueDetails.push(item);
             processedDates.add(dateStr);
         }
 
-        setDetails(finalDetails);
+        uniqueDetails.sort((a, b) => b.date.getTime() - a.date.getTime()); // Sort descending for UI
+
+        setDetails(uniqueDetails);
       } catch (error) {
         console.error("Failed to fetch detail dialog data:", error);
       } finally {
@@ -655,12 +732,12 @@ function DetailDialog({
                       <TableCell className="text-center whitespace-nowrap">
                         <Badge variant={statusVariant[item.status] || 'default'}>{item.status}</Badge>
                         {item.approvalStatus && (
-                          <Badge variant={approvalStatusVariant[item.approvalStatus] || 'secondary'} className="capitalize">
-                            {item.approvalStatus}
+                          <Badge variant={approvalStatusVariant[item.approvalStatus] || 'secondary'} className="ml-1">
+                            {approvalStatusIndo[item.approvalStatus] || item.approvalStatus}
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell title={item.description} className="whitespace-nowrap">{item.description}</TableCell>
+                      <TableCell title={item.description} className="max-w-xs truncate">{item.description}</TableCell>
                       <TableCell className="text-center whitespace-nowrap">
                         {item.status === 'Alpa' && (
                           <Button size="sm" variant="outline" onClick={() => onAddAttendance(item.date)}>
@@ -680,8 +757,15 @@ function DetailDialog({
             </div>
           )}
         </div>
-        <DialogFooter className="p-6 pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Tutup</Button>
+        <DialogFooter className="p-6 pt-4 border-t flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Tutup</Button>
+            <Button 
+                onClick={handleBackupDetailToSheets}
+                disabled={isBackingUp || isLoading || details.length === 0 || !schoolConfig?.googleSheetsUrl}
+            >
+                {isBackingUp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BookUp className="mr-2 h-4 w-4" />}
+                Backup ke Sheets
+            </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1065,14 +1149,73 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
         pdfDoc.save(`${fileName}.pdf`);
       } else if (formatType === 'excel') {
         const XLSX = await import('xlsx');
+        const numCols = headers.length;
+        
         const worksheetData = [
             [schoolConfig.governmentAgency || 'PEMERINTAH KABUPATEN MANGGARAI'],
             [schoolConfig.educationAgency || 'DINAS PENDIDIKAN, KEPEMUDAAN DAN OLAHRAGA'],
             [schoolConfig.schoolName || 'SMP NEGERI 5 LANGKE REMBONG'],
             [`Alamat : ${schoolConfig.address || 'Mando, Kelurahan compang carep, Kecamatan Langke Rembong'}`],
-            [], [title], [subtitle], [], headers, ...bodyData
+            [], // Empty row
+            [title],
+            [subtitle],
+            [], // Empty row
+            headers,
+            ...bodyData
         ];
+
+        const signature = [
+            [], [],
+            [...Array(numCols - 2).fill(null), `${schoolConfig.reportCity || 'Mando'}, ${new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}`],
+            [...Array(numCols - 2).fill(null), 'Mengetahui,'],
+            [...Array(numCols - 2).fill(null), 'Kepala Sekolah'],
+            [], [], [],
+            [...Array(numCols - 2).fill(null), '.........................................'],
+            [...Array(numCols - 2).fill(null), schoolConfig.headmasterName || 'Fransiskus Sales, S.Pd'],
+            [...Array(numCols - 2).fill(null), schoolConfig.headmasterNip ? `NIP: ${schoolConfig.headmasterNip}` : 'NIP: 196805121994121004'],
+        ];
+        worksheetData.push(...signature);
+
         const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+        // Styles
+        const headerCellStyle = { fill: { fgColor: { rgb: "2980B9" } }, font: { color: { rgb: "FFFFFF" }, bold: true }, alignment: { horizontal: "center", vertical: "center" } };
+        const centerStyle = { alignment: { horizontal: "center", vertical: "center" } };
+        const centerBoldStyle = { ...centerStyle, font: { bold: true } };
+
+        // Apply styles to table header
+        const headerRowIndex = 8; // Row 9 in Excel
+        headers.forEach((_, colIndex) => {
+            const cellAddress = XLSX.utils.encode_cell({ r: headerRowIndex, c: colIndex });
+            if (worksheet[cellAddress]) worksheet[cellAddress].s = headerCellStyle;
+        });
+
+        // Merge and style main headers
+        worksheet['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: numCols - 1 } }, // Govt
+            { s: { r: 1, c: 0 }, e: { r: 1, c: numCols - 1 } }, // Edu
+            { s: { r: 2, c: 0 }, e: { r: 2, c: numCols - 1 } }, // School
+            { s: { r: 3, c: 0 }, e: { r: 3, c: numCols - 1 } }, // Address
+            { s: { r: 5, c: 0 }, e: { r: 5, c: numCols - 1 } }, // Title
+            { s: { r: 6, c: 0 }, e: { r: 6, c: numCols - 1 } }, // Subtitle
+        ];
+        
+        worksheet['A1'].s = centerBoldStyle; worksheet['A2'].s = centerBoldStyle; worksheet['A3'].s = centerBoldStyle;
+        worksheet['A4'].s = centerStyle; worksheet['A6'].s = centerBoldStyle; worksheet['A7'].s = centerStyle;
+
+        const colWidths = headers.map((h, i) => {
+            let maxLen = h.length;
+            bodyData.forEach(row => {
+                const cell = row[i];
+                if (cell && cell.toString().length > maxLen) maxLen = cell.toString().length;
+            });
+            return { wch: maxLen + 2 };
+        });
+
+        if(headers.indexOf('Nama') !== -1) colWidths[headers.indexOf('Nama')] = { wch: 25 };
+        if(headers.indexOf('NIP') !== -1) colWidths[headers.indexOf('NIP')] = { wch: 20 };
+        worksheet['!cols'] = colWidths;
+
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan');
         XLSX.writeFile(workbook, `${fileName}.xlsx`);
@@ -1101,16 +1244,13 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
                 }
             };
 
-            const response = await fetch(schoolConfig.googleSheetsUrl, {
+            await fetch(schoolConfig.googleSheetsUrl, {
                 method: 'POST',
-                mode: 'no-cors', // Apps Script web apps need this if not handling preflight OPTIONS
-                headers: {
-                    'Content-Type': 'text/plain', // Use text/plain for no-cors to avoid preflight
-                },
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify(payload),
             });
             
-            // NOTE: With no-cors, we cannot read the response body. We assume success if the request is sent.
             toast({ title: 'Backup Terkirim', description: `Data laporan sedang dikirim ke Google Sheets.` });
 
           } catch (e) {
@@ -1128,8 +1268,143 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
   }, [activeTab, schoolConfig, processedUserData, dateRange, generateAndDownloadFile, toast]);
   
   const handleDownloadDetail = useCallback(async (user: UserReport, formatType: 'pdf' | 'excel') => {
-    // This function remains unchanged for now, but could also be adapted for sheets backup.
-  }, [firestore, schoolConfig, dateRange, generateAndDownloadFile, toast]);
+    if (!firestore || !schoolConfig) {
+        toast({ variant: 'destructive', title: 'Gagal', description: 'Data konfigurasi belum siap.' });
+        return;
+    }
+
+    const generatorFn = async () => {
+        const { start: monthStart, end: monthEnd } = dateRange;
+
+        // Fetch all relevant data first
+        const attendanceQuery = query(collection(firestore, 'users', user.id, 'attendanceRecords'), orderBy('checkInTime', 'asc'));
+        const leaveQuery = query(collection(firestore, 'users', user.id, 'leaveRequests'), orderBy('startDate', 'asc'));
+        const [attendanceSnap, leaveSnap] = await Promise.all([getDocs(attendanceQuery), getDocs(leaveQuery)]);
+
+        const userAttendanceRecords = attendanceSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as DocumentData[];
+        const userLeaveRecords = leaveSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as DocumentData[];
+
+        // Process records into a common format
+        const attendanceRecordsProcessed: DetailedEntry[] = userAttendanceRecords.map(rec => {
+            const checkInTime = (rec.checkInTime as Timestamp)?.toDate();
+            const checkOutTime = (rec.checkOutTime as Timestamp)?.toDate();
+            let description = rec.keterangan || '';
+            if (checkInTime && checkOutTime) description = 'Absensi Terekam';
+            else if (checkInTime && !checkOutTime) description = 'Belum Absen Pulang';
+            return { id: rec.id, date: checkInTime, dateString: format(checkInTime, 'eeee, d MMMM yyyy', { locale: id }), checkIn: format(checkInTime, 'HH:mm'), checkOut: checkOutTime ? format(checkOutTime, 'HH:mm') : '-', status: 'Hadir', description };
+        });
+
+        const processLeave = (rec: DocumentData): DetailedEntry[] => {
+            const startDate = (rec.startDate as Timestamp)?.toDate();
+            const endDate = (rec.endDate as Timestamp)?.toDate();
+            if (!startDate || !endDate || isBefore(endDate, startDate)) return [];
+            return eachDayOfInterval({ start: startDate, end: endDate }).map(loopDate => ({ id: `${rec.id}-${format(loopDate, 'yyyy-MM-dd')}`, date: loopDate, dateString: format(loopDate, 'eeee, d MMMM yyyy', { locale: id }), checkIn: '-', checkOut: '-', status: rec.type as string, approvalStatus: rec.status as string, description: rec.reason as string }));
+        };
+        
+        const approvedLeaveRecords = userLeaveRecords.filter(r => r.status === 'approved').flatMap(processLeave);
+        const otherLeaveRecords = userLeaveRecords.filter(r => r.status !== 'approved').flatMap(processLeave);
+
+        const alpaRecords: DetailedEntry[] = (user.alpaDays || []).map(day => ({ id: `alpa-${format(day, 'yyyy-MM-dd')}`, date: day, dateString: format(day, 'eeee, d MMMM yyyy', { locale: id }), checkIn: '-', checkOut: '-', status: 'Alpa', description: 'Belum Absen Masuk' }));
+
+        const combinedData = [...attendanceRecordsProcessed, ...approvedLeaveRecords, ...alpaRecords, ...otherLeaveRecords];
+
+        const deDupedDetails: DetailedEntry[] = [];
+        const processedDates = new Set<string>();
+        for (const item of combinedData) {
+            if (!item.date) continue;
+            const dateStr = format(item.date, 'yyyy-MM-dd');
+            if (processedDates.has(dateStr)) continue;
+            deDupedDetails.push(item);
+            processedDates.add(dateStr);
+        }
+
+        const finalDetails = deDupedDetails
+            .filter(item => item.date && !isBefore(item.date, monthStart) && !isAfter(item.date, monthEnd))
+            .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+        if (finalDetails.length === 0) throw new Error('Tidak ada data detail untuk diunduh pada periode ini.');
+
+        const monthName = format(dateRange.start, 'MMMM yyyy', { locale: id });
+        const title = 'Laporan Detail Kehadiran';
+        const subtitle = `Nama: ${user.name}, NIP: ${user.nip || user.email || user.nisn || '-'}, Periode: ${monthName}`;
+        const fileName = `laporan-detail-${user.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${format(dateRange.start, 'MM-yyyy')}`;
+        
+        if (formatType === 'pdf') {
+            const { jsPDF } = await import('jspdf');
+            await import('jspdf-autotable');
+            const pdfDoc = new jsPDF() as jsPDFWithAutoTable;
+            const headers = ["No.", "Tanggal", "Masuk", "Pulang", "Status", "Keterangan"];
+            const body = finalDetails.map((item, index) => {
+                const approvalText = item.approvalStatus ? ` (${approvalStatusIndo[item.approvalStatus] || item.approvalStatus})` : '';
+                return [index + 1, item.dateString, item.checkIn, item.checkOut, item.status + approvalText, item.description];
+            });
+
+            generatePdfHeaderAndTitle(pdfDoc, schoolConfig, title, subtitle);
+            pdfDoc.autoTable({ head: [headers], body, startY: (pdfDoc as any).lastHeaderY || 70, theme: 'grid', headStyles: { fillColor: [41, 128, 185], textColor: 255 } });
+            generatePdfSignatureAndFooter(pdfDoc, schoolConfig);
+            pdfDoc.save(`${fileName}.pdf`);
+
+        } else if (formatType === 'excel') {
+            const XLSX = await import('xlsx');
+            const headers = ["No.", "Tanggal", "Masuk", "Pulang", "Status", "Keterangan"];
+
+            const bodyData = finalDetails.map((item, index) => {
+                const approvalText = item.approvalStatus ? ` (${approvalStatusIndo[item.approvalStatus] || item.approvalStatus})` : '';
+                return [index + 1, item.dateString, item.checkIn, item.checkOut, item.status + approvalText, item.description];
+            });
+            
+            const numCols = headers.length;
+            const worksheetData = [
+                [schoolConfig.governmentAgency || 'PEMERINTAH KABUPATEN MANGGARAI'],
+                [schoolConfig.educationAgency || 'DINAS PENDIDIKAN, KEPEMUDAAN DAN OLAHRAGA'],
+                [schoolConfig.schoolName || 'SMP NEGERI 5 LANGKE REMBONG'],
+                [`Alamat : ${schoolConfig.address || 'Mando, Kelurahan compang carep, Kecamatan Langke Rembong'}`],
+                [], [title], [subtitle], [], headers, ...bodyData
+            ];
+
+            const signature = [
+                [], [],
+                [...Array(numCols - 2).fill(null), `${schoolConfig.reportCity || 'Mando'}, ${new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}`],
+                [...Array(numCols - 2).fill(null), 'Mengetahui,'],
+                [...Array(numCols - 2).fill(null), 'Kepala Sekolah'],
+                [], [], [],
+                [...Array(numCols - 2).fill(null), '.........................................'],
+                [...Array(numCols - 2).fill(null), schoolConfig.headmasterName || 'Fransiskus Sales, S.Pd'],
+                [...Array(numCols - 2).fill(null), schoolConfig.headmasterNip ? `NIP: ${schoolConfig.headmasterNip}` : 'NIP: 196805121994121004'],
+            ];
+            worksheetData.push(...signature);
+
+            const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+            const headerCellStyle = { fill: { fgColor: { rgb: "2980B9" } }, font: { color: { rgb: "FFFFFF" }, bold: true }, alignment: { horizontal: "center", vertical: "center" } };
+            const centerStyle = { alignment: { horizontal: "center", vertical: "center" } };
+            const centerBoldStyle = { ...centerStyle, font: { bold: true } };
+            
+            const headerRowIndex = 8; // Row 9 in Excel
+            headers.forEach((_, colIndex) => {
+                const cellAddress = XLSX.utils.encode_cell({ r: headerRowIndex, c: colIndex });
+                if (worksheet[cellAddress]) worksheet[cellAddress].s = headerCellStyle;
+            });
+
+            worksheet['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: numCols - 1 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: numCols - 1 } },
+                { s: { r: 2, c: 0 }, e: { r: 2, c: numCols - 1 } }, { s: { r: 3, c: 0 }, e: { r: 3, c: numCols - 1 } },
+                { s: { r: 5, c: 0 }, e: { r: 5, c: numCols - 1 } }, { s: { r: 6, c: 0 }, e: { r: 6, c: numCols - 1 } },
+            ];
+            
+            worksheet['A1'].s = centerBoldStyle; worksheet['A2'].s = centerBoldStyle; worksheet['A3'].s = centerBoldStyle;
+            worksheet['A4'].s = centerStyle; worksheet['A6'].s = centerBoldStyle; worksheet['A7'].s = centerStyle;
+
+            worksheet['!cols'] = [ { wch: 5 }, { wch: 25 }, { wch: 10 }, { wch: 10 }, { wch: 20 }, { wch: 30 } ];
+            
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan Detail');
+            XLSX.writeFile(workbook, `${fileName}.xlsx`);
+        }
+    };
+
+    generateAndDownloadFile(formatType, `Laporan Detail ${user.name}`, generatorFn);
+}, [firestore, schoolConfig, dateRange, generateAndDownloadFile, toast]);
 
   const filteredData = useMemo(() => {
     if (!searchQuery) return processedUserData;
@@ -1242,7 +1517,7 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
                  <UserTable 
                     data={filteredData} 
                     userType={activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace('_', ' ')}
-                    canDownload={canDownload} 
+                    canDownload={canDownload}
                     onDownloadDetail={handleDownloadDetail} 
                     onEditAttendance={handleOpenEditAttendance} 
                     onViewDetail={handleOpenViewDetail} 
@@ -1269,6 +1544,7 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
           onOpenChange={setIsDetailViewOpen}
           schoolConfig={schoolConfig!}
           onAddAttendance={handleAddAttendance}
+          dateRange={dateRange}
         />
       )}
       {isManualAttendanceOpen && manualAttendanceData && (

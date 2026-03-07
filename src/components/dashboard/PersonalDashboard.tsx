@@ -95,7 +95,7 @@ export default function PersonalDashboard({ showChart = false }: PersonalDashboa
     enabled: !!firestore,
   });
 
-  const { data: todaysAttendance, isLoading: isAttendanceLoading } = useQuery<DocumentData[]>({
+  const { data: todaysAttendance, isLoading: isAttendanceLoading, refetch: refetchAttendance } = useQuery<DocumentData[]>({
     queryKey: ['todaysAttendance', user?.uid],
     queryFn: () => {
         const todayStart = startOfDay(new Date());
@@ -105,7 +105,7 @@ export default function PersonalDashboard({ showChart = false }: PersonalDashboa
             where('checkInTime', '<=', Timestamp.fromDate(todayEnd))
         ]);
     },
-    enabled: !!user && !!firestore
+    enabled: !!user && !!firestore,
   });
 
   const { data: monthlyData, isLoading: isMonthlyLoading } = useQuery<{ attendance: DocumentData[], leaves: DocumentData[] } | undefined>({
@@ -148,7 +148,6 @@ export default function PersonalDashboard({ showChart = false }: PersonalDashboa
     const monthStart = startOfMonth(today);
     const monthEnd = endOfMonth(today);
 
-    // Create a map of leave days for quick lookup
     const leaveMap = new Map<string, string>();
     monthlyLeave
       .filter(l => l.status === 'approved')
@@ -156,11 +155,9 @@ export default function PersonalDashboard({ showChart = false }: PersonalDashboa
         try {
             const sDate = rec.startDate.toDate();
             const eDate = rec.endDate.toDate();
-            if (isBefore(eDate, sDate)) return; // Skip if end date is before start date
+            if (isBefore(eDate, sDate)) return;
 
-            // Iterate through each day of the leave period
             eachDayOfInterval({ start: sDate, end: eDate }).forEach(day => {
-                // Only map days that are within the current month to avoid unnecessary data.
                 if (day >= monthStart && day <= monthEnd) {
                     leaveMap.set(format(day, 'yyyy-MM-dd'), rec.type);
                 }
@@ -168,24 +165,20 @@ export default function PersonalDashboard({ showChart = false }: PersonalDashboa
         } catch(e) { console.error("Error processing leave for chart:", e, rec) }
     });
 
-    // Create a map for attendance records for quick lookup
     const attendanceMap = new Map<string, DocumentData>();
     monthlyAttendance.forEach(rec => {
         attendanceMap.set(format(rec.checkInTime.toDate(), 'yyyy-MM-dd'), rec);
     });
 
-    // Determine the working days within the current month up to today
     const dateRange = eachDayOfInterval({ start: monthStart, end: today });
     const offDays: number[] = schoolConfig.offDays ?? [0, 6];
     const workDays = dateRange.filter(day => !offDays.includes(day.getDay()));
 
-    // Initialize counters
     let hadir = 0, terlambat = 0, izin = 0, sakit = 0, dinas = 0, alpa = 0;
     const [lateH, lateM] = (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime)
       ? schoolConfig.checkInEndTime.split(':').map(Number)
       : [0, 0];
 
-    // Iterate through workdays to categorize each day
     for (const day of workDays) {
         const dayStr = format(day, 'yyyy-MM-dd');
 
@@ -211,7 +204,6 @@ export default function PersonalDashboard({ showChart = false }: PersonalDashboa
             else if (type === 'Sakit') sakit++;
             else if (type === 'Dinas') dinas++;
         } else {
-             // Only count as 'Alpa' if the day is before today
             if (isBefore(day, startOfDay(today))) {
                 alpa++;
             }
@@ -225,18 +217,24 @@ export default function PersonalDashboard({ showChart = false }: PersonalDashboa
         { name: 'Sakit', total: sakit },
         { name: 'Dinas', total: dinas },
         { name: 'Alpa', total: alpa },
-    ].filter(item => item.total > 0); // Only return items with a total greater than 0
+    ].filter(item => item.total > 0);
   }, [monthlyData, schoolConfig, showChart]);
   
   const isHoliday = useMemo(() => {
     if (!schoolConfig) return false;
-    if (schoolConfig.isAttendanceActive === false) return true;
+    if (schoolConfig.isManualHoliday) return true;
     const today = new Date();
-    const offDays: number[] = schoolConfig.offDays ?? [0];
+    const offDays: number[] = schoolConfig.offDays ?? [0, 6];
     return offDays.includes(today.getDay());
   }, [schoolConfig]);
   
   // --- Render Logic ---
+
+  useEffect(() => {
+    const handleFocus = () => refetchAttendance();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [refetchAttendance]);
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -258,25 +256,44 @@ export default function PersonalDashboard({ showChart = false }: PersonalDashboa
       const earlyTime = new Date(checkOutTime); earlyTime.setHours(earlyH, earlyM, 0, 0);
       if (checkOutTime < earlyTime) isEarly = true;
     }
+    
+    const now = new Date();
+    let buttonAction;
 
-    let isPastCheckInTime = false;
-    if (schoolConfig?.useTimeValidation && schoolConfig?.checkInEndTime && !checkInTime) {
-        const now = new Date();
-        const currentTime = now.getHours() * 60 + now.getMinutes();
-        const [inEndH, inEndM] = schoolConfig.checkInEndTime.split(':').map(Number);
-        const checkInEndTime = inEndH * 60 + inEndM;
-        if (currentTime > checkInEndTime) {
-            isPastCheckInTime = true;
+    let isWorkdayOver = false;
+    if (schoolConfig?.useTimeValidation && schoolConfig?.checkOutEndTime) {
+        const [h, m] = schoolConfig.checkOutEndTime.split(':').map(Number);
+        const endTime = new Date(now);
+        endTime.setHours(h, m, 0, 0);
+        if (now > endTime) {
+            isWorkdayOver = true;
         }
     }
 
-    let buttonAction;
-    if ((checkInTime && !checkOutTime) || isPastCheckInTime) {
-      buttonAction = <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Pulang</Link></Button>;
-    } else if (!checkInTime) {
-      buttonAction = <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Masuk</Link></Button>;
+    if (isWorkdayOver) {
+        buttonAction = <Button disabled size="lg" className="w-full">Absensi Hari Ini Selesai</Button>;
     } else {
-      buttonAction = <Button disabled size="lg" className="w-full">Absensi Selesai</Button>;
+        let isPastCheckInTime = false;
+        if (schoolConfig?.useTimeValidation && schoolConfig?.checkInEndTime && !checkInTime) {
+            const currentTime = now.getHours() * 60 + now.getMinutes();
+            const [inEndH, inEndM] = schoolConfig.checkInEndTime.split(':').map(Number);
+            const checkInEndTime = inEndH * 60 + inEndM;
+            if (currentTime > checkInEndTime) {
+                isPastCheckInTime = true;
+            }
+        }
+
+        if (checkInTime && !checkOutTime) {
+            buttonAction = <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Pulang</Link></Button>;
+        } else if (!checkInTime) {
+            if (isPastCheckInTime) {
+                 buttonAction = <Button asChild size="lg" className="w-full" variant="secondary"><Link href="/dashboard/absen">Absen Pulang (Terlambat Masuk)</Link></Button>;
+            } else {
+                 buttonAction = <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Masuk</Link></Button>;
+            }
+        } else {
+            buttonAction = <Button disabled size="lg" className="w-full">Absensi Selesai</Button>;
+        }
     }
 
     return (

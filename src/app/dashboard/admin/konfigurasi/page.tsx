@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import QRCode from 'qrcode';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -15,16 +15,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Download, Loader2, RefreshCw, LocateFixed, ChevronLeft, ChevronRight, BookUp } from 'lucide-react'; // Added BookUp icon
+import { Download, Loader2, RefreshCw, LocateFixed, BookUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useDoc, useMemoFirebase, useUser, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Checkbox } from '@/components/ui/checkbox';
-import { format, getDaysInMonth, startOfMonth, eachDayOfInterval } from 'date-fns';
-import { id } from 'date-fns/locale';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
 
 const daysOfWeek = [
     { value: 0, label: 'Minggu' },
@@ -35,195 +31,6 @@ const daysOfWeek = [
     { value: 5, label: 'Jumat' },
     { value: 6, label: 'Sabtu' },
 ];
-
-function MonthlyConfigCalendar({ user, schoolConfig }: { user: any, schoolConfig: any }) {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()));
-  const [holidays, setHolidays] = useState<Date[]>([]);
-  const [manualWorkDays, setManualWorkDays] = useState<string>('');
-  const [calculatedWorkDays, setCalculatedWorkDays] = useState(0);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const monthlyConfigId = useMemo(() => format(currentMonth, 'yyyy-MM'), [currentMonth]);
-  const monthlyConfigRef = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return doc(firestore, 'monthlyConfigs', monthlyConfigId);
-  }, [firestore, monthlyConfigId]);
-  
-  const { data: monthlyConfigData, isLoading: isMonthlyConfigLoading } = useDoc(user, monthlyConfigRef);
-  
-  const allDaysInMonth = useMemo(() => {
-    return eachDayOfInterval({
-        start: startOfMonth(currentMonth),
-        end: new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)
-    });
-  }, [currentMonth]);
-
-  useEffect(() => {
-    if (monthlyConfigData) {
-      setHolidays((monthlyConfigData.holidays ?? []).map((d: string) => new Date(`${d}T00:00:00`)));
-      setManualWorkDays(monthlyConfigData.manualWorkDays?.toString() ?? '');
-    } else {
-      setHolidays([]);
-      setManualWorkDays('');
-    }
-  }, [monthlyConfigData]);
-
-  useEffect(() => {
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
-    const allDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
-    const recurringOffDays: number[] = schoolConfig?.offDays ?? [0];
-    const specificHolidays = new Set(holidays.map(d => format(d, 'yyyy-MM-dd')));
-
-    const workDays = allDays.filter(day => {
-      const isRecurringOff = recurringOffDays.includes(day.getDay());
-      const isSpecificHoliday = specificHolidays.has(format(day, 'yyyy-MM-dd'));
-      return !isRecurringOff && !isSpecificHoliday;
-    });
-
-    setCalculatedWorkDays(workDays.length);
-  }, [currentMonth, holidays, schoolConfig?.offDays]);
-
-
-  const handleSave = async () => {
-    if (!monthlyConfigRef) return;
-    setIsSaving(true);
-    
-    const totalDaysInMonth = getDaysInMonth(currentMonth);
-    const manualWorkDaysValue = manualWorkDays === '' ? null : parseInt(manualWorkDays, 10);
-
-    if (manualWorkDaysValue !== null && (isNaN(manualWorkDaysValue) || manualWorkDaysValue < 0 || manualWorkDaysValue > totalDaysInMonth)) {
-        toast({
-            variant: 'destructive',
-            title: 'Input Tidak Valid',
-            description: `Jumlah hari kerja harus berupa angka antara 0 dan ${totalDaysInMonth}. Kosongkan untuk menggunakan perhitungan otomatis.`
-        });
-        setIsSaving(false);
-        return;
-    }
-
-    try {
-      const dataToSave = {
-        id: monthlyConfigId,
-        holidays: holidays.map(d => format(d, 'yyyy-MM-dd')),
-        manualWorkDays: manualWorkDaysValue,
-      };
-      await setDoc(monthlyConfigRef, dataToSave, { merge: true });
-      toast({ title: 'Berhasil', description: 'Pengaturan hari kerja dan libur telah disimpan.' });
-    } catch (error) {
-      console.error('Error saving monthly config:', error);
-      toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal menyimpan pengaturan.' });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDayToggle = (day: Date, checked: boolean) => {
-    setHolidays(prev => 
-        checked 
-        ? [...prev, day]
-        : prev.filter(d => format(d, 'yyyy-MM-dd') !== format(d, 'yyyy-MM-dd'))
-    );
-    setManualWorkDays(''); 
-  };
-  
-  return (
-    <Card className="lg:col-span-3">
-        <CardHeader>
-            <CardTitle>Pengaturan Hari Kerja & Libur Bulanan</CardTitle>
-            <CardDescription>
-                Tandai hari libur spesifik atau tentukan jumlah hari kerja efektif secara manual untuk setiap bulan.
-            </CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 space-y-4">
-                {isMonthlyConfigLoading ? (
-                    <div className="w-full h-full flex items-center justify-center bg-muted rounded-md p-10">
-                        <Loader2 className="h-8 w-8 animate-spin" />
-                    </div>
-                ) : (
-                    <>
-                        <div className="flex items-center justify-center gap-4">
-                            <Button 
-                                variant="outline" 
-                                size="icon" 
-                                onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-                            >
-                                <ChevronLeft />
-                            </Button>
-                            <span className="font-semibold text-center w-32">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
-                            <Button 
-                                variant="outline" 
-                                size="icon" 
-                                onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-                            >
-                                <ChevronRight />
-                            </Button>
-                        </div>
-
-                        <ScrollArea className="h-96 rounded-md border">
-                            <Table>
-                                <TableBody>
-                                    {allDaysInMonth.map((day) => {
-                                        const dayString = format(day, 'yyyy-MM-dd');
-                                        const isChecked = holidays.some(d => format(d, 'yyyy-MM-dd') === dayString);
-
-                                        return (
-                                            <TableRow key={dayString} className="has-[:checked]:bg-primary/10">
-                                                <TableCell className="w-12 text-center py-2">
-                                                    <Checkbox
-                                                        id={dayString}
-                                                        checked={isChecked}
-                                                        onCheckedChange={(checked) => handleDayToggle(day, !!checked)}
-                                                    />
-                                                </TableCell>
-                                                <TableCell className="py-2">
-                                                    <Label htmlFor={dayString} className="font-normal cursor-pointer w-full block">
-                                                        {format(day, 'eeee, d MMMM yyyy', { locale: id })}
-                                                    </Label>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </ScrollArea>
-                    </>
-                )}
-            </div>
-            <div className="md:col-span-1 space-y-4 border-l-0 md:border-l md:pl-6">
-                <h3 className="font-semibold">Konfigurasi Bulan Ini</h3>
-                 <p className="text-sm text-muted-foreground">
-                    Jumlah hari kerja efektif di bulan <span className="font-bold">{format(currentMonth, 'MMMM', { locale: id })}</span> akan digunakan untuk menghitung persentase kehadiran.
-                </p>
-                <div className="space-y-2">
-                    <Label htmlFor="manualWorkDays">Jumlah Hari Kerja Efektif (Manual)</Label>
-                    <Input
-                        id="manualWorkDays"
-                        type="number"
-                        value={manualWorkDays}
-                        onChange={(e) => setManualWorkDays(e.target.value)}
-                        placeholder={calculatedWorkDays.toString()}
-                    />
-                     <p className="text-xs text-muted-foreground">
-                        Dihitung otomatis: <span className="font-bold">{calculatedWorkDays} hari</span>. Isi untuk menimpa.
-                    </p>
-                </div>
-            </div>
-        </CardContent>
-         <CardFooter className="border-t p-4 sm:p-6">
-            <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Simpan Pengaturan Bulan Ini
-            </Button>
-        </CardFooter>
-    </Card>
-  );
-}
-
 
 export default function KonfigurasiAbsenPage() {
   const { toast } = useToast();
@@ -237,6 +44,7 @@ export default function KonfigurasiAbsenPage() {
   const [isQrLoading, setIsQrLoading] = useState(true);
 
   // Form State
+  const [isManualHoliday, setIsManualHoliday] = useState(false);
   const [offDays, setOffDays] = useState<number[]>([]);
   const [useLocationValidation, setUseLocationValidation] = useState(true);
   const [useTimeValidation, setUseTimeValidation] = useState(true);
@@ -274,6 +82,7 @@ export default function KonfigurasiAbsenPage() {
 
   useEffect(() => {
     if (schoolConfigData) {
+      setIsManualHoliday(schoolConfigData.isManualHoliday ?? false);
       setOffDays(schoolConfigData.offDays ?? [0, 6]);
       setUseLocationValidation(schoolConfigData.useLocationValidation ?? true);
       setUseTimeValidation(schoolConfigData.useTimeValidation ?? true);
@@ -412,6 +221,7 @@ export default function KonfigurasiAbsenPage() {
     if (!user || !schoolConfigRef) return;
     setIsSaving(true);
     setDocumentNonBlocking(schoolConfigRef, {
+      isManualHoliday,
       offDays: offDays,
       useLocationValidation,
       useTimeValidation,
@@ -477,6 +287,16 @@ export default function KonfigurasiAbsenPage() {
           <CardDescription>Atur parameter untuk sistem absensi di seluruh sekolah.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 p-4 sm:p-6">
+          <div className="rounded-lg border p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                  <div>
+                      <Label htmlFor="manual-holiday" className="font-semibold">Aktifkan Mode Libur Manual</Label>
+                      <p className="text-sm text-muted-foreground">Jika aktif, seluruh sistem absensi akan diliburkan.</p>
+                  </div>
+                  <Switch id="manual-holiday" checked={isManualHoliday} onCheckedChange={setIsManualHoliday} />
+              </div>
+          </div>
+
            <div className="rounded-lg border p-4 space-y-4">
               <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -593,9 +413,8 @@ export default function KonfigurasiAbsenPage() {
                       </div>
                   </div>
               )}
-          </div>
-
-        </CardContent>
+            </div>
+          </CardContent>
          <CardFooter className="border-t p-4 sm:p-6">
            <Button onClick={handleSave} disabled={isSaving}>
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -603,9 +422,6 @@ export default function KonfigurasiAbsenPage() {
           </Button>
         </CardFooter>
       </Card>
-
-      {schoolConfigData && <MonthlyConfigCalendar user={user} schoolConfig={schoolConfigData} />}
-
     </div>
   );
 }
