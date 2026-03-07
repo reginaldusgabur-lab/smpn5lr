@@ -68,21 +68,29 @@ export default function LoginPage() {
       defaultValues: { email: '' },
   });
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const emailValue = (document.getElementById('email') as HTMLInputElement)?.value;
-      const passwordValue = (document.getElementById('password') as HTMLInputElement)?.value;
-      if (emailValue && passwordValue && !loginForm.formState.isDirty) {
-        loginForm.setValue('email', emailValue, { shouldDirty: true });
-        loginForm.setValue('password', passwordValue, { shouldDirty: true });
-      }
-    }, 500); // 500ms delay to allow autofill
-
-    return () => clearTimeout(timer);
-  }, [loginForm]);
-
   const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     setIsLoginLoading(true);
+
+    // Get the current values directly from the DOM to handle browser autofill.
+    const emailFromDOM = (document.getElementById('email') as HTMLInputElement)?.value;
+    const passwordFromDOM = (document.getElementById('password') as HTMLInputElement)?.value;
+
+    let submissionValues = values;
+
+    // If the form state is out of sync with the DOM (due to autofill),
+    // update the state and re-validate before submission.
+    if ((!values.email && emailFromDOM) || (!values.password && passwordFromDOM)) {
+        loginForm.setValue('email', emailFromDOM, { shouldValidate: true });
+        loginForm.setValue('password', passwordFromDOM, { shouldValidate: true });
+        
+        const isValid = await loginForm.trigger();
+        if (!isValid) {
+            setIsLoginLoading(false);
+            return; // Stop if validation fails after syncing
+        }
+        submissionValues = loginForm.getValues();
+    }
+
     if (!auth) {
       toast({
         variant: "destructive",
@@ -94,9 +102,9 @@ export default function LoginPage() {
     }
     
     try {
-        const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+        const userCredential = await signInWithEmailAndPassword(auth, submissionValues.email, submissionValues.password);
 
-        if (values.email !== 'admin@sekolah.sch.id' && !userCredential.user.emailVerified) {
+        if (submissionValues.email !== 'admin@sekolah.sch.id' && !userCredential.user.emailVerified) {
           toast({
               variant: "destructive",
               title: "Email Belum Diverifikasi",
