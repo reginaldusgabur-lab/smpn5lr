@@ -391,16 +391,8 @@ function EditAttendanceDialog({
   };
 
   const handleBulkMarkPresent = async () => {
-    if (!user || !firestore || !schoolConfig || selectedDays.length === 0) return;
+    if (!user || !firestore || selectedDays.length === 0) return;
     setIsUpdating(true);
-    
-    const { 
-        useTimeValidation, 
-        checkInStartTime, 
-        checkInEndTime, 
-        checkOutStartTime, 
-        checkOutEndTime 
-    } = schoolConfig;
     
     const promises = selectedDays.map(date => {
         const getRandomTime = (baseDate: Date, startStr: string, endStr: string) => {
@@ -422,21 +414,15 @@ function EditAttendanceDialog({
             return newDate;
         };
 
-        let finalCheckInTime, finalCheckOutTime;
-        if (useTimeValidation && checkInStartTime && checkInEndTime && checkOutStartTime && checkOutEndTime) {
-            finalCheckInTime = getRandomTime(date, checkInStartTime, checkInEndTime);
-            finalCheckOutTime = getRandomTime(date, checkOutStartTime, checkOutEndTime);
-        } else {
-            finalCheckInTime = getRandomTime(date, '07:00', '08:00');
-            finalCheckOutTime = getRandomTime(date, '12:55', '13:10');
-        }
+        const finalCheckInTime = getRandomTime(date, '07:00', '07:45');
+        const finalCheckOutTime = getRandomTime(date, '12:50', '13:00');
 
         const newRecord = {
             userId: user.id,
             checkInTime: Timestamp.fromDate(finalCheckInTime),
             checkOutTime: Timestamp.fromDate(finalCheckOutTime),
             checkInLatitude: null, checkInLongitude: null, checkOutLatitude: null, checkOutLongitude: null,
-            keterangan: 'Diisi oleh Admin',
+            keterangan: 'Absensi Terekam', // Updated Description
         };
         
         const attendanceCollectionRef = collection(firestore, 'users', user.id, 'attendanceRecords');
@@ -556,22 +542,14 @@ function DetailDialog({
         const attendanceRecordsProcessed: DetailedEntry[] = userAttendanceRecords.map(rec => {
             const checkInTime = (rec.checkInTime as Timestamp)?.toDate();
             const checkOutTime = (rec.checkOutTime as Timestamp)?.toDate();
+            
             let description = '';
-            if (rec.keterangan === 'Tepat waktu') {
-                description = 'Tepat waktu';
+            if (checkInTime && checkOutTime) {
+              description = 'Absensi Terekam';
             } else if (checkInTime && !checkOutTime) {
-                description = 'Belum absen pulang';
-            } else if (checkInTime && checkOutTime) {
-                if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
-                    const [endH, endM] = schoolConfig.checkInEndTime.split(':').map(Number);
-                    const checkInDeadline = new Date(checkInTime);
-                    checkInDeadline.setHours(endH, endM, 0, 0);
-                    description = isBefore(checkInTime, checkInDeadline) ? 'Tepat waktu' : 'Terlambat';
-                } else {
-                    description = 'Absensi terekam';
-                }
+              description = 'Belum Absen Pulang';
             } else {
-                description = 'Data tidak lengkap';
+              description = rec.keterangan || 'Data tidak lengkap';
             }
 
             return {
@@ -612,7 +590,7 @@ function DetailDialog({
             checkIn: '-',
             checkOut: '-',
             status: 'Alpa',
-            description: 'Tidak ada catatan kehadiran atau izin.',
+            description: 'Belum Absen Masuk', // Updated description
             approvalStatus: undefined,
         }));
 
@@ -746,8 +724,8 @@ function ManualAttendanceDialog({
   date: Date;
   onSuccess: () => void;
 }) {
-  const [checkIn, setCheckIn] = useState(() => getRandomTimeString('07:00', '08:00'));
-  const [checkOut, setCheckOut] = useState(() => getRandomTimeString('12:55', '13:10'));
+  const [checkIn, setCheckIn] = useState(() => getRandomTimeString('07:00', '07:45'));
+  const [checkOut, setCheckOut] = useState(() => getRandomTimeString('12:50', '13:00'));
   const [isSaving, setIsSaving] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -782,7 +760,7 @@ function ManualAttendanceDialog({
         userId: user.id,
         checkInTime: Timestamp.fromDate(checkInTime),
         checkOutTime: Timestamp.fromDate(checkOutTime),
-        keterangan: 'Diisi oleh Admin',
+        keterangan: 'Absensi Terekam', // Updated Description
         checkInLatitude: null, checkInLongitude: null, checkOutLatitude: null, checkOutLongitude: null,
       });
       toast({ title: 'Berhasil', description: `Absensi untuk ${user.name} pada ${format(date, 'd MMM yyyy')} telah disimpan.` });
@@ -1130,12 +1108,7 @@ function LaporanView({ isAllowed, canDownload }: { isAllowed: boolean, canDownlo
         const attendanceRecords = attendanceSnap.docs.map(d => {
             const data = d.data() as DocumentData;
             const checkInTime = (data.checkInTime as Timestamp).toDate();
-            let keterangan = data.keterangan as string || 'Hadir';
-            if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
-                const [lateH, lateM] = schoolConfig.checkInEndTime.split(':').map(Number);
-                const lateTime = new Date(checkInTime); lateTime.setHours(lateH, lateM, 0, 0);
-                if (checkInTime > lateTime) keterangan = 'Terlambat';
-            }
+            let keterangan = 'Absensi Terekam'; // Default
             if (checkInTime && !data.checkOutTime) {
                 keterangan = 'Belum absen pulang';
             }

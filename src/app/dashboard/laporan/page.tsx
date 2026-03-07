@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc, where, Timestamp } from 'firebase/firestore';
-import { format, isBefore, isAfter, eachDayOfInterval, startOfDay, endOfDay, getMonth, getYear, startOfMonth, lastDayOfMonth, addMonths, subMonths } from 'date-fns';
+import { format, isBefore, isAfter, eachDayOfInterval, startOfDay, endOfDay, getMonth, getYear, startOfMonth, lastDayOfMonth, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { AttendanceChart } from '@/components/dashboard/AttendanceChart';
 
@@ -47,12 +47,37 @@ export default function LaporanPage() {
 
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
+  const isRestrictedUser = useMemo(() => {
+    if (!user) return true; // Assume restricted if user not loaded
+    return !['admin', 'kepala_sekolah'].includes(user.role);
+  }, [user]);
+
+  const handlePrevMonthClick = () => {
+    if (isRestrictedUser) {
+      alert('Akses Riwayat Dibatasi: Riwayat laporan bulan sebelumnya hanya dapat diakses oleh admin.');
+      return;
+    }
+    setCurrentDate(subMonths(currentDate, 1));
+  };
+  
+  const handleNextMonthClick = () => {
+    if (isRestrictedUser) {
+       alert('Akses Riwayat Dibatasi: Anda hanya dapat melihat laporan bulan ini.');
+      return;
+    }
+    setCurrentDate(addMonths(currentDate, 1));
+  };
+
   const { isPrevMonthNavDisabled } = useMemo(() => {
     const startOfSelectedMonth = startOfMonth(currentDate);
     const projectStartDate = new Date(2026, 0, 1); // Lock navigation before January 2026
     return {
       isPrevMonthNavDisabled: !isAfter(startOfSelectedMonth, projectStartDate)
     };
+  }, [currentDate]);
+
+  const isNextMonthNavDisabled = useMemo(() => {
+    return isSameMonth(currentDate, new Date()) || isAfter(currentDate, new Date());
   }, [currentDate]);
 
   const dateRange = useMemo(() => {
@@ -234,11 +259,11 @@ export default function LaporanPage() {
           </CardDescription>
         </div>
         <div className="flex items-center gap-2 self-end sm:self-center">
-            <Button variant="outline" size="icon" onClick={() => setCurrentDate(subMonths(currentDate, 1))} disabled={isPrevMonthNavDisabled}>
+            <Button variant="outline" size="icon" onClick={handlePrevMonthClick} disabled={!isRestrictedUser && isPrevMonthNavDisabled}>
                 <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="font-semibold text-center w-32">{format(currentDate, 'MMMM yyyy', { locale: id })}</span>
-            <Button variant="outline" size="icon" onClick={() => setCurrentDate(addMonths(currentDate, 1))}>
+            <Button variant="outline" size="icon" onClick={handleNextMonthClick} disabled={isNextMonthNavDisabled}>
                 <ChevronRight className="h-4 w-4" />
             </Button>
         </div>
