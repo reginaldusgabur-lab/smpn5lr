@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      let userDocExists = exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      let userRole = userDocExists ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role : '';
+      return (isSignedIn() && request.auth.token.email == 'admin@sekolah.sch.id')
+             || (userDocExists && userRole == 'admin');
+    }
+    
+    function isHeadmaster() {
+        let userDocExists = exists(/databases/$(database)/documents/users/$(request.auth.uid));
+        let userRole = userDocExists ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role : '';
+        return (isSignedIn() && userDocExists && userRole == 'kepala_sekolah');
+    }
+
+    function isPrivileged() {
+        return isAdmin() || isHeadmaster();
+    }
+     
+    function docExists() {
+      return resource != null;
+    }
+    
+    function isOwnerOfExistingDoc(userId) {
+      return isOwner(userId) && docExists();
+    }
+    
+    function incomingUserProfileIsValid(userId) {
+      return request.resource.data.id == userId;
+    }
+    
+    function userProfileIdIsImmutable() {
+      return request.resource.data.id == resource.data.id;
+    }
+    
+    function incomingSubDocIsValid(userId) {
+      return request.resource.data.userId == userId;
+    }
+    
+    function subDocOwnerIsImmutable() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isPrivileged();
+      allow list: if isPrivileged();
+      allow create: if (isOwner(userId) && incomingUserProfileIsValid(userId)) || isAdmin();
+      allow update: if (isOwnerOfExistingDoc(userId) && userProfileIdIsImmutable()) || isAdmin();
+      allow delete: if isAdmin();
+
+      match /attendanceRecords/{attendanceRecordId} {
+        allow get, list: if isOwner(userId) || isPrivileged();
+        allow create: if (isOwner(userId) && incomingSubDocIsValid(userId)) || isAdmin();
+        allow update, delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /leaveRequests/{leaveRequestId} {
+        allow get, list: if isOwner(userId) || isPrivileged();
+        allow create: if isOwner(userId) && incomingSubDocIsValid(userId);
+        allow update: if isHeadmaster() || (isOwner(userId) && subDocOwnerIsImmutable());
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+    
+    match /{path=**}/attendanceRecords/{attendanceRecordId} {
+      allow get, list: if exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    match /{path=**}/leaveRequests/{leaveRequestId} {
+      allow get, list: if exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    match /schoolConfig/{schoolConfigId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /monthlyConfigs/{yearMonth} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /activities/{activityId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}
