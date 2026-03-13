@@ -7,25 +7,37 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Safely get the data of the user making the request
+    function getRequestingUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Safely get the role of the user making the request
+    function getRequestingUserRole() {
+      let userData = getRequestingUserData();
+      // Check for document and field existence before access
+      if (userData != null && 'role' in userData.data) {
+        return userData.data.role;
+      }
+      // Return a default value to prevent rule evaluation errors
+      return ''; 
+    }
+    
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
     function isAdmin() {
-      let userDocExists = exists(/databases/$(database)/documents/users/$(request.auth.uid));
-      let userRole = userDocExists ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role : '';
-      return (isSignedIn() && request.auth.token.email == 'admin@sekolah.sch.id')
-             || (userDocExists && userRole == 'admin');
+      return isSignedIn() && getRequestingUserRole() == 'admin';
     }
     
     function isHeadmaster() {
-        let userDocExists = exists(/databases/$(database)/documents/users/$(request.auth.uid));
-        let userRole = userDocExists ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role : '';
-        return (isSignedIn() && userDocExists && userRole == 'kepala_sekolah');
+      return isSignedIn() && getRequestingUserRole() == 'kepala_sekolah';
     }
 
     function isPrivileged() {
-        return isAdmin() || isHeadmaster();
+      let role = getRequestingUserRole();
+      return isSignedIn() && (role == 'admin' || role == 'kepala_sekolah');
     }
      
     function docExists() {
@@ -52,6 +64,7 @@ service cloud.firestore {
       return request.resource.data.userId == resource.data.userId;
     }
 
+    // Rules for specific collections
     match /users/{userId} {
       allow get: if isOwner(userId) || isPrivileged();
       allow list: if isPrivileged();
@@ -73,14 +86,16 @@ service cloud.firestore {
       }
     }
     
+    // Rules for collection groups (for cross-user queries)
     match /{path=**}/attendanceRecords/{attendanceRecordId} {
-      allow get, list: if exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      allow get, list: if isPrivileged();
     }
 
     match /{path=**}/leaveRequests/{leaveRequestId} {
-      allow get, list: if exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      allow get, list: if isPrivileged();
     }
 
+    // Rules for global configuration collections
     match /schoolConfig/{schoolConfigId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isAdmin();

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -19,8 +19,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, ChevronLeft, ChevronRight, Search, Download } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc, where, getDocs, collectionGroup } from 'firebase/firestore';
 import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths, isBefore, eachDayOfInterval, startOfDay, endOfDay, isWithinInterval, setHours, setMinutes } from 'date-fns';
@@ -28,7 +27,7 @@ import { id } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// This hook is now designed for the Admin page, using a more direct fetching method that doesn't rely on unsupported hooks or complex indexes.
+// Re-using the same stable data-fetching logic from the admin page.
 function useAttendanceSummary(currentMonth: Date) {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -57,7 +56,6 @@ function useAttendanceSummary(currentMonth: Date) {
             const monthStart = startOfMonth(currentMonth);
             const monthEnd = endOfMonth(currentMonth);
 
-            // Fetch all attendance and leave records for the month without real-time listeners for this summary view
             const attendanceQuery = query(collectionGroup(firestore, 'attendanceRecords'), where('checkInTime', '>=', monthStart), where('checkInTime', '<=', monthEnd));
             const leaveQuery = query(collectionGroup(firestore, 'leaveRequests'), where('status', '==', 'approved'));
             
@@ -152,9 +150,9 @@ function useAttendanceSummary(currentMonth: Date) {
     return { summary, isLoading };
 }
 
-// This is the full-featured table for Admins
-const AdminReportTable = ({ data, isLoading, onUserClick }: { data: any[], isLoading: boolean, onUserClick: (userId: string) => void }) => {
-    const cols = 11;
+// This is the read-only table for the Headmaster
+const HeadmasterReportTable = ({ data, isLoading }: { data: any[], isLoading: boolean }) => {
+    const cols = 10; // No Aksi column
     
     if (isLoading) {
         return (
@@ -192,7 +190,6 @@ const AdminReportTable = ({ data, isLoading, onUserClick }: { data: any[], isLoa
                         <TableHead className="text-center">Alpa</TableHead>
                         <TableHead className="text-center">Terlambat</TableHead>
                         <TableHead className="text-center">Presentasi</TableHead>
-                        <TableHead className="text-right">Aksi</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -209,9 +206,6 @@ const AdminReportTable = ({ data, isLoading, onUserClick }: { data: any[], isLoa
                                 <TableCell className="text-center font-bold text-destructive">{user.alpa}</TableCell>
                                 <TableCell className="text-center font-bold">{user.terlambat}</TableCell>
                                 <TableCell className="text-center font-bold">{user.presentasi}</TableCell>
-                                <TableCell className="text-right">
-                                   <Button variant="ghost" size="sm" onClick={() => onUserClick(user.id)}>Lihat Detail</Button>
-                                </TableCell>
                             </TableRow>
                         ))
                     ) : (
@@ -225,39 +219,24 @@ const AdminReportTable = ({ data, isLoading, onUserClick }: { data: any[], isLoa
     );
 };
 
-function AdminReportView() {
+function HeadmasterReportView() {
   const [activeTab, setActiveTab] = useState('guru');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const { summary, isLoading } = useAttendanceSummary(currentMonth);
-  const router = useRouter();
 
   const filteredData = useMemo(() => {
     const dataForTab = summary[activeTab] || [];
     if (!searchQuery) return dataForTab;
     return dataForTab.filter((user: any) => user.name.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [summary, activeTab, searchQuery]);
-
-  const handleUserClick = (userId: string) => {
-      // For admin, this can navigate to a more detailed or editable view in the future.
-      // For now, we'll log it, but the button is there.
-      console.log("Admin viewing details for:", userId);
-  };
   
   return (
     <Card className="w-full">
       <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-                <CardTitle>Laporan Kehadiran Admin</CardTitle>
-                <CardDescription>Menampilkan rekapitulasi data kehadiran untuk seluruh pengguna.</CardDescription>
-            </div>
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                <Button variant="outline">
-                    <Download className="mr-2 h-4 w-4" />
-                    Unduh Laporan
-                </Button>
-            </div>
+        <div>
+            <CardTitle>Laporan Kehadiran Sekolah</CardTitle>
+            <CardDescription>Menampilkan rekapitulasi data kehadiran untuk seluruh pengguna (Mode Lihat).</CardDescription>
         </div>
       </CardHeader>
       <CardContent>
@@ -290,10 +269,10 @@ function AdminReportView() {
                     </div>
                 </div>
             </div>
-            <TabsContent value="guru"><AdminReportTable data={filteredData} isLoading={isLoading} onUserClick={handleUserClick} /></TabsContent>
-            <TabsContent value="pegawai"><AdminReportTable data={filteredData} isLoading={isLoading} onUserClick={handleUserClick} /></TabsContent>
-            <TabsContent value="kepala_sekolah"><AdminReportTable data={filteredData} isLoading={isLoading} onUserClick={handleUserClick} /></TabsContent>
-            <TabsContent value="siswa"><AdminReportTable data={filteredData} isLoading={isLoading} onUserClick={handleUserClick} /></TabsContent>
+            <TabsContent value="guru"><HeadmasterReportTable data={filteredData} isLoading={isLoading} /></TabsContent>
+            <TabsContent value="pegawai"><HeadmasterReportTable data={filteredData} isLoading={isLoading} /></TabsContent>
+            <TabsContent value="kepala_sekolah"><HeadmasterReportTable data={filteredData} isLoading={isLoading} /></TabsContent>
+            <TabsContent value="siswa"><HeadmasterReportTable data={filteredData} isLoading={isLoading} /></TabsContent>
         </Tabs>
       </CardContent>
     </Card>
@@ -301,7 +280,7 @@ function AdminReportView() {
 }
 
 // Page component wrapper with security check
-export default function AdminReportPage() {
+export default function HeadmasterReportPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
@@ -313,15 +292,15 @@ export default function AdminReportPage() {
     const { data: userData, isLoading: isUserDataLoading } = useDoc(user, userDocRef);
 
     const isLoadingPage = isUserLoading || isUserDataLoading;
-    const isAdmin = !isLoadingPage && userData?.role === 'admin';
+    const canView = !isLoadingPage && (userData?.role === 'admin' || userData?.role === 'kepala_sekolah');
 
     useEffect(() => {
-        if (!isLoadingPage && !isAdmin) {
+        if (!isLoadingPage && !canView) {
             router.replace('/dashboard');
         }
-    }, [isLoadingPage, isAdmin, router]);
+    }, [isLoadingPage, canView, router]);
 
-    if (isLoadingPage || !isAdmin) {
+    if (isLoadingPage || !canView) {
         return (
             <div className="flex items-center justify-center h-48">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -329,5 +308,5 @@ export default function AdminReportPage() {
         );
     }
     
-    return <AdminReportView />;
+    return <HeadmasterReportView />;
 }

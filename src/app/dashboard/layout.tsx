@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { QuoteOfTheDay } from '@/components/layout/quote-of-the-day';
+import { AppFooter } from '@/components/layout/app-footer'; // Import the new footer component
 
 export default function DashboardLayout({
   children,
@@ -34,13 +34,10 @@ export default function DashboardLayout({
     return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
 
-  // data userData sudah berisi informasi peran (role)
   const { data: userData, isLoading: isUserDataLoading } = useDoc<{ role: string, hasSeenRules?: boolean }>(user, userDocRef);
 
   const [showRulesDialog, setShowRulesDialog] = useState(false);
   const [isUpdatingRules, setIsUpdatingRules] = useState(false);
-
-  const isLoading = isUserLoading || (user && isUserDataLoading);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -67,17 +64,12 @@ export default function DashboardLayout({
     }
   };
 
-
-  if (isLoading) {
+  if (isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
-  }
-  
-  if (!user) {
-      return null;
   }
 
   return (
@@ -96,11 +88,10 @@ export default function DashboardLayout({
                 <Header />
                 <main className="flex-1 overflow-y-auto p-4 pb-20 sm:p-6">
                     <div className="mx-auto w-full max-w-7xl">
-                        {/* Peran pengguna (userData.role) kini diteruskan sebagai `category` */}
-                        <QuoteOfTheDay category={userData?.role} />
                         {children}
                     </div>
                 </main>
+                <AppFooter />
             </div>
         </div>
         <BottomNavigation />

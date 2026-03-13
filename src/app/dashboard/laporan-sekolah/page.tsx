@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -16,19 +16,23 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, ChevronLeft, ChevronRight, Search, Download } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Search, Download, MoreVertical, ChevronDown } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
-import { collection, query, orderBy, doc, where, getDocs, collectionGroup } from 'firebase/firestore';
-import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths, isBefore, eachDayOfInterval, startOfDay, endOfDay, isWithinInterval, setHours, setMinutes } from 'date-fns';
+import { collection, query, getDocs, doc, where } from 'firebase/firestore';
+import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths, isBefore, eachDayOfInterval, startOfDay, isWithinInterval, setHours, setMinutes } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// This hook is now designed for the Admin page, using a more direct fetching method that doesn't rely on unsupported hooks or complex indexes.
 function useAttendanceSummary(currentMonth: Date) {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -48,7 +52,9 @@ function useAttendanceSummary(currentMonth: Date) {
 
     useEffect(() => {
         const fetchAllData = async () => {
-            if (!firestore || !user || !users || schoolConfig === undefined || monthlyConfig === undefined) {
+            if (!firestore || !user || !users || !schoolConfig || monthlyConfig === undefined) {
+                const stillLoading = isUsersLoading || isConfigLoading || isMonthlyConfigLoading;
+                setIsLoading(stillLoading);
                 return;
             }
             
@@ -57,14 +63,13 @@ function useAttendanceSummary(currentMonth: Date) {
             const monthStart = startOfMonth(currentMonth);
             const monthEnd = endOfMonth(currentMonth);
 
-            // Fetch all attendance and leave records for the month without real-time listeners for this summary view
-            const attendanceQuery = query(collectionGroup(firestore, 'attendanceRecords'), where('checkInTime', '>=', monthStart), where('checkInTime', '<=', monthEnd));
-            const leaveQuery = query(collectionGroup(firestore, 'leaveRequests'), where('status', '==', 'approved'));
+            const attendanceQuery = query(collection(firestore, 'attendanceRecords'), where('checkInTime', '>=', monthStart), where('checkInTime', '<=', monthEnd));
+            const leaveQuery = query(collection(firestore, 'leaveRequests'), where('status', '==', 'approved'));
             
-            const [attendanceSnapshot, leaveSnapshot] = await Promise.all([
-                getDocs(attendanceQuery),
-                getDocs(leaveQuery)
-            ]);
+            const [attendanceSnapshot, leaveSnapshot] = await Promise.all([getDocs(attendanceQuery), getDocs(leaveQuery)])
+                .catch(err => { console.error(err); return []; });
+
+            if (!attendanceSnapshot || !leaveSnapshot) { setIsLoading(false); return; }
 
             const allAttendance = attendanceSnapshot.docs.map(d => ({...d.data(), id: d.id }));
             const allLeave = leaveSnapshot.docs.map(d => ({ ...d.data(), id: d.id, startDate: d.data().startDate.toDate(), endDate: d.data().endDate.toDate() }));
@@ -94,7 +99,7 @@ function useAttendanceSummary(currentMonth: Date) {
                 const userAttendance = attendanceByUser[u.id] || [];
                 const userLeave = leaveByUser[u.id] || [];
 
-                const hadirCount = userAttendance.filter((att: any) => att.checkInTime && att.checkOutTime).length;
+                const hadirCount = userAttendance.length;
                 
                 let terlambatCount = 0;
                 if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
@@ -147,31 +152,26 @@ function useAttendanceSummary(currentMonth: Date) {
 
         fetchAllData();
 
-    }, [firestore, user, users, schoolConfig, monthlyConfig, currentMonth]);
+    }, [firestore, user, users, schoolConfig, monthlyConfig, currentMonth, isUsersLoading, isConfigLoading, isMonthlyConfigLoading]);
 
     return { summary, isLoading };
 }
 
-// This is the full-featured table for Admins
-const AdminReportTable = ({ data, isLoading, onUserClick }: { data: any[], isLoading: boolean, onUserClick: (userId: string) => void }) => {
-    const cols = 11;
+const UnifiedReportTable = ({ data, isLoading, isAdmin, currentMonth }: { data: any[], isLoading: boolean, isAdmin: boolean, currentMonth: Date }) => {
+    const router = useRouter();
+    const cols = isAdmin ? 11 : 10;
+
+    const handleViewDetails = (userId: string) => {
+        const monthStr = format(currentMonth, 'yyyy-MM');
+        router.push(`/dashboard/laporan-sekolah/${userId}?month=${monthStr}`);
+    };
     
     if (isLoading) {
         return (
              <div className="rounded-md border">
                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            {[...Array(cols)].map((_, i) => <TableHead key={i}><Skeleton className="h-5 w-full" /></TableHead>)}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {[...Array(10)].map((_, i) => (
-                            <TableRow key={i}>
-                                {[...Array(cols)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
-                            </TableRow>
-                        ))}
-                    </TableBody>
+                    <TableHeader><TableRow>{[...Array(cols)].map((_, i) => <TableHead key={i}><Skeleton className="h-5 w-full" /></TableHead>)}</TableRow></TableHeader>
+                    <TableBody>{[...Array(10)].map((_, i) => (<TableRow key={i}>{[...Array(cols)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}</TableRow>))}</TableBody>
                 </Table>
             </div>
         );
@@ -192,7 +192,7 @@ const AdminReportTable = ({ data, isLoading, onUserClick }: { data: any[], isLoa
                         <TableHead className="text-center">Alpa</TableHead>
                         <TableHead className="text-center">Terlambat</TableHead>
                         <TableHead className="text-center">Presentasi</TableHead>
-                        <TableHead className="text-right">Aksi</TableHead>
+                        {isAdmin && <TableHead className="text-right">Aksi</TableHead>}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -209,15 +209,25 @@ const AdminReportTable = ({ data, isLoading, onUserClick }: { data: any[], isLoa
                                 <TableCell className="text-center font-bold text-destructive">{user.alpa}</TableCell>
                                 <TableCell className="text-center font-bold">{user.terlambat}</TableCell>
                                 <TableCell className="text-center font-bold">{user.presentasi}</TableCell>
-                                <TableCell className="text-right">
-                                   <Button variant="ghost" size="sm" onClick={() => onUserClick(user.id)}>Lihat Detail</Button>
-                                </TableCell>
+                                {isAdmin && (
+                                    <TableCell className="text-right">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => handleViewDetails(user.id)}>Detail Kehadiran</DropdownMenuItem>
+                                                <DropdownMenuItem>Edit Kehadiran</DropdownMenuItem>
+                                                <DropdownMenuItem>Unduh Excel</DropdownMenuItem>
+                                                <DropdownMenuItem>Unduh PDF</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                )}
                             </TableRow>
                         ))
                     ) : (
-                        <TableRow>
-                            <TableCell colSpan={cols} className="h-24 text-center">Tidak ada data untuk ditampilkan.</TableCell>
-                        </TableRow>
+                        <TableRow><TableCell colSpan={cols} className="h-24 text-center">Tidak ada data untuk ditampilkan.</TableCell></TableRow>
                     )}
                 </TableBody>
             </Table>
@@ -225,39 +235,41 @@ const AdminReportTable = ({ data, isLoading, onUserClick }: { data: any[], isLoa
     );
 };
 
-function AdminReportView() {
+function SchoolReportView({ isAdmin }: { isAdmin: boolean }) {
   const [activeTab, setActiveTab] = useState('guru');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const { summary, isLoading } = useAttendanceSummary(currentMonth);
-  const router = useRouter();
 
   const filteredData = useMemo(() => {
     const dataForTab = summary[activeTab] || [];
     if (!searchQuery) return dataForTab;
     return dataForTab.filter((user: any) => user.name.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [summary, activeTab, searchQuery]);
-
-  const handleUserClick = (userId: string) => {
-      // For admin, this can navigate to a more detailed or editable view in the future.
-      // For now, we'll log it, but the button is there.
-      console.log("Admin viewing details for:", userId);
-  };
   
   return (
     <Card className="w-full">
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
-                <CardTitle>Laporan Kehadiran Admin</CardTitle>
+                <CardTitle>Laporan Kehadiran Sekolah</CardTitle>
                 <CardDescription>Menampilkan rekapitulasi data kehadiran untuk seluruh pengguna.</CardDescription>
             </div>
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                <Button variant="outline">
-                    <Download className="mr-2 h-4 w-4" />
-                    Unduh Laporan
-                </Button>
-            </div>
+            {isAdmin && (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                         <Button variant="outline">
+                            <Download className="mr-2 h-4 w-4" />
+                            Unduh Laporan
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem>Unduh PDF</DropdownMenuItem>
+                        <DropdownMenuItem>Unduh Excel</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            )}
         </div>
       </CardHeader>
       <CardContent>
@@ -270,38 +282,26 @@ function AdminReportView() {
                     <TabsTrigger value="siswa">Data Siswa</TabsTrigger>
                 </TabsList>
                 <div className="flex w-full items-center gap-2 md:w-auto">
-                    <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="font-semibold text-center w-32 capitalize">
-                        {format(currentMonth, 'MMMM yyyy', { locale: id })}
-                    </span>
-                    <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={isSameMonth(currentMonth, new Date())}>
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
+                    <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-4 w-4" /></Button>
+                    <span className="font-semibold text-center w-32 capitalize">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
+                    <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={isSameMonth(currentMonth, new Date())}><ChevronRight className="h-4 w-4" /></Button>
                     <div className="relative w-full md:w-auto">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Cari nama..." 
-                            className="pl-8 w-full" 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+                        <Input placeholder="Cari nama..." className="pl-8 w-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                     </div>
                 </div>
             </div>
-            <TabsContent value="guru"><AdminReportTable data={filteredData} isLoading={isLoading} onUserClick={handleUserClick} /></TabsContent>
-            <TabsContent value="pegawai"><AdminReportTable data={filteredData} isLoading={isLoading} onUserClick={handleUserClick} /></TabsContent>
-            <TabsContent value="kepala_sekolah"><AdminReportTable data={filteredData} isLoading={isLoading} onUserClick={handleUserClick} /></TabsContent>
-            <TabsContent value="siswa"><AdminReportTable data={filteredData} isLoading={isLoading} onUserClick={handleUserClick} /></TabsContent>
+            <TabsContent value="guru"><UnifiedReportTable data={filteredData} isLoading={isLoading} isAdmin={isAdmin} currentMonth={currentMonth} /></TabsContent>
+            <TabsContent value="pegawai"><UnifiedReportTable data={filteredData} isLoading={isLoading} isAdmin={isAdmin} currentMonth={currentMonth} /></TabsContent>
+            <TabsContent value="kepala_sekolah"><UnifiedReportTable data={filteredData} isLoading={isLoading} isAdmin={isAdmin} currentMonth={currentMonth} /></TabsContent>
+            <TabsContent value="siswa"><UnifiedReportTable data={filteredData} isLoading={isLoading} isAdmin={isAdmin} currentMonth={currentMonth} /></TabsContent>
         </Tabs>
       </CardContent>
     </Card>
   );
 }
 
-// Page component wrapper with security check
-export default function AdminReportPage() {
+export default function SchoolReportPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
@@ -313,21 +313,19 @@ export default function AdminReportPage() {
     const { data: userData, isLoading: isUserDataLoading } = useDoc(user, userDocRef);
 
     const isLoadingPage = isUserLoading || isUserDataLoading;
+    const canView = !isLoadingPage && (userData?.role === 'admin' || userData?.role === 'kepala_sekolah');
     const isAdmin = !isLoadingPage && userData?.role === 'admin';
 
     useEffect(() => {
-        if (!isLoadingPage && !isAdmin) {
-            router.replace('/dashboard');
+        if (!isLoadingPage) {
+            if (!user) { router.replace('/'); }
+            else if (!canView) { router.replace('/dashboard'); }
         }
-    }, [isLoadingPage, isAdmin, router]);
+    }, [isLoadingPage, canView, user, router]);
 
-    if (isLoadingPage || !isAdmin) {
-        return (
-            <div className="flex items-center justify-center h-48">
-                <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-        );
+    if (isLoadingPage || !canView) {
+        return <div className="flex items-center justify-center h-48"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
     
-    return <AdminReportView />;
+    return <SchoolReportView isAdmin={isAdmin} />;
 }

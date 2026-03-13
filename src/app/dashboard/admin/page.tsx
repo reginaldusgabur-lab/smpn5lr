@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { UserCheck, Users, FileWarning, ShieldAlert } from 'lucide-react';
+import { UserCheck, Users, FileWarning, ShieldAlert, FileText } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -341,6 +341,17 @@ export default function AdminDashboardPage() {
                         <p className="text-xs text-muted-foreground">{kepalaSekolahCount} Kepsek, {guruCount} Guru, {pegawaiCount} Pegawai, {siswaCount} Siswa</p>
                     </CardContent>
                 </Card>
+                <Link href="/dashboard/admin/laporan-guru">
+                    <Card className="hover:bg-muted/50 transition-colors">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium">Laporan Guru</CardTitle>
+                            <FileText className="h-5 w-5 text-blue-500" />
+                        </CardHeader>
+                        <CardContent>
+                             <p className="text-xs text-muted-foreground">Buat dan kelola laporan kehadiran guru.</p>
+                        </CardContent>
+                    </Card>
+                </Link>
             </div>
         </div>
     </div>

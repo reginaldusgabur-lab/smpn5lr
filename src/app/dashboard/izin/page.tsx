@@ -21,17 +21,20 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useUser, useFirestore, FirestorePermissionError, errorEmitter, useCollection, useMemoFirebase } from '@/firebase';
-import { addDoc, collection, serverTimestamp, query, where, Timestamp } from 'firebase/firestore';
+import { useUser, useFirestore, FirestorePermissionError, errorEmitter, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { addDoc, collection, serverTimestamp, query, where, Timestamp, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Info, Loader2 } from 'lucide-react';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfDay, endOfDay, addDays, setHours, setMinutes } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useMemo } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const leaveRequestSchema = z.object({
+  leaveDate: z.enum(['today', 'tomorrow'], {
+    required_error: 'Tanggal pengajuan wajib dipilih.',
+  }),
   type: z.enum(['Sakit', 'Izin', 'Dinas'], {
     required_error: 'Jenis pengajuan wajib dipilih.',
   }),
@@ -43,6 +46,7 @@ export default function IzinPage() {
     const form = useForm<z.infer<typeof leaveRequestSchema>>({
         resolver: zodResolver(leaveRequestSchema),
         defaultValues: {
+            leaveDate: 'today',
             type: undefined,
             reason: '',
             proofUrl: '',
@@ -53,70 +57,77 @@ export default function IzinPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [todayFormatted, setTodayFormatted] = useState('');
+    const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
-        setTodayFormatted(format(new Date(), 'eeee, d MMMM yyyy', { locale: id }));
+        const timerId = setInterval(() => setCurrentTime(new Date()), 60000); // Check every minute is enough
+        return () => clearInterval(timerId);
     }, []);
 
-    const todaysRecordsQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        const today = new Date();
-        const todayStart = startOfDay(today);
-        const todayEnd = endOfDay(today);
+    const schoolConfigRef = useMemoFirebase(() => user ? doc(firestore, 'schoolConfig', 'default') : null, [firestore, user]);
+    const { data: schoolConfig, isLoading: isSchoolConfigLoading } = useDoc(user, schoolConfigRef);
 
+    const selectedDateValue = form.watch('leaveDate');
+    const targetDate = useMemo(() => {
+        const now = new Date();
+        return selectedDateValue === 'tomorrow' ? addDays(now, 1) : now;
+    }, [selectedDateValue]); // Removed currentTime from dependencies
+
+    const targetDateStart = useMemo(() => startOfDay(targetDate), [targetDate]);
+    const targetDateEnd = useMemo(() => endOfDay(targetDate), [targetDate]);
+
+    const attendanceQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
         return query(
             collection(firestore, 'users', user.uid, 'attendanceRecords'),
-            where('checkInTime', '>=', Timestamp.fromDate(todayStart)),
-            where('checkInTime', '<', Timestamp.fromDate(todayEnd))
+            where('checkInTime', '>=', Timestamp.fromDate(targetDateStart)),
+            where('checkInTime', '<', Timestamp.fromDate(targetDateEnd))
         );
-    }, [user, firestore]);
-    const { data: todaysAttendance, isLoading: isAttendanceLoading } = useCollection(user, todaysRecordsQuery);
+    }, [user, firestore, targetDateStart, targetDateEnd]);
+    const { data: targetDateAttendance, isLoading: isAttendanceLoading } = useCollection(user, attendanceQuery);
 
-    const todaysLeaveQuery = useMemoFirebase(() => {
+    const leaveQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
-        const today = new Date();
-        const todayStart = startOfDay(today);
-        const todayEnd = endOfDay(today);
-
         return query(
             collection(firestore, 'users', user.uid, 'leaveRequests'),
-            where('startDate', '>=', Timestamp.fromDate(todayStart)),
-            where('startDate', '<=', Timestamp.fromDate(todayEnd))
+            where('startDate', '>=', Timestamp.fromDate(targetDateStart)),
+            where('startDate', '<=', Timestamp.fromDate(targetDateEnd))
         );
-    }, [user, firestore]);
-    const { data: todaysLeave, isLoading: isLeaveLoading } = useCollection(user, todaysLeaveQuery);
+    }, [user, firestore, targetDateStart, targetDateEnd]);
+    const { data: targetDateLeave, isLoading: isLeaveLoading } = useCollection(user, leaveQuery);
 
+    const isPastCheckoutTime = useMemo(() => {
+        if (!schoolConfig?.checkOutStartTime) return false;
+        const [hours, minutes] = schoolConfig.checkOutStartTime.split(':').map(Number);
+        const checkOutStart = setMinutes(setHours(startOfDay(currentTime), hours), minutes);
+        return currentTime > checkOutStart;
+    }, [currentTime, schoolConfig]);
 
     async function onSubmit(values: z.infer<typeof leaveRequestSchema>) {
         if (!user || !firestore) return;
-
-        if (todaysAttendance && todaysAttendance.length > 0) {
-            toast({
-                variant: 'destructive',
-                title: 'Gagal Mengirim Pengajuan',
-                description: 'Anda sudah melakukan absensi hari ini. Tidak dapat mengajukan izin.',
-            });
+        
+        if (values.leaveDate === 'today' && isPastCheckoutTime) {
+            toast({ variant: 'destructive', title: 'Waktu Pengajuan Habis', description: 'Anda tidak dapat mengajukan izin untuk hari ini setelah jam kerja berakhir.' });
             return;
         }
 
-        if (todaysLeave && todaysLeave.length > 0) {
-            toast({
-                variant: 'destructive',
-                title: 'Gagal Mengirim Pengajuan',
-                description: 'Anda sudah pernah mengajukan izin untuk hari ini.',
-            });
+        if (targetDateAttendance && targetDateAttendance.length > 0) {
+            toast({ variant: 'destructive', title: 'Gagal Mengirim Pengajuan', description: `Anda sudah melakukan absensi pada ${format(targetDate, 'd MMMM yyyy', { locale: id })}. Tidak dapat mengajukan izin.` });
+            return;
+        }
+
+        if (targetDateLeave && targetDateLeave.length > 0) {
+            toast({ variant: 'destructive', title: 'Gagal Mengirim Pengajuan', description: `Anda sudah pernah mengajukan izin untuk ${format(targetDate, 'd MMMM yyyy', { locale: id })}.` });
             return;
         }
 
         setIsSubmitting(true);
-        const today = new Date();
 
         const dataToSave = {
             userId: user.uid,
             type: values.type,
-            startDate: Timestamp.fromDate(startOfDay(today)),
-            endDate: Timestamp.fromDate(endOfDay(today)),
+            startDate: Timestamp.fromDate(startOfDay(targetDate)),
+            endDate: Timestamp.fromDate(endOfDay(targetDate)),
             reason: values.reason,
             proofUrl: values.proofUrl || null,
             status: 'pending',
@@ -127,34 +138,23 @@ export default function IzinPage() {
         
         addDoc(leaveCollectionRef, dataToSave)
             .then(() => {
-                toast({
-                    title: 'Pengajuan Terkirim',
-                    description: 'Pengajuan izin/sakit Anda telah berhasil dikirim.',
-                });
+                toast({ title: 'Pengajuan Terkirim', description: 'Pengajuan izin/sakit Anda telah berhasil dikirim.' });
                 router.push('/dashboard/laporan');
             })
             .catch((error) => {
                 console.error('Failed to submit leave request:', error);
-                
-                const contextualError = new FirestorePermissionError({
-                   operation: 'create',
-                   path: leaveCollectionRef.path,
-                   requestResourceData: dataToSave
-                });
+                const contextualError = new FirestorePermissionError({ operation: 'create', path: leaveCollectionRef.path, requestResourceData: dataToSave });
                 errorEmitter.emit('permission-error', contextualError);
-                
-                toast({
-                    title: 'Gagal Mengirim Pengajuan',
-                    description: error.message || 'Terjadi kesalahan. Periksa koneksi Anda dan coba lagi.',
-                    variant: 'destructive',
-                });
+                toast({ title: 'Gagal Mengirim Pengajuan', description: error.message || 'Terjadi kesalahan. Periksa koneksi Anda dan coba lagi.', variant: 'destructive' });
             })
-            .finally(() => {
-                setIsSubmitting(false);
-            });
+            .finally(() => setIsSubmitting(false));
     }
 
-    const isChecking = isAttendanceLoading || isLeaveLoading;
+    const isChecking = isAttendanceLoading || isLeaveLoading || isSchoolConfigLoading;
+    const isTodayAndPastCheckout = selectedDateValue === 'today' && isPastCheckoutTime;
+
+    const todayFormatted = format(new Date(), 'eeee, d MMMM yyyy', { locale: id });
+    const tomorrowFormatted = format(addDays(new Date(), 1), 'eeee, d MMMM yyyy', { locale: id });
 
     return (
         <div className="flex justify-center">
@@ -163,77 +163,41 @@ export default function IzinPage() {
                     <form onSubmit={form.handleSubmit(onSubmit)}>
                         <CardHeader>
                             <CardTitle>Formulir Pengajuan Izin/Sakit</CardTitle>
-                            <CardDescription>
-                                Isi formulir di bawah ini untuk mengajukan ketidakhadiran untuk hari ini.
-                            </CardDescription>
+                            <CardDescription>Isi formulir di bawah ini untuk mengajukan ketidakhadiran. Anda hanya dapat mengajukan untuk hari ini atau besok.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                             <Alert variant="default" className="bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-950/50 dark:border-blue-800 dark:text-blue-300 [&>svg]:text-blue-600 dark:[&>svg]:text-blue-400">
-                                <Info className="h-4 w-4" />
-                                <AlertTitle>Informasi Tanggal</AlertTitle>
-                                <AlertDescription>
-                                    Pengajuan izin ini secara otomatis berlaku untuk hari ini: <span className="font-semibold">{todayFormatted || 'Memuat tanggal...'}</span>.
-                                </AlertDescription>
-                            </Alert>
+                            {isTodayAndPastCheckout && (
+                                <Alert variant="destructive">
+                                    <Info className="h-4 w-4" />
+                                    <AlertTitle>Waktu Pengajuan Izin Hari Ini Telah Berakhir</AlertTitle>
+                                    <AlertDescription>
+                                        Anda tidak dapat memilih "Hari Ini" karena telah melewati jam pulang kerja. Silakan pilih "Besok" untuk melanjutkan.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
                             <FormField
                                 control={form.control}
-                                name="type"
+                                name="leaveDate"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Jenis Pengajuan</FormLabel>
+                                        <FormLabel>Pilih Tanggal Izin</FormLabel>
                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Pilih jenis pengajuan" />
-                                                </SelectTrigger>
-                                            </FormControl>
+                                            <FormControl><SelectTrigger><SelectValue placeholder="Pilih tanggal pengajuan" /></SelectTrigger></FormControl>
                                             <SelectContent>
-                                                <SelectItem value="Sakit">Sakit</SelectItem>
-                                                <SelectItem value="Izin">Izin</SelectItem>
-                                                <SelectItem value="Dinas">Perjalanan Dinas</SelectItem>
+                                                <SelectItem value="today">Hari Ini ({todayFormatted})</SelectItem>
+                                                <SelectItem value="tomorrow">Besok ({tomorrowFormatted})</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
-                           
-                            <FormField
-                                control={form.control}
-                                name="reason"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Alasan</FormLabel>
-                                        <FormControl>
-                                            <Textarea
-                                                placeholder="Jelaskan alasan Anda tidak dapat hadir..."
-                                                {...field}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                             <FormField
-                                control={form.control}
-                                name="proofUrl"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Link Bukti (Opsional)</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                placeholder="https://... (contoh: link Google Drive surat dokter)"
-                                                {...field}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
+                            <FormField control={form.control} name="type" render={({ field }) => (<FormItem><FormLabel>Jenis Pengajuan</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih jenis pengajuan" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Sakit">Sakit</SelectItem><SelectItem value="Izin">Izin</SelectItem><SelectItem value="Dinas">Perjalanan Dinas</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="reason" render={({ field }) => (<FormItem><FormLabel>Alasan</FormLabel><FormControl><Textarea placeholder="Jelaskan alasan Anda tidak dapat hadir..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="proofUrl" render={({ field }) => (<FormItem><FormLabel>Link Bukti (Opsional)</FormLabel><FormControl><Input placeholder="https://... (contoh: link Google Drive surat dokter)" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         </CardContent>
                         <CardFooter className="border-t pt-6">
-                            <Button type="submit" disabled={isSubmitting || isChecking}>
+                            <Button type="submit" disabled={isSubmitting || isChecking || isTodayAndPastCheckout}>
                                {(isSubmitting || isChecking) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                {isChecking ? 'Memeriksa data...' : 'Kirim Pengajuan'}
                             </Button>

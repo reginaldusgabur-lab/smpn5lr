@@ -90,48 +90,34 @@ export default function RegisterPage() {
     };
 
     try {
-      // 1. Create user in Firebase Auth. This also signs them in to the current session.
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const newUser = userCredential.user;
       
-      // 2. Send verification email.
-      try {
-        await sendEmailVerification(newUser);
-      } catch (verificationError) {
-          console.error("Failed to send verification email during registration:", verificationError);
-          // This is a non-fatal error. The user is created but will be blocked at login until verified.
-          // The success screen will still instruct them to check their email.
-      }
+      await sendEmailVerification(newUser);
       
-      // 3. Prepare the user document for Firestore.
       const userDoc: any = {
         id: newUser.uid,
         name: values.name,
         role: values.role,
         email: values.email,
-        status: 'Aktif', // Users are active by default upon registration
-        hasSeenRules: false, // Mark user as new
+        status: 'Aktif',
+        hasSeenRules: false,
         nip: null,
         nisn: null,
         position: null,
         sequenceNumber: null,
       };
 
-      if (values.role === 'guru') {
+      if (values.role === 'guru' || values.role === 'pegawai') {
         userDoc.nip = values.nip?.trim() || null;
       }
       
       userDoc.position = values.position || null;
 
-      // 4. Create the user document in Firestore. This call is now authenticated.
       await setDoc(doc(firestore, "users", newUser.uid), userDoc);
       
-      // 5. IMPORTANT: Sign the user out immediately.
-      // This forces them to go through the normal login flow after verifying their email,
-      // which is more secure and ensures a clean session state.
       await signOut(auth);
       
-      // 6. Show the success screen.
       setIsSuccess(true);
 
     } catch (error: any) {
@@ -247,7 +233,7 @@ export default function RegisterPage() {
                   <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="email.aktif@anda.com" {...field} /></FormControl><FormMessage /></FormItem>
               )}/>
 
-              {(selectedRole === 'guru') && (
+              {(selectedRole === 'guru' || selectedRole === 'pegawai') && (
                 <FormField control={form.control} name="nip" render={({ field }) => (
                     <FormItem><FormLabel>NIP <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><Input placeholder="Masukkan NIP Anda" {...field} /></FormControl><FormMessage /></FormItem>
                 )}/>
@@ -311,7 +297,7 @@ export default function RegisterPage() {
         </CardFooter>
       </Card>
       <footer className="mt-8 text-center text-xs text-muted-foreground">
-        ©smpn5lr 2026
+        ©2026 SMPN5LR <br /> created by team operator
       </footer>
     </div>
   );

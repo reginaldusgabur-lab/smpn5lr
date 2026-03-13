@@ -124,7 +124,7 @@ const UserTable = ({ data, userType, canManage, onEdit, onToggleStatus, onDelete
   onToggleStatus: (user:any)=> void; 
   onDelete: (user:any) => void;
 }) => {
-  const hasIdentifierColumn = userType === 'Siswa' || userType === 'Guru' || userType === 'Kepala Sekolah';
+  const hasIdentifierColumn = userType === 'Siswa' || userType === 'Guru' || userType === 'Kepala Sekolah' || userType === 'Pegawai';
   const hasPositionColumn = userType === 'Guru' || userType === 'Kepala Sekolah' || userType === 'Pegawai';
   
   // Calculate colspan dynamically
@@ -285,8 +285,8 @@ const roleConfig: { [key in Role]: { label: string; placeholder: string; icon: J
     title: 'Guru',
   },
   pegawai: {
-    label: 'Email',
-    placeholder: 'pegawai@sekolah.sch.id',
+    label: 'NIP',
+    placeholder: 'Masukkan NIP Pegawai (Opsional)',
     icon: <Briefcase className="h-5 w-5" />,
     title: 'Pegawai',
   },
@@ -449,6 +449,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
         userDoc.position = values.position || null;
         userDoc.sequenceNumber = values.sequenceNumber ? parseInt(values.sequenceNumber, 10) : null;
       } else if (values.role === 'pegawai') {
+        userDoc.nip = values.identifier?.trim() || null;
         userDoc.position = values.position || null;
       } else if (values.role === 'siswa') {
         userDoc.nisn = values.identifier?.trim() || null;
@@ -522,6 +523,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
       dataToUpdate.position = values.position || null;
       dataToUpdate.sequenceNumber = values.sequenceNumber ? parseInt(values.sequenceNumber, 10) : null;
     } else if (values.role === 'pegawai') {
+      dataToUpdate.nip = values.identifier?.trim() || null;
       dataToUpdate.position = values.position || null;
     } else if (values.role === 'siswa') {
       dataToUpdate.nisn = values.identifier?.trim() || null;
@@ -638,7 +640,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
         case 'kepala_sekolah':
             return canManage ? 7 : 6;
         case 'pegawai':
-            return canManage ? 6 : 5;
+            return canManage ? 7 : 6;
         case 'siswa':
             return canManage ? 6 : 5;
         case 'admin':
@@ -650,8 +652,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
 
   return (
     <>
-    <Tabs defaultValue="guru" className="w-full" onValueChange={setActiveTab}>
-      <Card>
+      <Card className="w-full">
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
@@ -766,7 +767,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                               )}/>
                           )}
                           
-                          {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah' || selectedRoleForAdd === 'siswa') && (
+                          {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah' || selectedRoleForAdd === 'siswa' || selectedRoleForAdd === 'pegawai') && (
                               <FormField control={addForm.control} name="identifier" render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>{roleConfig[selectedRoleForAdd as Role]?.label} <span className="text-muted-foreground">(Opsional)</span></FormLabel>
@@ -799,40 +800,40 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
               )}
             </div>
           </div>
-          <div className="mt-4">
-            <div className="overflow-x-auto">
-                <TabsList>
-                    <TabsTrigger value="guru">Guru</TabsTrigger>
-                    <TabsTrigger value="pegawai">Pegawai</TabsTrigger>
-                    <TabsTrigger value="siswa">Siswa</TabsTrigger>
-                    <TabsTrigger value="kepala_sekolah">Kepala Sekolah</TabsTrigger>
-                    <TabsTrigger value="admin">Admin</TabsTrigger>
-                </TabsList>
-            </div>
-          </div>
         </CardHeader>
-        <CardContent>
-            {isUsersLoading ? (
-                <UserTableSkeleton cols={skeletonCols} />
-            ) : (
-                <div className="overflow-x-auto">
-                    <TabsContent value="guru">
-                        <UserTable data={filteredGuruData} userType="Guru" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
-                    </TabsContent>
-                    <TabsContent value="pegawai">
-                        <UserTable data={filteredPegawaiData} userType="Pegawai" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
-                    </TabsContent>
-                    <TabsContent value="siswa">
-                        <UserTable data={filteredSiswaData} userType="Siswa" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
-                    </TabsContent>
-                    <TabsContent value="kepala_sekolah">
-                        <UserTable data={filteredKepalaSekolahData} userType="Kepala Sekolah" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
-                    </TabsContent>
-                    <TabsContent value="admin">
-                        <UserTable data={filteredAdminData} userType="Admin" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
-                    </TabsContent>
-                </div>
-            )}
+        <CardContent className="pt-0">
+          <Tabs defaultValue="guru" className="w-full" onValueChange={setActiveTab}>
+              <div className="overflow-x-auto">
+                  <TabsList>
+                      <TabsTrigger value="guru">Guru</TabsTrigger>
+                      <TabsTrigger value="pegawai">Pegawai</TabsTrigger>
+                      <TabsTrigger value="siswa">Siswa</TabsTrigger>
+                      <TabsTrigger value="kepala_sekolah">Kepala Sekolah</TabsTrigger>
+                      <TabsTrigger value="admin">Admin</TabsTrigger>
+                  </TabsList>
+              </div>
+              {isUsersLoading ? (
+                  <UserTableSkeleton cols={skeletonCols} />
+              ) : (
+                  <div className="mt-4">
+                      <TabsContent value="guru">
+                          <UserTable data={filteredGuruData} userType="Guru" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                      </TabsContent>
+                      <TabsContent value="pegawai">
+                          <UserTable data={filteredPegawaiData} userType="Pegawai" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                      </TabsContent>
+                      <TabsContent value="siswa">
+                          <UserTable data={filteredSiswaData} userType="Siswa" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                      </TabsContent>
+                      <TabsContent value="kepala_sekolah">
+                          <UserTable data={filteredKepalaSekolahData} userType="Kepala Sekolah" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                      </TabsContent>
+                      <TabsContent value="admin">
+                          <UserTable data={filteredAdminData} userType="Admin" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                      </TabsContent>
+                  </div>
+              )}
+          </Tabs>
         </CardContent>
       </Card>
 
@@ -945,7 +946,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                     )}/>
                 )}
                 
-                {(selectedRoleForEdit !== 'pegawai' && selectedRoleForEdit !== 'admin') && (
+                {(selectedRoleForEdit === 'guru' || selectedRoleForEdit === 'kepala_sekolah' || selectedRoleForEdit === 'siswa' || selectedRoleForEdit === 'pegawai') && (
                   <FormField
                     control={editForm.control}
                     name="identifier"
@@ -953,7 +954,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                       <FormItem>
                         <FormLabel>
                           {roleConfig[selectedRoleForEdit as Role]?.label || "Identifier"}
-                          {(selectedRoleForEdit === 'guru' || selectedRoleForEdit === 'kepala_sekolah' || selectedRoleForEdit === 'siswa') && <span className="text-muted-foreground ml-1">(Opsional)</span>}
+                           <span className="text-muted-foreground ml-1">(Opsional)</span>
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -1051,7 +1052,6 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
         </DialogContent>
       </Dialog>
       
-    </Tabs>
 
     <AlertDialog open={isDeleteDialogOpen} onOpenChange={handleDialogStateChange}>
       <AlertDialogContent>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -16,11 +16,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
-import { collection, query, orderBy, doc, where, Timestamp } from 'firebase/firestore';
-import { format, isBefore, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns';
+import { collection, query, orderBy, doc } from 'firebase/firestore';
+import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths, isBefore, eachDayOfInterval, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { id } from 'date-fns/locale';
 
 const statusVariant: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
@@ -42,12 +44,23 @@ const approvalStatusVariant: { [key: string]: 'default' | 'secondary' | 'destruc
 export default function LaporanPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const isStaff = user?.role === 'guru' || user?.role === 'pegawai';
 
   const schoolConfigRef = useMemoFirebase(() => {
     if (!firestore) return null;
     return doc(firestore, 'schoolConfig', 'default');
   }, [firestore]);
   const { data: schoolConfig, isLoading: isConfigLoading } = useDoc(user, schoolConfigRef);
+
+  const monthlyConfigId = useMemo(() => format(currentMonth, 'yyyy-MM'), [currentMonth]);
+  const monthlyConfigRef = useMemoFirebase(() => {
+      if (!firestore) return null;
+      return doc(firestore, 'monthlyConfigs', monthlyConfigId);
+  }, [firestore, monthlyConfigId]);
+  const { data: monthlyConfig, isLoading: isMonthlyConfigLoading } = useDoc(user, monthlyConfigRef);
 
   const attendanceHistoryQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -62,86 +75,129 @@ export default function LaporanPage() {
   const { data: attendanceHistory, isLoading: isHistoryLoading } = useCollection(user, attendanceHistoryQuery);
   const { data: leaveHistory, isLoading: isLeaveLoading } = useCollection(user, leaveHistoryQuery);
 
-  const isLoading = isAuthLoading || isHistoryLoading || isLeaveLoading || isConfigLoading;
+  const isLoading = isAuthLoading || isHistoryLoading || isLeaveLoading || isConfigLoading || isMonthlyConfigLoading;
   
-  const reportData = useMemo(() => {
-    if (!attendanceHistory || !leaveHistory || !schoolConfig) {
+  const monthlyReportData = useMemo(() => {
+    if (isLoading || !attendanceHistory || !leaveHistory || !schoolConfig) {
       return [];
     }
 
-    const attendanceRecords = attendanceHistory.map(rec => {
-        const checkInTime = rec.checkInTime?.toDate();
-        const checkOutTime = rec.checkOutTime ? rec.checkOutTime.toDate() : null;
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const today = startOfDay(new Date());
 
-        let description = '';
+    const offDays: number[] = schoolConfig.offDays ?? [0, 6];
+    const holidays: string[] = monthlyConfig?.holidays ?? [];
 
-        if (rec.keterangan === 'Tepat waktu') {
-            description = 'Tepat waktu';
-        } else if (checkInTime && !checkOutTime) {
-          description = 'Belum absen pulang';
-        } else if (checkInTime && checkOutTime) {
-           if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
-            const [endH, endM] = schoolConfig.checkInEndTime.split(':').map(Number);
-            const checkInDeadline = new Date(checkInTime);
-            checkInDeadline.setHours(endH, endM, 0, 0);
-            description = isBefore(checkInTime, checkInDeadline) ? 'Tepat waktu' : 'Terlambat';
-          } else {
-            description = 'Absensi terekam';
-          }
-        } else {
-          description = 'Data tidak lengkap';
-        }
+    const allDaysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
+    const report = allDaysInMonth.map(day => {
+        const dayStr = format(day, 'yyyy-MM-dd');
+        const isWorkingDay = !offDays.includes(day.getDay()) && !holidays.includes(dayStr);
 
-        return {
-            id: rec.id, // Pass ID for key
-            date: checkInTime,
-            dateString: checkInTime ? format(checkInTime, 'eee, dd/MM/yy', { locale: id }) : '-',
-            checkIn: checkInTime ? format(checkInTime, 'HH:mm') : '-',
-            checkOut: checkOutTime ? format(checkOutTime, 'HH:mm') : '-',
-            status: 'Hadir',
-            description: description,
-            approvalStatus: undefined,
-        };
-    });
+        const leaveRecord = leaveHistory.find(l => 
+            l.status === 'approved' && isWithinInterval(day, { start: startOfDay(l.startDate.toDate()), end: endOfDay(l.endDate.toDate()) })
+        );
 
-    const leaveRecords = leaveHistory.flatMap(rec => {
-        try {
-            if (!rec || !rec.startDate || typeof rec.startDate.toDate !== 'function' || !rec.endDate || typeof rec.endDate.toDate !== 'function') {
-                console.warn('Laporan Page: Skipping invalid leave record (malformed or missing dates):', rec);
-                return [];
-            }
-            const sDate = rec.startDate.toDate();
-            const eDate = rec.endDate.toDate();
-            
-            if (isBefore(eDate, sDate)) {
-                console.warn("Laporan Page: End date is before start date, skipping", rec);
-                return [];
-            }
-            
-            const interval = { start: startOfDay(sDate), end: endOfDay(eDate) };
-            return eachDayOfInterval(interval).map(loopDate => ({
-                id: `${rec.id}-${format(loopDate, 'yyyy-MM-dd')}`,
-                date: loopDate,
-                dateString: format(loopDate, 'eee, dd/MM/yy', { locale: id }),
+        if (leaveRecord) {
+            return {
+                id: `${leaveRecord.id}-${dayStr}`,
+                date: day,
+                dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
                 checkIn: '-',
                 checkOut: '-',
-                status: rec.type, // Sakit, Izin, Dinas
-                approvalStatus: rec.status,
-                description: rec.reason,
-            }));
-
-        } catch(e) {
-             console.error("Laporan Page: Error processing leave record, skipping:", rec, e);
-             return [];
+                status: leaveRecord.type, // e.g., 'Sakit', 'Izin'
+                description: leaveRecord.reason,
+            };
         }
+
+        const attendanceRecord = attendanceHistory.find(a => {
+            const checkInDate = a.checkInTime?.toDate();
+            return checkInDate && format(checkInDate, 'yyyy-MM-dd') === dayStr;
+        });
+
+        if (attendanceRecord) {
+            const checkInTime = attendanceRecord.checkInTime.toDate();
+            const checkOutTime = attendanceRecord.checkOutTime?.toDate();
+
+            if (checkInTime && checkOutTime) {
+                let description = 'Absen Terekam';
+                if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
+                    const [endH, endM] = schoolConfig.checkInEndTime.split(':').map(Number);
+                    const checkInDeadline = new Date(checkInTime);
+                    checkInDeadline.setHours(endH, endM, 0, 0);
+                    if (isBefore(checkInTime, checkInDeadline) === false) {
+                        description = 'Terlambat';
+                    }
+                }
+                return {
+                    id: attendanceRecord.id,
+                    date: day,
+                    dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
+                    checkIn: format(checkInTime, 'HH:mm'),
+                    checkOut: format(checkOutTime, 'HH:mm'),
+                    status: 'Hadir',
+                    description: description,
+                };
+            } else if (checkInTime) {
+                if (isBefore(day, today)) {
+                     return {
+                        id: attendanceRecord.id,
+                        date: day,
+                        dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
+                        checkIn: format(checkInTime, 'HH:mm'),
+                        checkOut: '-',
+                        status: 'Alpa',
+                        description: 'Tidak Absen Pulang',
+                    };
+                } else {
+                     return {
+                        id: attendanceRecord.id,
+                        date: day,
+                        dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
+                        checkIn: format(checkInTime, 'HH:mm'),
+                        checkOut: '-',
+                        status: 'Hadir',
+                        description: 'Belum Absen Pulang',
+                    };
+                }
+            }
+        }
+        
+        if (isWorkingDay && isBefore(day, today)) {
+             return {
+                id: dayStr,
+                date: day,
+                dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
+                checkIn: '-',
+                checkOut: '-',
+                status: 'Alpa',
+                description: 'Tidak Ada Keterangan',
+            };
+        }
+
+        return null;
     });
 
-    const combined = [...attendanceRecords, ...leaveRecords];
-    combined.sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
+    return report.filter(Boolean).sort((a, b) => (b.date.getTime()) - (a.date.getTime()));
 
-    return combined;
-  }, [attendanceHistory, leaveHistory, schoolConfig]);
+  }, [attendanceHistory, leaveHistory, schoolConfig, monthlyConfig, currentMonth, isLoading]);
+
+  const handlePrevMonth = () => {
+    if (isStaff) {
+        toast({ 
+            variant: 'default',
+            title: 'Akses Terbatas', 
+            description: 'Silahkan hubungi admin untuk melihat laporan kehadiran sebelumnya.' 
+        });
+        return;
+    }
+    setCurrentMonth(prev => subMonths(prev, 1));
+  };
+
+  const handleNextMonth = () => {
+      setCurrentMonth(prev => addMonths(prev, 1));
+  };
 
   if (isLoading) {
     return (
@@ -156,10 +212,21 @@ export default function LaporanPage() {
       <CardHeader>
         <CardTitle>Riwayat Absensi &amp; Izin</CardTitle>
         <CardDescription>
-        Berikut adalah catatan kehadiran dan pengajuan izin Anda.
+            Berikut adalah catatan kehadiran dan pengajuan izin Anda.
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="flex items-center gap-2 mb-4">
+            <Button variant="outline" size="icon" onClick={handlePrevMonth}>
+                <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="font-semibold text-center w-32 capitalize">
+                {format(currentMonth, 'MMMM yyyy', { locale: id })}
+            </span>
+            <Button variant="outline" size="icon" onClick={handleNextMonth} disabled={isSameMonth(currentMonth, new Date())}>
+                <ChevronRight className="h-4 w-4" />
+            </Button>
+        </div>
         <div className="overflow-x-auto">
             <Table>
             <TableHeader>
@@ -173,8 +240,8 @@ export default function LaporanPage() {
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {reportData && reportData.length > 0 ? (
-                  reportData.map((record, index) => (
+                {monthlyReportData && monthlyReportData.length > 0 ? (
+                  monthlyReportData.map((record, index) => (
                       <TableRow key={record.id}>
                           <TableCell className="text-center p-2 sm:p-4">{index + 1}</TableCell>
                           <TableCell className="font-medium whitespace-nowrap p-2 sm:p-4">{record.dateString}</TableCell>
@@ -195,7 +262,7 @@ export default function LaporanPage() {
                 : (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
-                      Belum ada riwayat absensi atau izin.
+                      Tidak ada riwayat absensi atau izin untuk bulan ini.
                     </TableCell>
                   </TableRow>
                 )}

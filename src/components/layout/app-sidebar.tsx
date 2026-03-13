@@ -11,6 +11,7 @@ import {
   Users,
   MailCheck,
   ClipboardCheck,
+  BookCheck,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -30,19 +31,21 @@ const defaultNavItems = [
   { href: '/dashboard/pengaturan', icon: Settings, label: 'Pengaturan' },
 ];
 
+// Unified navigation pointing to the single, smart report page
 const adminNavItems = [
-  { href: '/dashboard/admin', icon: Home, label: 'Beranda' },
+  { href: '/dashboard', icon: Home, label: 'Beranda' },
   { href: '/dashboard/admin/users', icon: Users, label: 'Pengguna' },
   { href: '/dashboard/admin/konfigurasi', icon: QrCode, label: 'Pengaturan Absen' },
-  { href: '/dashboard/admin/laporan', icon: FileText, label: 'Laporan' },
+  { href: '/dashboard/laporan-sekolah', icon: BookCheck, label: 'Laporan Sekolah' }, // <-- Points to the unified page
   { href: '/dashboard/pengaturan', icon: Settings, label: 'Pengaturan' },
 ];
 
+// Unified navigation pointing to the single, smart report page
 const headmasterNavItems = [
-    { href: '/dashboard/kepala_sekolah', icon: Home, label: 'Beranda' },
+    { href: '/dashboard', icon: Home, label: 'Beranda' },
     { href: '/dashboard/absen', icon: QrCode, label: 'Absen' },
-    { href: '/dashboard/admin/izin', icon: ClipboardCheck, label: 'Persetujuan Izin' },
-    { href: '/dashboard/admin/laporan', icon: FileText, label: 'Laporan Sekolah' },
+    { href: '/dashboard/izin-kepala-sekolah', icon: ClipboardCheck, label: 'Persetujuan Izin' },
+    { href: '/dashboard/laporan-sekolah', icon: BookCheck, label: 'Laporan Sekolah' }, // <-- Points to the unified page
     { href: '/dashboard/pengaturan', icon: Settings, label: 'Pengaturan' },
 ];
 
@@ -79,12 +82,9 @@ export function AppSidebar() {
       <SidebarContent className="p-2 pt-4 flex flex-col">
         <SidebarMenu>
           {navItems.map((item) => {
-            let isActive = false;
-            if (item.href === '/dashboard' || item.href === '/dashboard/admin' || item.href === '/dashboard/kepala_sekolah') {
-                isActive = pathname === item.href;
-            } else {
-                isActive = pathname.startsWith(item.href);
-            }
+            const isActive = item.href === '/dashboard' 
+                ? pathname === item.href 
+                : pathname.startsWith(item.href);
             
             return (
               <SidebarMenuItem key={item.label}>
@@ -103,7 +103,7 @@ export function AppSidebar() {
           })}
         </SidebarMenu>
          <div className="mt-auto p-2 text-center text-xs text-muted-foreground">
-            ©smpn5lr 2026
+            ©2026 SMPN5LR <br /> created by team operator
         </div>
       </SidebarContent>
     </Sidebar>
