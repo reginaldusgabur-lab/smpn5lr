@@ -119,7 +119,7 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfigData, isLoading 
                 </div>
                 <div className="w-full flex flex-col items-center space-y-2 pt-4">
                     <Button size="lg" className="w-full h-12 text-lg font-bold" onClick={() => router.push('/dashboard/absen')} disabled={buttonStatus.disabled}>{isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}{buttonStatus.text}</Button>
-                    <Button variant="link" asChild><Link href="/dashboard/laporan">Lihat Riwayat Lengkap</Link></Button>
+                    <Button variant="link" asChild><Link href="/dashboard/kepala_sekolah/laporan">Lihat Riwayat Lengkap</Link></Button>
                 </div>
             </CardContent>
         </Card>
@@ -228,6 +228,7 @@ function useMonthlyAttendanceSummary(user: any) {
     return { summary, isLoading };
 }
 
+// CORRECTED: This function is now more robust and will not crash on unmount.
 function useStaffDashboardStats(firestore: any, user: any) {
   const cacheKey = 'staffDashboardStats';
   const [stats, setStats] = useState(() => getFromCache(cacheKey) || { totalStaff: 0, hadir: 0, izin: 0, sakit: 0 });
@@ -238,37 +239,62 @@ function useStaffDashboardStats(firestore: any, user: any) {
   useEffect(() => {
     if (!firestore || !user) return;
 
-    const staffQuery = query(collection(firestore, 'users'), where('role', 'in', ['guru', 'pegawai', 'kepala_sekolah']));
-    const attendanceTodayQuery = query(collectionGroup(firestore, 'attendanceRecords'), where('checkInTime', '>=', startOfDay(new Date())), where('checkInTime', '<=', endOfDay(new Date())));
-    const leaveTodayQuery = query(collectionGroup(firestore, 'leaveRequests'), where('status', '==', 'approved'));
+    // Initialize unsubscribe functions to prevent errors on rapid unmount.
+    let unsubStaff = () => {};
+    let unsubAttendance = () => {};
+    let unsubLeave = () => {};
 
-    const processAndCacheStats = (key: 'totalStaff' | 'hadir' | 'izinSakit', data: any) => {
-        setStats(currentStats => {
-            const newStats = { ...currentStats, ...data };
-            setInCache(cacheKey, newStats); // Cache the latest combined state
-            return newStats;
+    try {
+        const staffQuery = query(collection(firestore, 'users'), where('role', 'in', ['guru', 'pegawai', 'kepala_sekolah']));
+        const attendanceTodayQuery = query(collectionGroup(firestore, 'attendanceRecords'), where('checkInTime', '>=', startOfDay(new Date())), where('checkInTime', '<=', endOfDay(new Date())));
+        const leaveTodayQuery = query(collectionGroup(firestore, 'leaveRequests'), where('status', '==', 'approved'));
+
+        const processAndCacheStats = (data: Partial<typeof stats>) => {
+            setStats(currentStats => {
+                const newStats = { ...currentStats, ...data };
+                setInCache(cacheKey, newStats);
+                return newStats;
+            });
+        }
+
+        unsubStaff = onSnapshot(staffQuery, snap => {
+            processAndCacheStats({ totalStaff: snap.size });
+            if (isLoading) setIsLoading(false);
+        }, (error) => {
+            console.error("Staff listener failed:", error);
+            if (isLoading) setIsLoading(false);
         });
+
+        unsubAttendance = onSnapshot(attendanceTodayQuery, snap => processAndCacheStats({ hadir: snap.size }), (error) => {
+            console.error("Attendance listener failed:", error);
+        });
+        
+        unsubLeave = onSnapshot(leaveTodayQuery, snap => {
+            let izinCount = 0, sakitCount = 0;
+            const today = new Date();
+            snap.forEach(doc => {
+                const leave = doc.data();
+                if (leave.startDate && leave.endDate && isWithinInterval(startOfDay(today), { start: leave.startDate.toDate(), end: leave.endDate.toDate() })) {
+                    if (leave.type === 'Izin') izinCount++;
+                    else if (leave.type === 'Sakit') sakitCount++;
+                }
+            });
+            processAndCacheStats({ izin: izinCount, sakit: sakitCount });
+        }, (error) => {
+            console.error("Leave listener failed:", error);
+        });
+
+    } catch (error) {
+        console.error("Error setting up dashboard listeners:", error);
+        setIsLoading(false);
     }
 
-    const unsubStaff = onSnapshot(staffQuery, snap => {
-        processAndCacheStats('totalStaff', { totalStaff: snap.size });
-        setIsLoading(false); // Stop loading once the main staff count is fetched
-    });
-    const unsubAttendance = onSnapshot(attendanceTodayQuery, snap => processAndCacheStats('hadir', { hadir: snap.size }));
-    const unsubLeave = onSnapshot(leaveTodayQuery, snap => {
-        let izinCount = 0, sakitCount = 0;
-        const today = new Date();
-        snap.forEach(doc => {
-            const leave = doc.data();
-            if (isWithinInterval(startOfDay(today), { start: leave.startDate.toDate(), end: leave.endDate.toDate() })) {
-                if (leave.type === 'Izin') izinCount++;
-                else if (leave.type === 'Sakit') sakitCount++;
-            }
-        });
-        processAndCacheStats('izinSakit', { izin: izinCount, sakit: sakitCount });
-    });
-
-    return () => { unsubStaff(); unsubAttendance(); unsubLeave(); };
+    // This cleanup function will now safely call the initialized unsubscribe functions.
+    return () => {
+        unsubStaff();
+        unsubAttendance();
+        unsubLeave();
+    };
   }, [firestore, user]);
 
   return { stats: {...stats, alpa: alpaCount}, isLoading };

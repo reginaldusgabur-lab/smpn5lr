@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { auth } from '@/firebase';
+import { auth, useUser } from '@/firebase'; // Import useUser hook
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import Link from 'next/link';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -57,8 +57,16 @@ export default function LoginPage() {
 
   const { toast } = useToast();
   const router = useRouter();
+  const { user, isUserLoading } = useUser(); // Get user state
 
   const appLogo = PlaceHolderImages.find(p => p.id === 'app-logo');
+
+  useEffect(() => {
+    // Redirect if user is already logged in
+    if (!isUserLoading && user) {
+      router.replace('/dashboard');
+    }
+  }, [user, isUserLoading, router]);
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -96,8 +104,8 @@ export default function LoginPage() {
           setIsLoginLoading(false);
           return;
         }
-
-        router.push('/dashboard');
+        // Let the useEffect handle the redirect
+        // router.push('/dashboard');
     } catch (error: any) {
         let errorMessage = "Email atau password yang Anda masukkan salah. Silakan periksa kembali.";
         if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
@@ -147,6 +155,15 @@ export default function LoginPage() {
         setIsResetLoading(false);
     }
   };
+
+  // Show a loading screen while checking auth status
+  if (isUserLoading || user) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+    );
+  }
   
   return (
     <div className="flex flex-col min-h-screen items-center justify-center p-4 bg-background text-foreground">
