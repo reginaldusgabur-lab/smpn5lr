@@ -135,7 +135,7 @@ const UserTable = ({ data, userType, canManage, onEdit, onToggleStatus, onDelete
   if (canManage) colSpan++;
 
   return (
-      <Table>
+      <Table className="min-w-[960px]">
         <TableHeader>
           <TableRow>
             <TableHead className="w-[50px] text-center whitespace-nowrap">
@@ -652,8 +652,8 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
 
   return (
     <>
-      <Card className="w-full">
-        <CardHeader>
+      <Card className="w-full -mt-12 md:mt-0">
+        <CardHeader className="p-4 md:p-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <CardTitle>Manajemen Pengguna</CardTitle>
@@ -781,7 +781,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                               <FormField control={addForm.control} name="position" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex items-center space-x-4"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PNS" /></FormControl><FormLabel className="font-normal">PNS</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
                           )}
                           {selectedRoleForAdd === 'pegawai' && (
-                              <FormField control={addForm.control} name="position" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-wrap items-center gap-x-4 gap-y-2"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="Honorer" /></FormControl><FormLabel className="font-normal">Honorer</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PW" /></FormControl><FormLabel className="font-normal">PW</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
+                              <FormField control={addForm.control} name="position" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-wrap items-center gap-x-4 gap-y-2"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="Honorer" /></FormControl><FormLabel className="font-normal">Honorer</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PW" /></FormControl><FormLabel className="font-normal">{'PW (PPPK Paruh Waktu)'}</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
                           )}
 
                           <FormField control={addForm.control} name="password" render={({ field }) => (<FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Minimal 6 karakter" {...field} /></FormControl><FormMessage /></FormItem>)}/>
@@ -801,7 +801,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
           <Tabs defaultValue="guru" className="w-full" onValueChange={setActiveTab}>
               <div className="overflow-x-auto">
                   <TabsList>
@@ -813,23 +813,35 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                   </TabsList>
               </div>
               {isUsersLoading ? (
-                  <UserTableSkeleton cols={skeletonCols} />
+                  <div className="border rounded-md overflow-x-auto mt-4">
+                    <UserTableSkeleton cols={skeletonCols} />
+                  </div>
               ) : (
                   <div className="mt-4">
                       <TabsContent value="guru">
-                          <UserTable data={filteredGuruData} userType="Guru" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                          <div className="border rounded-md overflow-x-auto">
+                            <UserTable data={filteredGuruData} userType="Guru" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                          </div>
                       </TabsContent>
                       <TabsContent value="pegawai">
-                          <UserTable data={filteredPegawaiData} userType="Pegawai" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                          <div className="border rounded-md overflow-x-auto">
+                            <UserTable data={filteredPegawaiData} userType="Pegawai" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                          </div>
                       </TabsContent>
                       <TabsContent value="siswa">
-                          <UserTable data={filteredSiswaData} userType="Siswa" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                          <div className="border rounded-md overflow-x-auto">
+                            <UserTable data={filteredSiswaData} userType="Siswa" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                          </div>
                       </TabsContent>
                       <TabsContent value="kepala_sekolah">
-                          <UserTable data={filteredKepalaSekolahData} userType="Kepala Sekolah" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                          <div className="border rounded-md overflow-x-auto">
+                            <UserTable data={filteredKepalaSekolahData} userType="Kepala Sekolah" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                          </div>
                       </TabsContent>
                       <TabsContent value="admin">
-                          <UserTable data={filteredAdminData} userType="Admin" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                          <div className="border rounded-md overflow-x-auto">
+                            <UserTable data={filteredAdminData} userType="Admin" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                          </div>
                       </TabsContent>
                   </div>
               )}
@@ -1030,7 +1042,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                                 <FormControl>
                                     <RadioGroupItem value="PW" />
                                 </FormControl>
-                                <FormLabel className="font-normal">PW (PPPK Paruh Waktu)</FormLabel>
+                                <FormLabel className="font-normal">{'PW (PPPK Paruh Waktu)'}</FormLabel>
                                 </FormItem>
                             </RadioGroup>
                             </FormControl>

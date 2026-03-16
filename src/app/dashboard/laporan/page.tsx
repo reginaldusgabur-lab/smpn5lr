@@ -208,14 +208,14 @@ export default function LaporanPage() {
   }
   
   return (
-    <Card>
-      <CardHeader>
+    <Card className="-mt-12 md:mt-0">
+      <CardHeader className="p-4 md:p-6">
         <CardTitle>Riwayat Absensi &amp; Izin</CardTitle>
         <CardDescription>
             Berikut adalah catatan kehadiran dan pengajuan izin Anda.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
         <div className="flex items-center gap-2 mb-4">
             <Button variant="outline" size="icon" onClick={handlePrevMonth}>
                 <ChevronLeft className="h-4 w-4" />
@@ -227,46 +227,46 @@ export default function LaporanPage() {
                 <ChevronRight className="h-4 w-4" />
             </Button>
         </div>
-        <div className="overflow-x-auto">
-            <Table>
-            <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px] text-center px-2 sm:px-4">No.</TableHead>
-                  <TableHead className="px-2 sm:px-4">Tanggal</TableHead>
-                  <TableHead className="text-center px-2 sm:px-4">Jam Masuk</TableHead>
-                  <TableHead className="text-center px-2 sm:px-4">Jam Pulang</TableHead>
-                  <TableHead className="text-center px-2 sm:px-4">Status</TableHead>
-                  <TableHead className="px-2 sm:px-4">Keterangan</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {monthlyReportData && monthlyReportData.length > 0 ? (
-                  monthlyReportData.map((record, index) => (
-                      <TableRow key={record.id}>
-                          <TableCell className="text-center p-2 sm:p-4">{index + 1}</TableCell>
-                          <TableCell className="font-medium whitespace-nowrap p-2 sm:p-4">{record.dateString}</TableCell>
-                          <TableCell className="text-center p-2 sm:p-4">{record.checkIn}</TableCell>
-                          <TableCell className="text-center p-2 sm:p-4">{record.checkOut}</TableCell>
-                          <TableCell className="text-center space-x-1 whitespace-nowrap p-2 sm:p-4">
-                              <Badge variant={statusVariant[record.status] || 'default'}>{record.status}</Badge>
-                              {record.approvalStatus && (
-                                <Badge variant={approvalStatusVariant[record.approvalStatus] || 'secondary'} className="capitalize">
-                                    {record.approvalStatus}
-                                </Badge>
-                              )}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap p-2 sm:p-4" title={record.description}>{record.description}</TableCell>
-                      </TableRow>
-                    )
-                ))
-                : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                      Tidak ada riwayat absensi atau izin untuk bulan ini.
-                    </TableCell>
-                  </TableRow>
-                )}
-            </TableBody>
+        <div className="border rounded-md overflow-x-auto">
+            <Table className="min-w-[720px]">
+                <TableHeader>
+                    <TableRow>
+                        <TableHead className="w-[50px] text-center">No.</TableHead>
+                        <TableHead className="w-[150px]">Tanggal</TableHead>
+                        <TableHead className="w-[120px] text-center">Jam Masuk</TableHead>
+                        <TableHead className="w-[120px] text-center">Jam Pulang</TableHead>
+                        <TableHead className="w-[120px] text-center">Status</TableHead>
+                        <TableHead>Keterangan</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {monthlyReportData && monthlyReportData.length > 0 ? (
+                    monthlyReportData.map((record, index) => (
+                        <TableRow key={record.id}>
+                            <TableCell className="text-center">{index + 1}</TableCell>
+                            <TableCell className="font-medium whitespace-nowrap">{record.dateString}</TableCell>
+                            <TableCell className="text-center">{record.checkIn}</TableCell>
+                            <TableCell className="text-center">{record.checkOut}</TableCell>
+                            <TableCell className="text-center whitespace-nowrap">
+                                <Badge variant={statusVariant[record.status] || 'default'}>{record.status}</Badge>
+                                {record.approvalStatus && (
+                                    <Badge variant={approvalStatusVariant[record.approvalStatus] || 'secondary'} className="capitalize">
+                                        {record.approvalStatus}
+                                    </Badge>
+                                )}
+                            </TableCell>
+                            <TableCell title={record.description}>{record.description}</TableCell>
+                        </TableRow>
+                        )
+                    ))
+                    : (
+                    <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                        Tidak ada riwayat absensi atau izin untuk bulan ini.
+                        </TableCell>
+                    </TableRow>
+                    )}
+                </TableBody>
             </Table>
         </div>
       </CardContent>
