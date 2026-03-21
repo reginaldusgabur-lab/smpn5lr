@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -17,432 +18,410 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, ChevronLeft, ChevronRight, Search, Download, MoreVertical, ChevronDown } from 'lucide-react';
-import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
-import { collection, query, getDocs, doc, where, collectionGroup, orderBy } from 'firebase/firestore';
-import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths, isBefore, eachDayOfInterval, startOfDay, isWithinInterval, setHours, setMinutes, isSameDay, endOfDay } from 'date-fns';
-import { id } from 'date-fns/locale';
-import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
-import { exportToExcel, exportToPdf, exportDetailedReportToExcel, exportDetailedReportToPdf } from '@/lib/export';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import {
+  collection, 
+  query, 
+  where, 
+  orderBy, 
+  doc, 
+  collectionGroup, 
+  getDocs,
+  Timestamp 
+} from 'firebase/firestore';
+import { 
+  startOfMonth, 
+  endOfMonth, 
+  startOfDay, 
+  endOfDay, 
+  format, 
+  addMonths, 
+  subMonths, 
+  eachDayOfInterval, 
+  isWithinInterval
+} from 'date-fns';
+import { id } from 'date-fns/locale';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Loader2,
+  FileDown
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
+import * as XLSX from 'xlsx';
 
 
-async function generateDetailedReportData(firestore: any, userId: string, currentMonth: Date, schoolConfig: any, monthlyConfig: any) {
-    if (!firestore || !userId || !currentMonth || !schoolConfig || monthlyConfig === undefined) return [];
+const ReportTableSkeleton = () => (
+    <div className="border rounded-md">
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    {[...Array(5)].map((_, i) => (
+                        <TableHead key={i}><Skeleton className="h-5 w-full" /></TableHead>
+                    ))}
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {[...Array(10)].map((_, i) => (
+                    <TableRow key={i}>
+                        {[...Array(5)].map((_, j) => (
+                            <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>
+                        ))}
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    </div>
+);
 
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
-    const today = startOfDay(new Date());
+export default function AdminLaporanPage() {
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const router = useRouter();
+  const { toast } = useToast();
 
-    const attendanceQuery = query(collection(firestore, 'users', userId, 'attendanceRecords'), orderBy('checkInTime', 'desc'));
-    const leaveQuery = query(collection(firestore, 'users', userId, 'leaveRequests'), orderBy('startDate', 'desc'));
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRole, setSelectedRole] = useState('guru');
+  const [isDownloading, setIsDownloading] = useState(false);
 
-    const [attendanceSnapshot, leaveSnapshot] = await Promise.all([getDocs(attendanceQuery), getDocs(leaveQuery)]);
-    const attendanceHistory = attendanceSnapshot.docs.map(d => ({ ...d.data(), id: d.id }));
-    const leaveHistory = leaveSnapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+  // ======== PERMISSION CHECKS =========
+  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const { data: userData, isLoading: isUserDataLoading } = useDoc(user, userDocRef);
+  const isAllowed = !isUserDataLoading && (userData?.role === 'admin' || userData?.role === 'kepala_sekolah');
 
-    const offDays: number[] = schoolConfig.offDays ?? [0, 6];
-    const holidays: string[] = monthlyConfig?.holidays ?? [];
+  useEffect(() => {
+    if (!isUserLoading && !isUserDataLoading) {
+      if (!user) router.replace('/');
+      else if (!isAllowed) router.replace('/dashboard');
+    }
+  }, [user, isUserLoading, isUserDataLoading, isAllowed, router]);
 
-    const allDaysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  // ======== DATA FETCHING =========
+  const usersQuery = useMemoFirebase(() => {
+      if (!firestore || !isAllowed) return null;
+      return query(
+          collection(firestore, 'users'), 
+          where('role', '==', selectedRole),
+          orderBy(selectedRole === 'guru' || selectedRole === 'kepala_sekolah' ? 'sequenceNumber' : 'name', 'asc')
+      );
+  }, [firestore, isAllowed, selectedRole]);
+  
+  const { data: usersData, isLoading: isUsersLoading } = useCollection(user, usersQuery);
 
-    const report = allDaysInMonth.map(day => {
-        const dayStr = format(day, 'yyyy-MM-dd');
-        const isWorkingDay = !offDays.includes(day.getDay()) && !holidays.includes(dayStr);
+  const [reportData, setReportData] = useState<any[]>([]);
+  const [isReportLoading, setIsReportLoading] = useState(true);
 
-        const leaveRecord = leaveHistory.find(l => 
-            l.status === 'approved' && isWithinInterval(day, { start: startOfDay(l.startDate.toDate()), end: endOfDay(l.endDate.toDate()) })
-        );
-
-        if (leaveRecord) {
-            return {
-                id: `${leaveRecord.id}-${dayStr}`,
-                date: day,
-                dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
-                checkIn: '-',
-                checkOut: '-',
-                status: leaveRecord.type,
-                description: leaveRecord.reason,
-            };
+  useEffect(() => {
+    if (!firestore || !usersData || usersData.length === 0) {
+        if(usersData && usersData.length === 0) {
+            setReportData([]);
+            setIsReportLoading(false);
         }
+        return;
+    };
 
-        const attendanceRecord = attendanceHistory.find(a => a.checkInTime && format(a.checkInTime.toDate(), 'yyyy-MM-dd') === dayStr);
+    const fetchReports = async () => {
+      setIsReportLoading(true);
+      const monthStart = startOfMonth(currentMonth);
+      const monthEnd = endOfMonth(currentMonth);
+      
+      const userIds = usersData.map(u => u.id);
+      const attendanceData: { [key: string]: any } = {};
+      const leaveData: { [key: string]: any[] } = {};
+      
+      // Batch user IDs to stay within the 30-item limit for 'in' queries
+      const batchSize = 30;
+      for (let i = 0; i < userIds.length; i += batchSize) {
+          const batchUserIds = userIds.slice(i, i + batchSize);
+          
+          // Fetch Attendance
+          const attendanceQuery = query(
+              collectionGroup(firestore, 'attendanceRecords'), 
+              where('userId', 'in', batchUserIds), 
+              where('checkInTime', '>=', monthStart), 
+              where('checkInTime', '<=', monthEnd)
+          );
+          const attendanceSnap = await getDocs(attendanceQuery);
+          attendanceSnap.forEach(doc => {
+              const record = doc.data();
+              if (!attendanceData[record.userId]) attendanceData[record.userId] = {};
+              const dayKey = format(record.checkInTime.toDate(), 'yyyy-MM-dd');
+              attendanceData[record.userId][dayKey] = record;
+          });
 
-        if (attendanceRecord) {
-            const checkInTime = attendanceRecord.checkInTime.toDate();
-            const checkOutTime = attendanceRecord.checkOutTime?.toDate();
-            let status = 'Hadir';
-            let description = 'Absen Terekam';
+          // Fetch Leaves
+          const leaveQuery = query(
+              collectionGroup(firestore, 'leaveRequests'), 
+              where('userId', 'in', batchUserIds),
+              where('status', '==', 'approved'),
+              where('startDate', '<=', monthEnd)
+          );
+          const leaveSnap = await getDocs(leaveQuery);
+          leaveSnap.forEach(doc => {
+              const leave = doc.data();
+              if (leave.endDate.toDate() >= monthStart) {
+                if (!leaveData[leave.userId]) leaveData[leave.userId] = [];
+                leaveData[leave.userId].push(leave);
+              }
+          });
+      }
+      
+      const schoolConfigRef = doc(firestore, 'schoolConfig', 'default');
+      const monthlyConfigRef = doc(firestore, 'monthlyConfigs', format(currentMonth, 'yyyy-MM'));
+      const [schoolConfigSnap, monthlyConfigSnap] = await Promise.all([getDocs(query(collection(firestore, 'schoolConfig'))), getDocs(query(collection(firestore, 'monthlyConfigs'), where('__name__', '==', format(currentMonth, 'yyyy-MM'))))]);
 
-            if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
-                const [endH, endM] = schoolConfig.checkInEndTime.split(':').map(Number);
-                const checkInDeadline = setMinutes(setHours(startOfDay(checkInTime), endH), endM);
-                if (isBefore(checkInTime, checkInDeadline) === false) {
-                    status = 'Terlambat';
-                    description = 'Terlambat';
-                }
-            }
-            
-            if (!checkOutTime && isBefore(day, today)) {
-                status = 'Alpa';
-                description = 'Tidak Absen Pulang';
-            } else if (!checkOutTime) {
-                description = 'Belum Absen Pulang';
-            }
+      const offDays = schoolConfigSnap.docs[0]?.data()?.offDays ?? [0, 6];
+      const holidays = monthlyConfigSnap.docs[0]?.data()?.holidays ?? [];
+      
+      const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+      
+      const processedData = usersData.map(u => {
+        const userAttendance = attendanceData[u.id] || {};
+        const userLeaves = leaveData[u.id] || [];
+        const dailyStatuses: { [key: string]: string } = {};
+        let totalHadir = 0, totalSakit = 0, totalIzin = 0, totalAlpa = 0;
 
-            return {
-                id: attendanceRecord.id,
-                date: day,
-                dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
-                checkIn: format(checkInTime, 'HH:mm:ss'),
-                checkOut: checkOutTime ? format(checkOutTime, 'HH:mm:ss') : '-',
-                status,
-                description,
-            };
-        }
-        
-        if (isWorkingDay && isBefore(day, today)) {
-             return {
-                id: dayStr,
-                date: day,
-                dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
-                checkIn: '-',
-                checkOut: '-',
-                status: 'Alpa',
-                description: 'Tidak Ada Keterangan',
-            };
-        }
+        daysInMonth.forEach(day => {
+            const dayKey = format(day, 'yyyy-MM-dd');
+            const dayOfWeek = day.getDay();
 
-        return null;
-    });
-
-    return report.filter(Boolean).sort((a, b) => (b.date.getTime()) - (a.date.getTime()));
-}
-
-function useAttendanceSummary(currentMonth: Date) {
-    const { user } = useUser();
-    const firestore = useFirestore();
-
-    const [summary, setSummary] = useState<{ [key: string]: any[] }>({});
-    const [isLoading, setIsLoading] = useState(true);
-
-    const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
-    const { data: users, isLoading: isUsersLoading } = useCollection(user, usersQuery);
-
-    const schoolConfigRef = useMemoFirebase(() => doc(firestore, 'schoolConfig', 'default'), [firestore]);
-    const { data: schoolConfig, isLoading: isConfigLoading } = useDoc(user, schoolConfigRef);
-
-    const monthlyConfigId = useMemo(() => format(currentMonth, 'yyyy-MM'), [currentMonth]);
-    const monthlyConfigRef = useMemoFirebase(() => doc(firestore, 'monthlyConfigs', monthlyConfigId), [firestore, monthlyConfigId]);
-    const { data: monthlyConfig, isLoading: isMonthlyConfigLoading } = useDoc(user, monthlyConfigRef);
-
-    useEffect(() => {
-        const fetchAllData = async () => {
-            if (!firestore || !user || !users || !schoolConfig || monthlyConfig === undefined) {
-                if (!isUsersLoading && !isConfigLoading && !isMonthlyConfigLoading) setIsLoading(false);
+            if (holidays.includes(dayKey) || offDays.includes(dayOfWeek)) {
+                dailyStatuses[dayKey] = 'L'; // Libur
                 return;
             }
             
-            setIsLoading(true);
-
-            const monthStart = startOfMonth(currentMonth);
-            const monthEnd = endOfMonth(currentMonth);
-
-            const attendanceQuery = query(collectionGroup(firestore, 'attendanceRecords'), where('checkInTime', '>=', monthStart), where('checkInTime', '<=', monthEnd));
-            const leaveQuery = query(collectionGroup(firestore, 'leaveRequests'), where('status', '==', 'approved'));
-            
-            const [attendanceSnapshot, leaveSnapshot] = await Promise.all([ getDocs(attendanceQuery), getDocs(leaveQuery) ]);
-
-            const allAttendance = attendanceSnapshot.docs.map(d => ({...d.data(), id: d.id, checkInTime: d.data().checkInTime.toDate() }));
-            const allLeave = leaveSnapshot.docs.map(d => ({ ...d.data(), id: d.id, startDate: d.data().startDate.toDate(), endDate: d.data().endDate.toDate() }));
-
-            const offDays: number[] = schoolConfig?.offDays ?? [0, 6];
-            const holidays: string[] = monthlyConfig?.holidays ?? [];
-            const today = startOfDay(new Date());
-
-            const workingDaysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd }).filter(day => !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd')));
-            const pastWorkingDaysInMonth = workingDaysInMonth.filter(day => isBefore(day, today) || isSameDay(day, today));
-            const totalWorkingDays = workingDaysInMonth.length;
-            const totalPastWorkingDays = pastWorkingDaysInMonth.length;
-
-            const attendanceByUser = allAttendance.reduce((acc: any, record: any) => { (acc[record.userId] = acc[record.userId] || []).push(record); return acc; }, {});
-            const leaveByUser = allLeave.reduce((acc: any, record: any) => { (acc[record.userId] = acc[record.userId] || []).push(record); return acc; }, {});
-
-            const userSummary = users.map((u: any) => {
-                const userAttendance = attendanceByUser[u.id] || [];
-                const userLeave = leaveByUser[u.id] || [];
-                const hadirCount = userAttendance.length;
-                
-                let terlambatCount = 0;
-                if (schoolConfig?.useTimeValidation && schoolConfig?.checkInEndTime) {
-                    const [endH, endM] = schoolConfig.checkInEndTime.split(':').map(Number);
-                    terlambatCount = userAttendance.filter((att: any) => {
-                        if (!att.checkInTime) return false;
-                        const checkInDeadline = setMinutes(setHours(new Date(att.checkInTime), endH), endM);
-                        return isBefore(checkInDeadline, att.checkInTime);
-                    }).length;
-                }
-
-                let izinCount = 0;
-                let sakitCount = 0;
-                userLeave.forEach((leave: any) => {
-                    eachDayOfInterval({ start: leave.startDate, end: leave.endDate }).forEach(day => {
-                        if (isWithinInterval(day, { start: monthStart, end: monthEnd }) && workingDaysInMonth.some(wd => isSameDay(wd, day))) {
-                            if (leave.type === 'Izin') izinCount++;
-                            else if (leave.type === 'Sakit') sakitCount++;
-                        }
-                    });
-                });
-
-                const alpaCount = Math.max(0, totalPastWorkingDays - hadirCount - izinCount - sakitCount);
-                const presentasi = totalWorkingDays > 0 ? Math.round((hadirCount / totalWorkingDays) * 100) : 0;
-
-                return { ...u, hadir: hadirCount, izin: izinCount, sakit: sakitCount, alpa: alpaCount, terlambat: terlambatCount, presentasi: `${presentasi}%` };
-            });
-
-            const groupedByRole = userSummary.reduce((acc: any, user: any) => {
-                const role = user.role || 'lainnya';
-                (acc[role] = acc[role] || []).push(user);
-                return acc;
-            }, {});
-            
-            if(groupedByRole.guru) groupedByRole.guru.sort((a:any,b:any) => (a.sequenceNumber || 999) - (b.sequenceNumber || 999));
-            if(groupedByRole.pegawai) groupedByRole.pegawai.sort((a:any,b:any) => (a.sequenceNumber || 999) - (b.sequenceNumber || 999));
-            if(groupedByRole.kepala_sekolah) groupedByRole.kepala_sekolah.sort((a:any,b:any) => (a.sequenceNumber || 999) - (b.sequenceNumber || 999));
-
-            setSummary(groupedByRole);
-            setIsLoading(false);
-        };
-
-        fetchAllData();
-
-    }, [firestore, user, users, schoolConfig, monthlyConfig, currentMonth, isUsersLoading, isConfigLoading, isMonthlyConfigLoading]);
-
-    return { summary, isLoading, schoolConfig, monthlyConfig };
-}
-
-const AdminReportTable = ({ data, isLoading, currentMonth, firestore, schoolConfig, monthlyConfig }: { data: any[], isLoading: boolean, currentMonth: Date, firestore: any, schoolConfig: any, monthlyConfig: any }) => {
-    const router = useRouter();
-    const [isDownloading, setIsDownloading] = useState<string | null>(null);
-    const cols = 12;
-
-    const navigateToDetailPage = (userId: string) => {
-        const monthStr = format(currentMonth, 'yyyy-MM');
-        router.push(`/dashboard/admin/laporan/${userId}?month=${monthStr}`);
-    };
-
-    const handleDownload = async (user: any, type: 'excel' | 'pdf') => {
-        const downloadId = `${user.id}-${type}`;
-        setIsDownloading(downloadId);
-        try {
-            const detailedData = await generateDetailedReportData(firestore, user.id, currentMonth, schoolConfig, monthlyConfig);
-            if (type === 'excel') {
-                exportDetailedReportToExcel(detailedData, user, currentMonth);
+            if (userAttendance[dayKey]) {
+                dailyStatuses[dayKey] = 'H'; // Hadir
+                totalHadir++;
             } else {
-                exportDetailedReportToPdf(detailedData, user, currentMonth, schoolConfig);
+                const foundLeave = userLeaves.find(l => 
+                    isWithinInterval(day, { start: l.startDate.toDate(), end: l.endDate.toDate() })
+                );
+                if (foundLeave) {
+                    if (foundLeave.type === 'Sakit') {
+                        dailyStatuses[dayKey] = 'S';
+                        totalSakit++;
+                    } else {
+                        dailyStatuses[dayKey] = 'I';
+                        totalIzin++;
+                    }
+                } else {
+                    dailyStatuses[dayKey] = 'A'; // Alpa
+                    totalAlpa++;
+                }
             }
-        } catch (error) {
-            console.error("Failed to download report:", error);
-            alert("Gagal mengunduh laporan. Silakan coba lagi.");
-        } finally {
-            setIsDownloading(null);
-        }
+        });
+        return { ...u, dailyStatuses, totalHadir, totalIzin, totalSakit, totalAlpa };
+      });
+
+      setReportData(processedData);
+      setIsReportLoading(false);
     };
-    
-    if (isLoading) {
-        return (
-             <div className="rounded-md border">
-                <Table>
-                    <TableHeader><TableRow>{[...Array(cols)].map((_, i) => <TableHead key={i}><Skeleton className="h-5 w-full" /></TableHead>)}</TableRow></TableHeader>
-                    <TableBody>{[...Array(10)].map((_, i) => (<TableRow key={i}>{[...Array(cols)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}</TableRow>))}</TableBody>
-                </Table>
-            </div>
-        );
-    }
 
-    return (
-        <div className="rounded-md border">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead className="w-[50px] text-center">No.</TableHead>
-                        <TableHead>Nama</TableHead>
-                        <TableHead>NIP</TableHead>
-                        <TableHead>Status Kepegawaian</TableHead>
-                        <TableHead className="text-center">Hadir</TableHead>
-                        <TableHead className="text-center">Izin</TableHead>
-                        <TableHead className="text-center">Sakit</TableHead>
-                        <TableHead className="text-center">Alpa</TableHead>
-                        <TableHead className="text-center">Terlambat</TableHead>
-                        <TableHead className="text-center">Presentasi</TableHead>
-                        <TableHead className="text-center">Unduh</TableHead>
-                        <TableHead className="text-right">Aksi</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {data && data.length > 0 ? (
-                        data.map((user, index) => (
-                            <TableRow key={user.id}>
-                                <TableCell className="text-center font-medium">{user.sequenceNumber || index + 1}</TableCell>
-                                <TableCell className="font-medium whitespace-nowrap">{user.name}</TableCell>
-                                <TableCell>{user.nip || '-'}</TableCell>
-                                <TableCell>{user.position || '-'}</TableCell>
-                                <TableCell className="text-center font-bold">{user.hadir}</TableCell>
-                                <TableCell className="text-center font-bold">{user.izin}</TableCell>
-                                <TableCell className="text-center font-bold">{user.sakit}</TableCell>
-                                <TableCell className="text-center font-bold text-destructive">{user.alpa}</TableCell>
-                                <TableCell className="text-center font-bold">{user.terlambat}</TableCell>
-                                <TableCell className="text-center font-bold">{user.presentasi}</TableCell>
-                                <TableCell className="text-center">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" disabled={isDownloading === `${user.id}-excel` || isDownloading === `${user.id}-pdf`}>
-                                                {isDownloading === `${user.id}-excel` || isDownloading === `${user.id}-pdf` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="center">
-                                            <DropdownMenuItem onClick={() => handleDownload(user, 'excel')} disabled={!schoolConfig}>
-                                                Unduh Excel
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleDownload(user, 'pdf')} disabled={!schoolConfig}>
-                                                Unduh PDF
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => navigateToDetailPage(user.id)}>Lihat Detail</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => navigateToDetailPage(user.id)}>Edit Kehadiran</DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
-                            </TableRow>
-                        ))
-                    ) : (
-                        <TableRow><TableCell colSpan={cols} className="h-24 text-center">Tidak ada data untuk ditampilkan.</TableCell></TableRow>
-                    )}
-                </TableBody>
-            </Table>
-        </div>
-    );
-};
+    fetchReports();
+  }, [currentMonth, usersData, firestore]);
 
-function AdminReportView() {
-  const [activeTab, setActiveTab] = useState('guru');
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [searchQuery, setSearchQuery] = useState('');
-  const { summary, isLoading, schoolConfig, monthlyConfig } = useAttendanceSummary(currentMonth);
-  const firestore = useFirestore();
+  const daysInMonth = useMemo(() => {
+    const start = startOfMonth(currentMonth);
+    const end = endOfMonth(currentMonth);
+    return eachDayOfInterval({ start, end });
+  }, [currentMonth]);
 
   const filteredData = useMemo(() => {
-    const dataForTab = summary[activeTab] || [];
-    if (!searchQuery) return dataForTab;
-    return dataForTab.filter((user: any) => user.name.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [summary, activeTab, searchQuery]);
+    if (!searchQuery) return reportData;
+    return reportData.filter(user => 
+      user.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery, reportData]);
   
-  const handleExportExcel = () => {
-    exportToExcel(summary, currentMonth, activeTab);
+  const handleDownload = async () => {
+    if (filteredData.length === 0) {
+        toast({ variant: "destructive", title: "Gagal Mengunduh", description: "Tidak ada data untuk diunduh." });
+        return;
+    }
+    setIsDownloading(true);
+    
+    try {
+        // Header
+        const header = [
+            'No. Urut',
+            'Nama',
+            'NIP',
+            ...daysInMonth.map(d => format(d, 'd')),
+            'H', 'S', 'I', 'A'
+        ];
+
+        // Body
+        const body = filteredData.map(user => [
+            user.sequenceNumber ?? '-',
+            user.name,
+            user.nip || (user.role === 'siswa' ? user.nisn : '-'),
+            ...daysInMonth.map(d => user.dailyStatuses[format(d, 'yyyy-MM-dd')] || '-'),
+            user.totalHadir,
+            user.totalSakit,
+            user.totalIzin,
+            user.totalAlpa
+        ]);
+
+        const worksheetData = [header, ...body];
+        const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+        // Set column widths
+        const colWidths = [
+            { wch: 8 }, // No
+            { wch: 35 }, // Nama
+            { wch: 20 }, // NIP
+            ...daysInMonth.map(() => ({ wch: 4 })), // Daily status
+            { wch: 5 }, { wch: 5 }, { wch: 5 }, { wch: 5 } // Totals
+        ];
+        worksheet['!cols'] = colWidths;
+
+        const workbook = XLSX.utils.book_new();
+        const sheetName = `${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}_${format(currentMonth, 'MMMM_yyyy', { locale: id })}`;
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+
+        XLSX.writeFile(workbook, `Laporan_${sheetName}.xlsx`);
+        
+        toast({ title: "Unduhan Dimulai", description: "File laporan sedang disiapkan." });
+    } catch (error) {
+        console.error("Excel download failed:", error);
+        toast({ variant: "destructive", title: "Gagal Mengunduh", description: "Terjadi kesalahan saat membuat file Excel." });
+    } finally {
+        setIsDownloading(false);
+    }
   };
 
-  const handleExportPdf = () => {
-    exportToPdf(summary, currentMonth, activeTab, schoolConfig);
-  };
-  
-  const noData = !summary[activeTab] || summary[activeTab].length === 0;
+  const isLoading = isUserLoading || isUserDataLoading || isUsersLoading || isReportLoading;
+
+  if (!user || !isAllowed) {
+    return <div className="flex h-screen items-center justify-center"><Loader2 className="h-12 w-12 animate-spin" /></div>;
+  }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-                <CardTitle>Laporan Kehadiran Admin</CardTitle>
-                <CardDescription>Menampilkan rekapitulasi data kehadiran untuk seluruh pengguna.</CardDescription>
+    <div className="flex-1 space-y-4 p-2 pt-0 md:p-8 -mt-8">
+      <Card>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex-1">
+                <CardTitle>Laporan Kehadiran Bulanan</CardTitle>
+                <CardDescription>Tinjau dan kelola laporan kehadiran guru, pegawai, dan siswa.</CardDescription>
             </div>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                     <Button variant="outline" className="w-full sm:w-auto">
-                        <Download className="mr-2 h-4 w-4" />
-                        Unduh Laporan
-                        <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleExportExcel} disabled={isLoading || noData}>
-                        Unduh Excel
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleExportPdf} disabled={isLoading || noData || !schoolConfig}>
-                        Unduh PDF
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-                <TabsList className="overflow-x-auto whitespace-nowrap">
-                    <TabsTrigger value="guru">Data Guru</TabsTrigger>
-                    <TabsTrigger value="pegawai">Data Pegawai</TabsTrigger>
-                    <TabsTrigger value="kepala_sekolah">Kepala Sekolah</TabsTrigger>
-                    <TabsTrigger value="siswa">Data Siswa</TabsTrigger>
-                </TabsList>
-                <div className="flex w-full items-center gap-2 md:w-auto">
-                    <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-4 w-4" /></Button>
-                    <span className="font-semibold text-center w-32 capitalize">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
-                    <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={isSameMonth(currentMonth, new Date())}><ChevronRight className="h-4 w-4" /></Button>
-                    <div className="relative w-full md:w-auto">
+            <div className="flex items-center gap-2">
+                <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                >
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium w-36 text-center">
+                    {format(currentMonth, 'MMMM yyyy', { locale: id })}
+                </span>
+                <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                >
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+            </div>
+        </CardHeader>
+        <CardContent>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-1 items-center gap-2">
+                    <Select value={selectedRole} onValueChange={setSelectedRole}>
+                        <SelectTrigger className="w-[150px]">
+                            <SelectValue placeholder="Pilih peran" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="guru">Guru</SelectItem>
+                            <SelectItem value="pegawai">Pegawai</SelectItem>
+                            <SelectItem value="siswa">Siswa</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <div className="relative flex-1">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Cari nama..." className="pl-8 w-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                        <Input
+                            type="search"
+                            placeholder="Cari nama..."
+                            className="w-full rounded-lg bg-background pl-8"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
                     </div>
                 </div>
+                <Button onClick={handleDownload} disabled={isDownloading}>
+                    {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                    Unduh Laporan
+                </Button>
             </div>
-            <TabsContent value="guru"><AdminReportTable data={filteredData} isLoading={isLoading} currentMonth={currentMonth} firestore={firestore} schoolConfig={schoolConfig} monthlyConfig={monthlyConfig} /></TabsContent>
-            <TabsContent value="pegawai"><AdminReportTable data={filteredData} isLoading={isLoading} currentMonth={currentMonth} firestore={firestore} schoolConfig={schoolConfig} monthlyConfig={monthlyConfig} /></TabsContent>
-            <TabsContent value="kepala_sekolah"><AdminReportTable data={filteredData} isLoading={isLoading} currentMonth={currentMonth} firestore={firestore} schoolConfig={schoolConfig} monthlyConfig={monthlyConfig} /></TabsContent>
-            <TabsContent value="siswa"><AdminReportTable data={filteredData} isLoading={isLoading} currentMonth={currentMonth} firestore={firestore} schoolConfig={schoolConfig} monthlyConfig={monthlyConfig} /></TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+            <div className="mt-4 border rounded-md overflow-x-auto">
+                {isLoading ? (
+                    <ReportTableSkeleton />
+                ) : (
+                    <Table className="min-w-[1200px]">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="sticky left-0 bg-background z-10 w-[50px] whitespace-nowrap">{(selectedRole === 'guru') ? 'No. Urut' : 'No.'}</TableHead>
+                                <TableHead className="sticky left-[50px] bg-background z-10 w-[250px] whitespace-nowrap">Nama</TableHead>
+                                <TableHead className="sticky left-[300px] bg-background z-10 w-[180px] whitespace-nowrap">{(selectedRole === 'siswa') ? 'NISN' : 'NIP'}</TableHead>
+                                {daysInMonth.map((day) => (
+                                    <TableHead key={day.toString()} className="text-center w-[40px]">{format(day, 'd')}</TableHead>
+                                ))}
+                                <TableHead className="text-center font-bold w-[50px] bg-teal-500/10">H</TableHead>
+                                <TableHead className="text-center font-bold w-[50px] bg-yellow-500/10">S</TableHead>
+                                <TableHead className="text-center font-bold w-[50px] bg-orange-500/10">I</TableHead>
+                                <TableHead className="text-center font-bold w-[50px] bg-slate-500/10">A</TableHead>
+                                <TableHead className="text-center w-[80px]">Aksi</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                        {filteredData.length > 0 ? (
+                            filteredData.map((d, index) => (
+                                <TableRow key={d.id}>
+                                    <TableCell className="sticky left-0 bg-background z-10 text-center">{(selectedRole === 'guru') ? d.sequenceNumber : (index + 1)}</TableCell>
+                                    <TableCell className="sticky left-[50px] bg-background z-10 font-medium whitespace-nowrap">{d.name}</TableCell>
+                                    <TableCell className="sticky left-[300px] bg-background z-10">{d.nip || d.nisn || '-'}</TableCell>
+                                    {daysInMonth.map(day => (
+                                        <TableCell key={day.toString()} className="text-center">{d.dailyStatuses[format(day, 'yyyy-MM-dd')] || '-'}</TableCell>
+                                    ))}
+                                    <TableCell className="text-center font-bold bg-teal-500/10">{d.totalHadir}</TableCell>
+                                    <TableCell className="text-center font-bold bg-yellow-500/10">{d.totalSakit}</TableCell>
+                                    <TableCell className="text-center font-bold bg-orange-500/10">{d.totalIzin}</TableCell>
+                                    <TableCell className="text-center font-bold bg-slate-500/10">{d.totalAlpa}</TableCell>
+                                    <TableCell className="text-center">
+                                        <Button variant="outline" size="sm" asChild>
+                                          <Link href={`/dashboard/admin/laporan/${d.id}?month=${format(currentMonth, 'yyyy-MM')}`}>
+                                              Detail
+                                          </Link>
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={daysInMonth.length + 8} className="h-24 text-center">
+                                    Tidak ada data untuk ditampilkan pada bulan dan peran ini.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                        </TableBody>
+                    </Table>
+                )}
+            </div>
+        </CardContent>
+      </Card>
+    </div>
   );
-}
-
-export default function AdminReportPage() {
-    const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
-    const router = useRouter();
-
-    const userDocRef = useMemoFirebase(() => {
-        if (!user) return null;
-        return doc(firestore, 'users', user.uid);
-    }, [firestore, user]);
-    const { data: userData, isLoading: isUserDataLoading } = useDoc(user, userDocRef);
-
-    const isLoadingPage = isUserLoading || isUserDataLoading;
-    const isAdmin = !isLoadingPage && userData?.role === 'admin';
-
-    useEffect(() => {
-        if (!isLoadingPage) {
-            if (!user) { router.replace('/'); }
-            else if (!isAdmin) { router.replace('/dashboard'); }
-        }
-    }, [isLoadingPage, isAdmin, user, router]);
-
-    if (isLoadingPage || !isAdmin) {
-        return <div className="flex items-center justify-center h-48"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-    }
-    
-    return <AdminReportView />;
 }

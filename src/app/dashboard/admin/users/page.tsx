@@ -652,8 +652,8 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
 
   return (
     <>
-      <Card className="w-full -mt-12 md:mt-0">
-        <CardHeader className="p-4 md:p-6">
+      <Card className="w-full">
+        <CardHeader className="px-4 py-6 md:p-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <CardTitle>Manajemen Pengguna</CardTitle>
@@ -801,9 +801,9 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+        <CardContent className="px-0 pt-0 md:p-6 md:pt-0">
           <Tabs defaultValue="guru" className="w-full" onValueChange={setActiveTab}>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto px-4 md:px-0">
                   <TabsList>
                       <TabsTrigger value="guru">Guru</TabsTrigger>
                       <TabsTrigger value="pegawai">Pegawai</TabsTrigger>
@@ -1125,7 +1125,9 @@ export default function AdminUsersPage() {
     );
   }
   
-  return <UsersView isAllowed={canView} canManage={canManage} />;
+  return (
+    <div className="flex-1 space-y-4 p-2 pt-0 md:p-8 -mt-8">
+        <UsersView isAllowed={canView} canManage={canManage} />
+    </div>
+  );
 }
-
-    

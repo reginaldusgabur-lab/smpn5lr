@@ -36,16 +36,11 @@ const roleDescriptions: { [key: string]: string } = {
 };
 
 const WelcomeCard = ({ user }: { user: any }) => (
-    <Alert variant="default" className="bg-blue-50 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 h-full">
-        <School className="h-4 w-4 !text-blue-600 dark:!text-blue-400" />
-        <div className="flex-1">
-            <AlertTitle className="text-blue-800 dark:text-blue-300">Selamat Datang</AlertTitle>
-            <AlertDescription>
-                <div className="text-lg font-semibold text-blue-900 dark:text-blue-200 mt-0.5">{user.name}</div>
-                <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">{roleDescriptions[user.role] || 'Selamat datang di dasbor Anda.'}</p>
-            </AlertDescription>
-        </div>
-    </Alert>
+    <div>
+        <p className="text-base text-muted-foreground leading-none mb-0">Selamat Datang</p>
+        <h1 className="text-xl font-bold">{user.name}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{roleDescriptions[user.role] || 'Selamat datang di dasbor Anda.'}</p>
+    </div>
 );
 
 const StatCard = ({ title, value, icon: Icon, description, isLoading, className, onClick }: any) => (
@@ -348,7 +343,7 @@ const HeadmasterDashboard = ({ user, router }: any) => {
             <StatCard title="Total Alpa Hari Ini" value={stats.alpa} icon={UserX} />
             <StatCard title="Total Guru & Pegawai" value={stats.totalStaff} icon={Users} />
             
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 overflow-x-auto">
                 <RecentAttendanceTable />
             </div>
         </>
@@ -365,7 +360,7 @@ const AdminDashboard = ({ user, router }: any) => {
             <StatCard title="Total Izin/Sakit Hari Ini" value={stats.izin + stats.sakit} icon={BookUser} isLoading={isStatsLoading} />
             <StatCard title="Total Alpa Hari Ini" value={stats.alpa} icon={UserX} isLoading={isStatsLoading} />
             <StatCard title="Total Guru & Pegawai" value={stats.totalStaff} icon={Users} isLoading={isStatsLoading} />
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 overflow-x-auto">
                 <RecentAttendanceTable />
             </div>
         </>
@@ -432,8 +427,8 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="flex-1 px-0 pt-0 pb-24 md:p-8 -mt-8">
+        <div className="grid grid-cols-1 gap-1 md:grid-cols-2 md:gap-6 lg:grid-cols-3 xl:col-span-4">
             
             <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
                 <WelcomeCard user={user} />
