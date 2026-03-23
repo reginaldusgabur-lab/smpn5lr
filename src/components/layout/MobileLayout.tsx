@@ -4,7 +4,7 @@ import { Header } from './header';
 
 export function MobileLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div>
+    <div className="overflow-x-hidden">
       <Header />
       {/* 
         The main content area.

@@ -7,19 +7,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Safely get the data of the user making the request
     function getRequestingUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
-    // Safely get the role of the user making the request
     function getRequestingUserRole() {
       let userData = getRequestingUserData();
-      // Check for document and field existence before access
       if (userData != null && 'role' in userData.data) {
         return userData.data.role;
       }
-      // Return a default value to prevent rule evaluation errors
       return ''; 
     }
     
@@ -73,13 +69,13 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       match /attendanceRecords/{attendanceRecordId} {
-        allow get, list: if isOwner(userId) || isPrivileged();
+        allow read: if isOwner(userId) || isPrivileged();
         allow create: if (isOwner(userId) && incomingSubDocIsValid(userId)) || isAdmin();
         allow update, delete: if isOwner(userId) || isAdmin();
       }
 
       match /leaveRequests/{leaveRequestId} {
-        allow get, list: if isOwner(userId) || isPrivileged();
+        allow read: if isOwner(userId) || isPrivileged();
         allow create: if isOwner(userId) && incomingSubDocIsValid(userId);
         allow update: if isHeadmaster() || (isOwner(userId) && subDocOwnerIsImmutable());
         allow delete: if isOwner(userId) || isAdmin();
@@ -88,22 +84,22 @@ service cloud.firestore {
     
     // Rules for collection groups (for cross-user queries)
     match /{path=**}/attendanceRecords/{attendanceRecordId} {
-      allow get, list: if isPrivileged();
+      allow read: if isPrivileged();
     }
 
     match /{path=**}/leaveRequests/{leaveRequestId} {
-      allow get, list: if isPrivileged();
+      allow read: if isPrivileged();
     }
 
     // Rules for global configuration collections
     match /schoolConfig/{schoolConfigId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     match /monthlyConfigs/{yearMonth} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     match /activities/{activityId} {

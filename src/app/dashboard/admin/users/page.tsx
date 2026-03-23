@@ -89,7 +89,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const UserTableSkeleton = ({ cols }: { cols: number }) => (
-    <div className="rounded-md border">
+    <div className="border rounded-md overflow-x-auto">
         <Table>
             <TableHeader>
                 <TableRow>
@@ -652,7 +652,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
 
   return (
     <>
-      <Card className="w-full">
+      <Card className="w-full overflow-hidden border-0 md:border shadow-none md:shadow-sm">
         <CardHeader className="px-4 py-6 md:p-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
@@ -781,7 +781,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                               <FormField control={addForm.control} name="position" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex items-center space-x-4"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PNS" /></FormControl><FormLabel className="font-normal">PNS</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
                           )}
                           {selectedRoleForAdd === 'pegawai' && (
-                              <FormField control={addForm.control} name="position" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-wrap items-center gap-x-4 gap-y-2"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="Honorer" /></FormControl><FormLabel className="font-normal">Honorer</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PW" /></FormControl><FormLabel className="font-normal">{'PW (PPPK Paruh Waktu)'}</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
+                              <FormField control={addForm.control} name="position" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-wrap items-center gap-x-4 gap-y-2"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="Honorer" /></FormControl><FormLabel className="font-normal">Honorer</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PW" /></FormControl><FormLabel className="font-normal">PW (PPPK Paruh Waktu)</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
                           )}
 
                           <FormField control={addForm.control} name="password" render={({ field }) => (<FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Minimal 6 karakter" {...field} /></FormControl><FormMessage /></FormItem>)}/>
@@ -801,50 +801,66 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
             </div>
           </div>
         </CardHeader>
-        <CardContent className="px-0 pt-0 md:p-6 md:pt-0">
+        <CardContent className="p-0">
           <Tabs defaultValue="guru" className="w-full" onValueChange={setActiveTab}>
-              <div className="overflow-x-auto px-4 md:px-0">
-                  <TabsList>
-                      <TabsTrigger value="guru">Guru</TabsTrigger>
-                      <TabsTrigger value="pegawai">Pegawai</TabsTrigger>
-                      <TabsTrigger value="siswa">Siswa</TabsTrigger>
-                      <TabsTrigger value="kepala_sekolah">Kepala Sekolah</TabsTrigger>
-                      <TabsTrigger value="admin">Admin</TabsTrigger>
-                  </TabsList>
+              <div className="border-b">
+                <div className="overflow-x-auto px-4 md:px-6">
+                    <TabsList className="w-max">
+                        <TabsTrigger value="guru">Guru</TabsTrigger>
+                        <TabsTrigger value="pegawai">Pegawai</TabsTrigger>
+                        <TabsTrigger value="siswa">Siswa</TabsTrigger>
+                        <TabsTrigger value="kepala_sekolah">Kepala Sekolah</TabsTrigger>
+                        <TabsTrigger value="admin">Admin</TabsTrigger>
+                    </TabsList>
+                </div>
               </div>
-              {isUsersLoading ? (
-                  <div className="border rounded-md overflow-x-auto mt-4">
-                    <UserTableSkeleton cols={skeletonCols} />
-                  </div>
-              ) : (
-                  <div className="mt-4">
-                      <TabsContent value="guru">
-                          <div className="border rounded-md overflow-x-auto">
-                            <UserTable data={filteredGuruData} userType="Guru" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+              <div className="py-4">
+                {isUsersLoading ? (
+                    <div className="px-4 md:px-6">
+                      <div className="border rounded-md overflow-x-auto">
+                        <UserTableSkeleton cols={skeletonCols} />
+                      </div>
+                    </div>
+                ) : (
+                    <>
+                        <TabsContent value="guru" className="m-0 p-0">
+                          <div className="px-4 md:px-6">
+                            <div className="border rounded-md overflow-x-auto">
+                              <UserTable data={filteredGuruData} userType="Guru" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                            </div>
                           </div>
-                      </TabsContent>
-                      <TabsContent value="pegawai">
-                          <div className="border rounded-md overflow-x-auto">
-                            <UserTable data={filteredPegawaiData} userType="Pegawai" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                        </TabsContent>
+                        <TabsContent value="pegawai" className="m-0 p-0">
+                          <div className="px-4 md:px-6">
+                             <div className="border rounded-md overflow-x-auto">
+                              <UserTable data={filteredPegawaiData} userType="Pegawai" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                            </div>
                           </div>
-                      </TabsContent>
-                      <TabsContent value="siswa">
-                          <div className="border rounded-md overflow-x-auto">
-                            <UserTable data={filteredSiswaData} userType="Siswa" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                        </TabsContent>
+                        <TabsContent value="siswa" className="m-0 p-0">
+                          <div className="px-4 md:px-6">
+                             <div className="border rounded-md overflow-x-auto">
+                              <UserTable data={filteredSiswaData} userType="Siswa" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                            </div>
                           </div>
-                      </TabsContent>
-                      <TabsContent value="kepala_sekolah">
-                          <div className="border rounded-md overflow-x-auto">
-                            <UserTable data={filteredKepalaSekolahData} userType="Kepala Sekolah" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                        </TabsContent>
+                        <TabsContent value="kepala_sekolah" className="m-0 p-0">
+                          <div className="px-4 md:px-6">
+                             <div className="border rounded-md overflow-x-auto">
+                              <UserTable data={filteredKepalaSekolahData} userType="Kepala Sekolah" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                            </div>
                           </div>
-                      </TabsContent>
-                      <TabsContent value="admin">
-                          <div className="border rounded-md overflow-x-auto">
-                            <UserTable data={filteredAdminData} userType="Admin" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                        </TabsContent>
+                        <TabsContent value="admin" className="m-0 p-0">
+                          <div className="px-4 md:px-6">
+                             <div className="border rounded-md overflow-x-auto">
+                              <UserTable data={filteredAdminData} userType="Admin" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
+                            </div>
                           </div>
-                      </TabsContent>
-                  </div>
-              )}
+                        </TabsContent>
+                    </>
+                )}
+              </div>
           </Tabs>
         </CardContent>
       </Card>
@@ -1042,7 +1058,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                                 <FormControl>
                                     <RadioGroupItem value="PW" />
                                 </FormControl>
-                                <FormLabel className="font-normal">{'PW (PPPK Paruh Waktu)'}</FormLabel>
+                                <FormLabel className="font-normal">PW (PPPK Paruh Waktu)</FormLabel>
                                 </FormItem>
                             </RadioGroup>
                             </FormControl>
@@ -1126,7 +1142,7 @@ export default function AdminUsersPage() {
   }
   
   return (
-    <div className="flex-1 space-y-4 p-2 pt-0 md:p-8 -mt-8">
+    <div className="flex-1 min-w-0 p-2 pt-0 pb-24 md:p-6 md:pt-8">
         <UsersView isAllowed={canView} canManage={canManage} />
     </div>
   );

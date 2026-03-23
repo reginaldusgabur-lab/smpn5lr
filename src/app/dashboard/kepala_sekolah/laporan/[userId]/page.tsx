@@ -245,7 +245,7 @@ export default function HeadmasterUserAttendanceDetailPage() {
                     <TableRow>
                         <TableCell colSpan={6} className="h-24 text-center">
                         Tidak ada riwayat absensi atau izin untuk bulan ini.
-                        </TableCell
+                        </TableCell>
                     </TableRow>
                     )}
                 </TableBody>
