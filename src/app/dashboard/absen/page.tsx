@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Html5Qrcode, type Html5QrcodeError, type Html5QrcodeResult, type CameraDevice } from 'html5-qrcode';
+import { Html5Qrcode, type Html5QrcodeResult, type CameraDevice } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { MapPin, CheckCircle, Clock, X, Loader2, AlertTriangle, CameraOff, CalendarOff } from 'lucide-react';
@@ -11,6 +11,7 @@ import { useToast } from '../../../hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { QuoteOfTheDay } from '@/components/layout/quote-of-the-day';
+import { PageWrapper } from '@/components/layout/page-wrapper';
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
     const R = 6371e3; // metres
@@ -465,17 +466,19 @@ export default function AbsenPage() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-6">
-      {isLoading ? (
-          <div className="flex flex-col items-center justify-center w-full min-h-[550px]">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          </div>
-      ) : <div className="w-full">{renderContent()}</div>}
-      {showQuote && userData?.role !== 'admin' && (
-          <div className="w-full max-w-md mt-2 px-4 mx-auto">
-              <QuoteOfTheDay category={userData.role} />
-          </div>
-      )}
-    </div>
+    <PageWrapper>
+        <div className="flex flex-col items-center gap-6">
+        {isLoading ? (
+            <div className="flex flex-col items-center justify-center w-full min-h-[550px]">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        ) : <div className="w-full">{renderContent()}</div>}
+        {showQuote && userData?.role !== 'admin' && (
+            <div className="w-full max-w-md mt-2 px-4 mx-auto">
+                <QuoteOfTheDay category={userData.role} />
+            </div>
+        )}
+        </div>
+    </PageWrapper>
   );
 }

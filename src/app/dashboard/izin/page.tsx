@@ -30,6 +30,7 @@ import { id } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useMemo } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { PageWrapper } from '@/components/layout/page-wrapper';
 
 const leaveRequestSchema = z.object({
   leaveDate: z.enum(['today', 'tomorrow'], {
@@ -60,7 +61,7 @@ export default function IzinPage() {
     const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
-        const timerId = setInterval(() => setCurrentTime(new Date()), 60000); // Check every minute is enough
+        const timerId = setInterval(() => setCurrentTime(new Date()), 60000);
         return () => clearInterval(timerId);
     }, []);
 
@@ -71,7 +72,7 @@ export default function IzinPage() {
     const targetDate = useMemo(() => {
         const now = new Date();
         return selectedDateValue === 'tomorrow' ? addDays(now, 1) : now;
-    }, [selectedDateValue]); // Removed currentTime from dependencies
+    }, [selectedDateValue]);
 
     const targetDateStart = useMemo(() => startOfDay(targetDate), [targetDate]);
     const targetDateEnd = useMemo(() => endOfDay(targetDate), [targetDate]);
@@ -157,8 +158,8 @@ export default function IzinPage() {
     const tomorrowFormatted = format(addDays(new Date(), 1), 'eeee, d MMMM yyyy', { locale: id });
 
     return (
-        <div className="flex justify-center">
-            <Card className="w-full max-w-2xl">
+        <PageWrapper>
+            <Card className="w-full">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)}>
                         <CardHeader>
@@ -182,7 +183,11 @@ export default function IzinPage() {
                                     <FormItem>
                                         <FormLabel>Pilih Tanggal Izin</FormLabel>
                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl><SelectTrigger><SelectValue placeholder="Pilih tanggal pengajuan" /></SelectTrigger></FormControl>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Pilih tanggal pengajuan" />
+                                                </SelectTrigger>
+                                            </FormControl>
                                             <SelectContent>
                                                 <SelectItem value="today">Hari Ini ({todayFormatted})</SelectItem>
                                                 <SelectItem value="tomorrow">Besok ({tomorrowFormatted})</SelectItem>
@@ -192,9 +197,54 @@ export default function IzinPage() {
                                     </FormItem>
                                 )}
                             />
-                            <FormField control={form.control} name="type" render={({ field }) => (<FormItem><FormLabel>Jenis Pengajuan</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih jenis pengajuan" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Sakit">Sakit</SelectItem><SelectItem value="Izin">Izin</SelectItem><SelectItem value="Dinas">Perjalanan Dinas</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="reason" render={({ field }) => (<FormItem><FormLabel>Alasan</FormLabel><FormControl><Textarea placeholder="Jelaskan alasan Anda tidak dapat hadir..." {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="proofUrl" render={({ field }) => (<FormItem><FormLabel>Link Bukti (Opsional)</FormLabel><FormControl><Input placeholder="https://... (contoh: link Google Drive surat dokter)" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField
+                                control={form.control}
+                                name="type"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Jenis Pengajuan</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Pilih jenis pengajuan" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="Sakit">Sakit</SelectItem>
+                                                <SelectItem value="Izin">Izin</SelectItem>
+                                                <SelectItem value="Dinas">Perjalanan Dinas</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="reason"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Alasan</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="Jelaskan alasan Anda tidak dapat hadir..." {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="proofUrl"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Link Bukti (Opsional)</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="https://... (contoh: link Google Drive surat dokter)" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                         </CardContent>
                         <CardFooter className="border-t pt-6">
                             <Button type="submit" disabled={isSubmitting || isChecking || isTodayAndPastCheckout}>
@@ -205,6 +255,6 @@ export default function IzinPage() {
                     </form>
                 </Form>
             </Card>
-        </div>
+        </PageWrapper>
     );
 }
