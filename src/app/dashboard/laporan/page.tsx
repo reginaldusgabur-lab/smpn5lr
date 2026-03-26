@@ -40,6 +40,16 @@ const approvalStatusVariant: { [key: string]: 'default' | 'secondary' | 'destruc
     'rejected': 'destructive',
 };
 
+interface ReportItem {
+  id: string;
+  date: Date;
+  dateString: string;
+  checkIn: string;
+  checkOut: string;
+  status: string;
+  description: string;
+  approvalStatus?: 'approved' | 'pending' | 'rejected';
+}
 
 export default function LaporanPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
@@ -91,7 +101,7 @@ export default function LaporanPage() {
 
     const allDaysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-    const report = allDaysInMonth.map(day => {
+    const report: (ReportItem | null)[] = allDaysInMonth.map(day => {
         const dayStr = format(day, 'yyyy-MM-dd');
         const isWorkingDay = !offDays.includes(day.getDay()) && !holidays.includes(dayStr);
 
@@ -108,6 +118,7 @@ export default function LaporanPage() {
                 checkOut: '-',
                 status: leaveRecord.type, // e.g., 'Sakit', 'Izin'
                 description: leaveRecord.reason,
+                approvalStatus: leaveRecord.status,
             };
         }
 
@@ -179,14 +190,13 @@ export default function LaporanPage() {
         return null;
     });
 
-    return report.filter(Boolean).sort((a, b) => (b.date.getTime()) - (a.date.getTime()));
+    return report.filter((record): record is ReportItem => record !== null).sort((a, b) => b.date.getTime() - a.date.getTime());
 
   }, [attendanceHistory, leaveHistory, schoolConfig, monthlyConfig, currentMonth, isLoading]);
 
   const handlePrevMonth = () => {
     if (isStaff) {
         toast({ 
-            variant: 'default',
             title: 'Akses Terbatas', 
             description: 'Silahkan hubungi admin untuk melihat laporan kehadiran sebelumnya.' 
         });
