@@ -1,6 +1,6 @@
 'use client';
+import React, { useState, useMemo, useEffect } from 'react';
 
-import { useState, useMemo, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -24,7 +24,6 @@ import {
   PlusCircle,
   User,
   Briefcase,
-  GraduationCap,
   Loader2,
   Crown,
   Search,
@@ -79,7 +78,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { doc, collection, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -124,7 +123,7 @@ const UserTable = ({ data, userType, canManage, onEdit, onToggleStatus, onDelete
   onToggleStatus: (user:any)=> void; 
   onDelete: (user:any) => void;
 }) => {
-  const hasIdentifierColumn = userType === 'Siswa' || userType === 'Guru' || userType === 'Kepala Sekolah' || userType === 'Pegawai';
+  const hasIdentifierColumn = userType === 'Guru' || userType === 'Kepala Sekolah' || userType === 'Pegawai';
   const hasPositionColumn = userType === 'Guru' || userType === 'Kepala Sekolah' || userType === 'Pegawai';
   
   // Calculate colspan dynamically
@@ -145,7 +144,7 @@ const UserTable = ({ data, userType, canManage, onEdit, onToggleStatus, onDelete
             <TableHead>Email</TableHead>
             {hasIdentifierColumn && (
               <TableHead>
-                {userType === 'Siswa' ? 'NISN' : 'NIP'}
+                NIP
               </TableHead>
             )}
             {hasPositionColumn && <TableHead className="whitespace-nowrap">Status Kepegawaian</TableHead>}
@@ -168,7 +167,7 @@ const UserTable = ({ data, userType, canManage, onEdit, onToggleStatus, onDelete
                 <TableCell className="font-medium">{user.email || '-'}</TableCell>
                 {hasIdentifierColumn && (
                   <TableCell className="font-medium">
-                    {user.nisn || user.nip || '-'}
+                    {user.nip || '-'}
                   </TableCell>
                 )}
                 {hasPositionColumn && <TableCell>{user.position || '-'}</TableCell>}
@@ -221,13 +220,13 @@ const UserTable = ({ data, userType, canManage, onEdit, onToggleStatus, onDelete
   );
 };
 
-type Role = 'guru' | 'pegawai' | 'siswa' | 'kepala_sekolah' | 'admin';
+type Role = 'guru' | 'pegawai' | 'kepala_sekolah' | 'admin';
 
 const addUserSchema = z
   .object({
     name: z.string().min(1, { message: 'Nama lengkap wajib diisi' }),
     email: z.string().email({ message: 'Alamat email tidak valid.' }),
-    role: z.enum(['guru', 'pegawai', 'siswa', 'kepala_sekolah', 'admin'], {
+    role: z.enum(['guru', 'pegawai', 'kepala_sekolah', 'admin'], {
       required_error: 'Peran wajib dipilih',
     }),
     identifier: z.string().optional(),
@@ -253,7 +252,7 @@ const addUserSchema = z
 const editUserSchema = z
   .object({
     name: z.string().min(1, { message: 'Nama lengkap wajib diisi' }),
-    role: z.enum(['guru', 'pegawai', 'siswa', 'kepala_sekolah', 'admin'], {
+    role: z.enum(['guru', 'pegawai', 'kepala_sekolah', 'admin'], {
       required_error: 'Peran wajib dipilih',
     }),
     identifier: z.string().optional(),
@@ -290,12 +289,6 @@ const roleConfig: { [key in Role]: { label: string; placeholder: string; icon: J
     icon: <Briefcase className="h-5 w-5" />,
     title: 'Pegawai',
   },
-  siswa: {
-    label: 'NISN',
-    placeholder: 'Masukkan NISN Pengguna',
-    icon: <GraduationCap className="h-5 w-5" />,
-    title: 'Siswa',
-  },
   admin: {
       label: 'Email',
       placeholder: 'admin.baru@sekolah.sch.id',
@@ -327,7 +320,6 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
 
   const { data: usersData, isLoading: isUsersLoading } = useCollection(user, usersCollectionRef);
   
-  // Check for headmaster existence on data load
   useEffect(() => {
     if (usersData) {
       setHeadmasterExists(usersData.some(u => u.role === 'kepala_sekolah'));
@@ -335,8 +327,8 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
   }, [usersData]);
 
 
-  const { guruData, pegawaiData, siswaData, kepalaSekolahData, adminData } = useMemo(() => {
-    if (!usersData) return { guruData: [], pegawaiData: [], siswaData: [], kepalaSekolahData: [], adminData: [] };
+  const { guruData, pegawaiData, kepalaSekolahData, adminData } = useMemo(() => {
+    if (!usersData) return { guruData: [], pegawaiData: [], kepalaSekolahData: [], adminData: [] };
     
     const allUsers = [...usersData];
     
@@ -346,7 +338,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
         if (seqA !== seqB) {
             return seqA - seqB;
         }
-        return a.name.localeCompare(b.name); // Fallback sort by name
+        return a.name.localeCompare(b.name);
     };
     
     const sortByName = (a: any, b: any) => a.name.localeCompare(b.name);
@@ -355,7 +347,6 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
       kepalaSekolahData: allUsers.filter(u => u.role === 'kepala_sekolah').sort(sortWithSequence),
       guruData: allUsers.filter(u => u.role === 'guru').sort(sortWithSequence),
       pegawaiData: allUsers.filter(u => u.role === 'pegawai').sort(sortByName),
-      siswaData: allUsers.filter(u => u.role === 'siswa').sort(sortByName),
       adminData: allUsers.filter(u => u.role === 'admin').sort(sortByName),
     };
   }, [usersData]);
@@ -370,7 +361,6 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
   const filteredKepalaSekolahData = useMemo(() => filterData(kepalaSekolahData), [searchQuery, kepalaSekolahData]);
   const filteredGuruData = useMemo(() => filterData(guruData), [searchQuery, guruData]);
   const filteredPegawaiData = useMemo(() => filterData(pegawaiData), [searchQuery, pegawaiData]);
-  const filteredSiswaData = useMemo(() => filterData(siswaData), [searchQuery, siswaData]);
   const filteredAdminData = useMemo(() => filterData(adminData), [searchQuery, adminData]);
 
   const addForm = useForm<z.infer<typeof addUserSchema>>({
@@ -407,7 +397,6 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
         return;
     };
     
-    // Client-side validation for headmaster
     if (values.role === 'kepala_sekolah' && headmasterExists) {
         toast({ variant: 'destructive', title: 'Gagal', description: 'Posisi Kepala Sekolah sudah terisi.' });
         return;
@@ -423,12 +412,11 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
       const userCredential = await createUserWithEmailAndPassword(tempAuth, values.email, values.password);
       const newUser = userCredential.user;
 
-      if (values.role !== 'siswa' && values.email !== 'admin@sekolah.sch.id') {
+      if (values.email !== 'admin@sekolah.sch.id') {
         try {
             await sendEmailVerification(newUser);
         } catch (verificationError) {
             console.error("Failed to send verification email:", verificationError);
-            // Non-fatal error, we can still proceed with user creation.
         }
       }
       
@@ -451,8 +439,6 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
       } else if (values.role === 'pegawai') {
         userDoc.nip = values.identifier?.trim() || null;
         userDoc.position = values.position || null;
-      } else if (values.role === 'siswa') {
-        userDoc.nisn = values.identifier?.trim() || null;
       }
 
       setDocumentNonBlocking(doc(firestore, "users", newUser.uid), userDoc, {});
@@ -511,13 +497,11 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
       role: values.role,
     };
 
-    // Reset all optional fields first to handle role changes correctly
     dataToUpdate.nip = null;
     dataToUpdate.nisn = null;
     dataToUpdate.position = null;
     dataToUpdate.sequenceNumber = null;
 
-    // Then, set the correct fields based on the selected role
     if (values.role === 'guru' || values.role === 'kepala_sekolah') {
       dataToUpdate.nip = values.identifier?.trim() || null;
       dataToUpdate.position = values.position || null;
@@ -525,8 +509,6 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
     } else if (values.role === 'pegawai') {
       dataToUpdate.nip = values.identifier?.trim() || null;
       dataToUpdate.position = values.position || null;
-    } else if (values.role === 'siswa') {
-      dataToUpdate.nisn = values.identifier?.trim() || null;
     }
 
     try {
@@ -588,8 +570,6 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
   const handleDialogStateChange = (open: boolean) => {
     setIsDeleteDialogOpen(open);
     if (!open) {
-      // When the dialog is closed (either by Cancel or successful deletion),
-      // reset the deletion-related state to ensure it's clean for the next time.
       setIsDeleting(false);
       setUserToDelete(null);
     }
@@ -616,8 +596,6 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
           title: 'Pengguna Dihapus',
           description: `Data profil untuk ${userToDelete.name} telah berhasil dihapus.`,
         });
-        // Programmatically close the dialog. This will trigger onOpenChange(false),
-        // which then handles resetting the rest of the state.
         setIsDeleteDialogOpen(false); 
     } catch (error) {
         console.error("Failed to delete user profile:", error);
@@ -626,8 +604,6 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
             title: 'Gagal Menghapus',
             description: 'Terjadi kesalahan saat menghapus data profil pengguna.',
         });
-        // Important: On error, stop the loading indicator so the user can see the error
-        // and potentially try again without re-opening the dialog.
         setIsDeleting(false);
     }
   }
@@ -638,11 +614,8 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
     switch(activeTab) {
         case 'guru':
         case 'kepala_sekolah':
-            return canManage ? 7 : 6;
         case 'pegawai':
             return canManage ? 7 : 6;
-        case 'siswa':
-            return canManage ? 6 : 5;
         case 'admin':
             return canManage ? 5 : 4;
         default:
@@ -658,7 +631,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
             <div>
               <CardTitle>Manajemen Pengguna</CardTitle>
               <CardDescription>
-                Kelola data Guru, Pegawai, Siswa, dan Kepala Sekolah.
+                Kelola data Guru, Pegawai, dan Kepala Sekolah.
               </CardDescription>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
@@ -754,7 +727,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                             />
 
                           <FormField control={addForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nama Lengkap</FormLabel><FormControl><Input placeholder="Nama lengkap dengan gelar..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                          <FormField control={addForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="email.aktif@contoh.com" {...field} /></FormControl><FormDescription className="text-xs">Pengguna akan menerima email verifikasi (kecuali siswa).</FormDescription><FormMessage /></FormItem>)}/>
+                          <FormField control={addForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="email.aktif@contoh.com" {...field} /></FormControl><FormDescription className="text-xs">Pengguna akan menerima email verifikasi.</FormDescription><FormMessage /></FormItem>)}/>
                           
                           {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah') && (
                               <FormField control={addForm.control} name="sequenceNumber" render={({ field }) => (
@@ -767,7 +740,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                               )}/>
                           )}
                           
-                          {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah' || selectedRoleForAdd === 'siswa' || selectedRoleForAdd === 'pegawai') && (
+                          {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah' || selectedRoleForAdd === 'pegawai') && (
                               <FormField control={addForm.control} name="identifier" render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>{roleConfig[selectedRoleForAdd as Role]?.label} <span className="text-muted-foreground">(Opsional)</span></FormLabel>
@@ -808,7 +781,6 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                     <TabsList className="w-max">
                         <TabsTrigger value="guru">Guru</TabsTrigger>
                         <TabsTrigger value="pegawai">Pegawai</TabsTrigger>
-                        <TabsTrigger value="siswa">Siswa</TabsTrigger>
                         <TabsTrigger value="kepala_sekolah">Kepala Sekolah</TabsTrigger>
                         <TabsTrigger value="admin">Admin</TabsTrigger>
                     </TabsList>
@@ -834,13 +806,6 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                           <div className="px-4 md:px-6">
                              <div className="border rounded-md overflow-x-auto">
                               <UserTable data={filteredPegawaiData} userType="Pegawai" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
-                            </div>
-                          </div>
-                        </TabsContent>
-                        <TabsContent value="siswa" className="m-0 p-0">
-                          <div className="px-4 md:px-6">
-                             <div className="border rounded-md overflow-x-auto">
-                              <UserTable data={filteredSiswaData} userType="Siswa" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
                             </div>
                           </div>
                         </TabsContent>
@@ -974,7 +939,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                     )}/>
                 )}
                 
-                {(selectedRoleForEdit === 'guru' || selectedRoleForEdit === 'kepala_sekolah' || selectedRoleForEdit === 'siswa' || selectedRoleForEdit === 'pegawai') && (
+                {(selectedRoleForEdit === 'guru' || selectedRoleForEdit === 'kepala_sekolah' || selectedRoleForEdit === 'pegawai') && (
                   <FormField
                     control={editForm.control}
                     name="identifier"

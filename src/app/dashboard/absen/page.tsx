@@ -397,10 +397,6 @@ export default function AbsenPage() {
   const isLoading = isUserLoading || isUserDataLoading || isConfigLoading || isAttendanceLoading || hasCameraPermission === null || isMonthlyConfigLoading;
 
   const renderContent = () => {
-    if (isLoading) {
-      return <Card className="w-full max-w-md"><CardHeader className="text-center"><CardTitle>Absensi Kehadiran</CardTitle></CardHeader><CardContent style={{ height: '350px' }} className="flex flex-col items-center justify-center gap-4"><Loader2 className="h-12 w-12 animate-spin" /><p>Mempersiapkan...</p></CardContent></Card>;
-    }
-
     if (todaysRecord?.checkOutTime) {
         return (
             <Card className="w-full max-w-md text-center">
@@ -450,27 +446,31 @@ export default function AbsenPage() {
     }
     if (status === 'idle') {
         return (
-          <div className="w-full max-w-md">
-            <div className="text-center mb-4">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">Pindai QR Code Absensi</h1>
-              <p className="text-muted-foreground">Arahkan kamera ke QR Code yang ditampilkan oleh Admin.</p>
+            <div className="w-full flex flex-col text-center">
+                <div className="pt-16 pb-8 px-4">
+                    <h1 className="text-2xl font-bold tracking-tight">Pindai QR Code Absensi</h1>
+                    <p className="text-muted-foreground mt-2">Arahkan kamera ke QR Code yang ditampilkan oleh Admin.</p>
+                </div>
+                <div className="relative w-full aspect-square bg-muted">
+                    <div id="reader" className="w-full h-full" />
+                    <div className="absolute inset-0 border-4 border-black/10 dark:border-white/10 pointer-events-none" />
+                    <div className="absolute left-0 w-full h-0.5 bg-red-500 shadow-[0_0_10px_2px_theme(colors.red.500)] animate-scan-line" />
+                </div>
             </div>
-            <div className="relative w-full aspect-square bg-muted rounded-lg overflow-hidden shadow-inner">
-              <div id="reader" className="w-full h-full" />
-              <div className="absolute inset-0 border-4 border-black/10 dark:border-white/10 rounded-lg pointer-events-none" />
-              <div className="absolute left-0 w-full h-0.5 bg-red-500 shadow-[0_0_10px_2px_theme(colors.red.500)] animate-scan-line" />
-            </div>
-          </div>
         );
     }
     return null;
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 p-4">
-      {renderContent()}
+    <div className="flex flex-col items-center gap-6">
+      {isLoading ? (
+          <div className="flex flex-col items-center justify-center w-full min-h-[550px]">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          </div>
+      ) : <div className="w-full">{renderContent()}</div>}
       {showQuote && userData?.role !== 'admin' && (
-          <div className="w-full max-w-md mt-2">
+          <div className="w-full max-w-md mt-2 px-4 mx-auto">
               <QuoteOfTheDay category={userData.role} />
           </div>
       )}

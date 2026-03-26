@@ -49,7 +49,7 @@ import {
   eachDayOfInterval, 
   isWithinInterval
 } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { id as indonesianLocale } from 'date-fns/locale';
 import {
   ChevronLeft,
   ChevronRight,
@@ -114,7 +114,7 @@ export default function AdminLaporanPage() {
       return query(
           collection(firestore, 'users'), 
           where('role', '==', selectedRole),
-          orderBy(selectedRole === 'guru' || selectedRole === 'kepala_sekolah' ? 'sequenceNumber' : 'name', 'asc')
+          orderBy(selectedRole === 'guru' || selectedRole === 'kepala_sekolah' || selectedRole === 'pegawai' ? 'sequenceNumber' : 'name', 'asc')
       );
   }, [firestore, isAllowed, selectedRole]);
   
@@ -289,7 +289,7 @@ export default function AdminLaporanPage() {
         worksheet['!cols'] = colWidths;
 
         const workbook = XLSX.utils.book_new();
-        const sheetName = `${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}_${format(currentMonth, 'MMMM_yyyy', { locale: id })}`;
+        const sheetName = `${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}_${format(currentMonth, 'MMMM_yyyy', { locale: indonesianLocale })}`;
         XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
         XLSX.writeFile(workbook, `Laporan_${sheetName}.xlsx`);
@@ -326,7 +326,7 @@ export default function AdminLaporanPage() {
                     <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <span className="text-sm font-medium w-36 text-center">
-                    {format(currentMonth, 'MMMM yyyy', { locale: id })}
+                    {format(currentMonth, 'MMMM yyyy', { locale: indonesianLocale })}
                 </span>
                 <Button 
                     variant="outline" 
@@ -341,12 +341,13 @@ export default function AdminLaporanPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="flex flex-1 items-center gap-2">
                     <Select value={selectedRole} onValueChange={setSelectedRole}>
-                        <SelectTrigger className="w-[150px]">
+                        <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Pilih peran" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="guru">Guru</SelectItem>
                             <SelectItem value="pegawai">Pegawai</SelectItem>
+                            <SelectItem value="kepala_sekolah">Kepala Sekolah</SelectItem>
                             <SelectItem value="siswa">Siswa</SelectItem>
                         </SelectContent>
                     </Select>
@@ -373,7 +374,7 @@ export default function AdminLaporanPage() {
                     <Table className="min-w-[1200px]">
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="sticky left-0 bg-background z-10 w-[50px] whitespace-nowrap">{(selectedRole === 'guru') ? 'No. Urut' : 'No.'}</TableHead>
+                                <TableHead className="sticky left-0 bg-background z-10 w-[50px] whitespace-nowrap">{(selectedRole === 'guru' || selectedRole === 'kepala_sekolah' || selectedRole === 'pegawai') ? 'No. Urut' : 'No.'}</TableHead>
                                 <TableHead className="sticky left-[50px] bg-background z-10 w-[250px] whitespace-nowrap">Nama</TableHead>
                                 <TableHead className="sticky left-[300px] bg-background z-10 w-[180px] whitespace-nowrap">{(selectedRole === 'siswa') ? 'NISN' : 'NIP'}</TableHead>
                                 {daysInMonth.map((day) => (
@@ -390,7 +391,7 @@ export default function AdminLaporanPage() {
                         {filteredData.length > 0 ? (
                             filteredData.map((d, index) => (
                                 <TableRow key={d.id}>
-                                    <TableCell className="sticky left-0 bg-background z-10 text-center">{(selectedRole === 'guru') ? d.sequenceNumber : (index + 1)}</TableCell>
+                                    <TableCell className="sticky left-0 bg-background z-10 text-center">{(selectedRole === 'guru' || selectedRole === 'kepala_sekolah' || selectedRole === 'pegawai') ? d.sequenceNumber : (index + 1)}</TableCell>
                                     <TableCell className="sticky left-[50px] bg-background z-10 font-medium whitespace-nowrap">{d.name}</TableCell>
                                     <TableCell className="sticky left-[300px] bg-background z-10">{d.nip || d.nisn || '-'}</TableCell>
                                     {daysInMonth.map(day => (
@@ -402,7 +403,7 @@ export default function AdminLaporanPage() {
                                     <TableCell className="text-center font-bold bg-slate-500/10">{d.totalAlpa}</TableCell>
                                     <TableCell className="text-center">
                                         <Button variant="outline" size="sm" asChild>
-                                          <Link href={`/dashboard/admin/laporan/${d.id}?month=${format(currentMonth, 'yyyy-MM')}`}>
+                                          <Link href={`/dashboard/laporan-sekolah/${d.id}?month=${format(currentMonth, 'yyyy-MM')}`}>
                                               Detail
                                           </Link>
                                         </Button>

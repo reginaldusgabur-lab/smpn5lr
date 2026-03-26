@@ -201,21 +201,29 @@ export default function LaporanPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-64 w-full items-center justify-center rounded-lg border bg-card p-10">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+        <Card>
+            <CardHeader className="p-4 md:p-6">
+                <CardTitle>Riwayat Absensi & Izin</CardTitle>
+                <CardDescription>
+                    Berikut adalah catatan kehadiran dan pengajuan izin Anda.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-0 md:p-6 md:pt-0 flex h-96 items-center justify-center">
+                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </CardContent>
+        </Card>
     );
   }
   
   return (
-    <Card className="-mt-12 md:mt-0">
+    <Card>
       <CardHeader className="p-4 md:p-6">
-        <CardTitle>Riwayat Absensi &amp; Izin</CardTitle>
+        <CardTitle>Riwayat Absensi & Izin</CardTitle>
         <CardDescription>
             Berikut adalah catatan kehadiran dan pengajuan izin Anda.
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+      <CardContent className="p-4 pt-0 md:p-6 md:pt-0 min-h-96">
         <div className="flex items-center gap-2 mb-4">
             <Button variant="outline" size="icon" onClick={handlePrevMonth}>
                 <ChevronLeft className="h-4 w-4" />

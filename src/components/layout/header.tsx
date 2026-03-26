@@ -27,7 +27,7 @@ import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { ModeToggle } from '@/components/theme-toggle';
 
-export function Header() {
+export function Header({ isTransparent }: { isTransparent?: boolean }) {
   const firestore = useFirestore();
   const { user } = useUser();
   const auth = useAuth();
@@ -64,8 +64,14 @@ export function Header() {
   const displayRole = getDisplayRole();
   const currentPhoto = userData?.photoURL || user?.photoURL;
 
+  const headerClasses = `
+    fixed top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background px-4 sm:px-6
+    transition-opacity duration-300
+    ${isTransparent ? 'opacity-0 pointer-events-none' : 'opacity-100'}
+  `;
+
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background px-4 sm:px-6">
+    <header className={headerClasses}>
       {/* Left section: User Profile */}
       <div className="flex items-center gap-3">
         <DropdownMenu>

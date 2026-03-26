@@ -32,7 +32,6 @@ const roleDescriptions: { [key: string]: string } = {
   kepala_sekolah: 'Anda dapat memantau aktivitas guru & pegawai, serta memproses pengajuan izin.',
   guru: 'Lakukan absensi, ajukan izin, dan lihat riwayat kehadiran Anda di sini.',
   pegawai: 'Lakukan absensi, ajukan izin, dan lihat riwayat kehadiran Anda di sini.',
-  siswa: 'Lihat riwayat kehadiran dan status absensi Anda di sini.',
 };
 
 const WelcomeCard = ({ user }: { user: any }) => (
@@ -87,8 +86,8 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfigData, isLoading 
         const { checkInEndTime, checkOutStartTime } = schoolConfigData;
         const now = currentTime;
 
-        const checkOutDeadline = checkOutStartTime ? setMinutes(setHours(startOfDay(now), ...checkOutStartTime.split(':').map(Number)), 0) : null;
-        const checkInDeadline = checkInEndTime ? setMinutes(setHours(startOfDay(now), ...checkInEndTime.split(':').map(Number)), 0) : null;
+        const checkOutDeadline = checkOutStartTime ? setMinutes(setHours(startOfDay(now), parseInt(checkOutStartTime.split(':')[0])), parseInt(checkOutStartTime.split(':')[1])) : null;
+        const checkInDeadline = checkInEndTime ? setMinutes(setHours(startOfDay(now), parseInt(checkInEndTime.split(':')[0])), parseInt(checkInEndTime.split(':')[1])) : null;
 
         if (attendanceRecord && attendanceRecord.checkOutTime) return { text: 'Absensi Selesai', disabled: true };
         if (attendanceRecord && !attendanceRecord.checkOutTime) return { text: 'Absen Pulang', disabled: false };
@@ -172,7 +171,6 @@ function useMonthlyAttendanceSummary(user: any) {
     const now = useMemo(() => new Date(), []);
     const monthlyConfigId = useMemo(() => format(now, 'yyyy-MM'), [now]);
 
-    // These dependencies are for fetching data, not for the cache key.
     const schoolConfigRef = useMemoFirebase(() => user ? doc(firestore, 'schoolConfig', 'default') : null, [firestore, user]);
     const monthlyConfigRef = useMemoFirebase(() => user ? doc(firestore, 'monthlyConfigs', monthlyConfigId) : null, [firestore, user, monthlyConfigId]);
     const { data: schoolConfig, isLoading: isSchoolConfigLoading } = useDoc(user, schoolConfigRef);
@@ -223,10 +221,9 @@ function useMonthlyAttendanceSummary(user: any) {
     return { summary, isLoading };
 }
 
-// CORRECTED: This function is now more robust and will not crash on unmount.
 function useStaffDashboardStats(firestore: any, user: any) {
   const cacheKey = 'staffDashboardStats';
-  const [stats, setStats] = useState(() => getFromCache(cacheKey) || { totalStaff: 0, hadir: 0, izin: 0, sakit: 0 });
+  const [stats, setStats] = useState<{ totalStaff: number; hadir: number; izin: number; sakit: number; }>(() => getFromCache(cacheKey) || { totalStaff: 0, hadir: 0, izin: 0, sakit: 0 });
   const [isLoading, setIsLoading] = useState(!getFromCache(cacheKey));
 
   const alpaCount = useMemo(() => Math.max(0, stats.totalStaff - stats.hadir - stats.izin - stats.sakit), [stats]);
@@ -234,7 +231,6 @@ function useStaffDashboardStats(firestore: any, user: any) {
   useEffect(() => {
     if (!firestore || !user) return;
 
-    // Initialize unsubscribe functions to prevent errors on rapid unmount.
     let unsubStaff = () => {};
     let unsubAttendance = () => {};
     let unsubLeave = () => {};
@@ -284,7 +280,6 @@ function useStaffDashboardStats(firestore: any, user: any) {
         setIsLoading(false);
     }
 
-    // This cleanup function will now safely call the initialized unsubscribe functions.
     return () => {
         unsubStaff();
         unsubAttendance();
@@ -302,18 +297,14 @@ function useStaffDashboardStats(firestore: any, user: any) {
 const HeadmasterDashboard = ({ user, router }: any) => {
     const firestore = useFirestore();
 
-    // Fetch ALL data required for this dashboard using our new cached hooks
     const { stats, isLoading: isStatsLoading } = useStaffDashboardStats(firestore, user);
     const { summary: personalSummary, isLoading: isPersonalSummaryLoading } = useMonthlyAttendanceSummary(user);
     
-    // Personal attendance is quick, no need to cache aggressively, but we still need its loading state
     const todaysAttendanceQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'attendanceRecords'), where('checkInTime', '>=', startOfDay(new Date())), limit(1)) : null, [firestore, user]);
     const { data: todaysAttendance, isLoading: isAttendanceLoading } = useCollection(user, todaysAttendanceQuery);
     const schoolConfigRef = useMemoFirebase(() => user ? doc(firestore, 'schoolConfig', 'default') : null, [firestore, user]);
     const { data: schoolConfig, isLoading: isSchoolConfigLoading } = useDoc(user, schoolConfigRef);
 
-    // The key change: The main skeleton is now ONLY driven by the stats loading.
-    // Personal data will have its own internal loading state, which is much faster.
     if (isStatsLoading) {
         return (
             <>
@@ -367,7 +358,7 @@ const AdminDashboard = ({ user, router }: any) => {
     );
 };
 
-const StaffStudentDashboard = ({ user }: any) => {
+const StaffDashboard = ({ user }: any) => {
     const firestore = useFirestore();
     
     const { summary, isLoading: isSummaryLoading } = useMonthlyAttendanceSummary(user);
@@ -419,15 +410,15 @@ export default function DashboardPage() {
       return <AdminDashboard user={user} router={router} />;
     }
 
-    if (['guru', 'pegawai', 'siswa'].includes(role)) {
-      return <StaffStudentDashboard user={user} />;
+    if (['guru', 'pegawai'].includes(role)) {
+      return <StaffDashboard user={user} />;
     }
 
-    return null; // Render nothing if role is not matched
+    return null;
   };
 
   return (
-    <div className="flex-1 px-0 pt-0 pb-24 md:p-8 -mt-8">
+    <div className="flex-1 pt-4 pb-24 md:p-8">
         <div className="grid grid-cols-1 gap-1 md:grid-cols-2 md:gap-6 lg:grid-cols-3 xl:col-span-4">
             
             <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
