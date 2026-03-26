@@ -65,9 +65,9 @@ export function Header({ isTransparent }: { isTransparent?: boolean }) {
   const currentPhoto = userData?.photoURL || user?.photoURL;
 
   const headerClasses = `
-    fixed top-0 z-30 flex h-16 items-center justify-between border-b bg-background px-4 sm:px-6
+    fixed top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-background px-4 sm:px-6
     transition-opacity duration-300
-    sm:left-[16rem] sm:right-0
+    sm:left-[16rem] sm:w-[calc(100%-16rem)]
     ${isTransparent ? 'opacity-0 pointer-events-none' : 'opacity-100'}
   `;
 
