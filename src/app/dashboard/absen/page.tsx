@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import Html5Qrcode from 'html5-qrcode';
-import { type Html5QrcodeError, type Html5QrcodeResult } from 'html5-qrcode';
+import { Html5Qrcode, type Html5QrcodeError, type Html5QrcodeResult, type CameraDevice } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { MapPin, CheckCircle, Clock, X, Loader2, AlertTriangle, CameraOff, CalendarOff } from 'lucide-react';
@@ -46,7 +45,7 @@ export default function AbsenPage() {
   
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   
-  const html5QrCodeRef = useRef<InstanceType<typeof Html5Qrcode> | null>(null);
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -225,7 +224,7 @@ export default function AbsenPage() {
   useEffect(() => {
     let isMounted = true;
     Html5Qrcode.getCameras()
-      .then(devices => {
+      .then((devices: CameraDevice[]) => {
         if (isMounted) {
           if (devices && devices.length) {
             setHasCameraPermission(true);
@@ -234,7 +233,7 @@ export default function AbsenPage() {
           }
         }
       })
-      .catch(err => {
+      .catch((err: any) => {
         if (isMounted) {
           setHasCameraPermission(false);
           if (err?.name === "NotAllowedError") {
@@ -261,7 +260,7 @@ export default function AbsenPage() {
   useEffect(() => {
     const shouldScan = hasCameraPermission && status === 'idle' && !isHoliday;
     if (shouldScan) {
-        let qrCode: InstanceType<typeof Html5Qrcode>;
+        let qrCode: Html5Qrcode;
         if (html5QrCodeRef.current) {
             qrCode = html5QrCodeRef.current;
         } else if (document.getElementById('reader')) {
@@ -270,10 +269,12 @@ export default function AbsenPage() {
         } else {
             return;
         }
-        if (qrCode.getState() !== 2 /* SCANNING */) {
+
+        const state = qrCode.getState();
+        if (state !== 2 /* SCANNING */) {
             const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
             qrCode.start({ facingMode: 'environment' }, config, onScanSuccess, () => {})
-              .catch((err) => {
+              .catch((err: any) => {
                 if (err?.name === 'NotReadableError') {
                   toast({
                     variant: 'destructive', title: 'Kamera Error',
@@ -288,8 +289,8 @@ export default function AbsenPage() {
     } 
     return () => {
         const scanner = html5QrCodeRef.current;
-        if (scanner && scanner.getState() === 2 /* SCANNING */) {
-            scanner.stop().catch((err) => {
+        if (scanner && scanner.isScanning) {
+            scanner.stop().catch((err: any) => {
                 if (err.name !== 'NotAllowedError') {
                     console.warn("QR scanner failed to stop cleanly.", err);
                 }

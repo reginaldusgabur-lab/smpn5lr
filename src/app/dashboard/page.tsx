@@ -113,7 +113,7 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfigData, isLoading 
                 </div>
                 <div className="w-full flex flex-col items-center space-y-2 pt-4">
                     <Button size="lg" className="w-full h-12 text-lg font-bold" onClick={() => router.push('/dashboard/absen')} disabled={buttonStatus.disabled}>{isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}{buttonStatus.text}</Button>
-                    <Button variant="link" asChild><Link href="/dashboard/kepala_sekolah/laporan">Lihat Riwayat Lengkap</Link></Button>
+                    <Button variant="link" asChild><Link href="/dashboard/laporan">Lihat Riwayat Lengkap</Link></Button>
                 </div>
             </CardContent>
         </Card>
