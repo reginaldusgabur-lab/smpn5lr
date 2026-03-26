@@ -28,26 +28,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import {
+import { 
   collection, 
   query, 
   where, 
   orderBy, 
   doc, 
-  collectionGroup, 
   getDocs,
   Timestamp 
 } from 'firebase/firestore';
 import { 
   startOfMonth, 
   endOfMonth, 
-  startOfDay, 
-  endOfDay, 
   format, 
   addMonths, 
   subMonths, 
   eachDayOfInterval, 
-  isWithinInterval
+  isWithinInterval,
+  getDaysInMonth
 } from 'date-fns';
 import { id as indonesianLocale } from 'date-fns/locale';
 import {
@@ -60,7 +58,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import * as XLSX from 'xlsx';
-
 
 const ReportTableSkeleton = () => (
     <div className="border rounded-md">
@@ -96,7 +93,6 @@ export default function AdminLaporanPage() {
   const [selectedRole, setSelectedRole] = useState('guru');
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // ======== PERMISSION CHECKS =========
   const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
   const { data: userData, isLoading: isUserDataLoading } = useDoc(user, userDocRef);
   const isAllowed = !isUserDataLoading && (userData?.role === 'admin' || userData?.role === 'kepala_sekolah');
@@ -108,28 +104,38 @@ export default function AdminLaporanPage() {
     }
   }, [user, isUserLoading, isUserDataLoading, isAllowed, router]);
 
-  // ======== DATA FETCHING =========
   const usersQuery = useMemoFirebase(() => {
       if (!firestore || !isAllowed) return null;
-      return query(
+      const q = query(
           collection(firestore, 'users'), 
-          where('role', '==', selectedRole),
-          orderBy(selectedRole === 'guru' || selectedRole === 'kepala_sekolah' || selectedRole === 'pegawai' ? 'sequenceNumber' : 'name', 'asc')
+          where('role', '==', selectedRole)
       );
+      if (selectedRole === 'guru' || selectedRole === 'kepala_sekolah' || selectedRole === 'pegawai') {
+        return query(q, orderBy('sequenceNumber', 'asc'))
+      }
+      return query(q, orderBy('name', 'asc'))
   }, [firestore, isAllowed, selectedRole]);
   
   const { data: usersData, isLoading: isUsersLoading } = useCollection(user, usersQuery);
+
+  const schoolConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'schoolConfig', 'default') : null, [firestore]);
+  const { data: schoolConfigData } = useDoc(user, schoolConfigRef);
+
+  const monthlyConfigId = useMemo(() => format(currentMonth, 'yyyy-MM'), [currentMonth]);
+  const monthlyConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'monthlyConfigs', monthlyConfigId) : null, [firestore, monthlyConfigId]);
+  const { data: monthlyConfigData } = useDoc(user, monthlyConfigRef);
 
   const [reportData, setReportData] = useState<any[]>([]);
   const [isReportLoading, setIsReportLoading] = useState(true);
 
   useEffect(() => {
-    if (!firestore || !usersData || usersData.length === 0) {
-        if(usersData && usersData.length === 0) {
-            setReportData([]);
-            setIsReportLoading(false);
-        }
-        return;
+    if (!firestore || !usersData) {
+      if (usersData === null) setIsReportLoading(true)
+      else if (usersData?.length === 0) {
+        setReportData([]);
+        setIsReportLoading(false)
+      }
+      return;
     };
 
     const fetchReports = async () => {
@@ -137,101 +143,77 @@ export default function AdminLaporanPage() {
       const monthStart = startOfMonth(currentMonth);
       const monthEnd = endOfMonth(currentMonth);
       
-      const userIds = usersData.map(u => u.id);
-      const attendanceData: { [key: string]: any } = {};
-      const leaveData: { [key: string]: any[] } = {};
-      
-      // Batch user IDs to stay within the 30-item limit for 'in' queries
-      const batchSize = 30;
-      for (let i = 0; i < userIds.length; i += batchSize) {
-          const batchUserIds = userIds.slice(i, i + batchSize);
-          
-          // Fetch Attendance
-          const attendanceQuery = query(
-              collectionGroup(firestore, 'attendanceRecords'), 
-              where('userId', 'in', batchUserIds), 
-              where('checkInTime', '>=', monthStart), 
-              where('checkInTime', '<=', monthEnd)
-          );
-          const attendanceSnap = await getDocs(attendanceQuery);
-          attendanceSnap.forEach(doc => {
-              const record = doc.data();
-              if (!attendanceData[record.userId]) attendanceData[record.userId] = {};
-              const dayKey = format(record.checkInTime.toDate(), 'yyyy-MM-dd');
-              attendanceData[record.userId][dayKey] = record;
-          });
+      const offDays: number[] = schoolConfigData?.offDays ?? [0, 6];
+      const holidays: string[] = monthlyConfigData?.holidays ?? [];
+      const effectiveWorkDays = eachDayOfInterval({ start: monthStart, end: monthEnd }).filter(
+        day => !holidays.includes(format(day, 'yyyy-MM-dd')) && !offDays.includes(day.getDay())
+      );
 
-          // Fetch Leaves
-          const leaveQuery = query(
-              collectionGroup(firestore, 'leaveRequests'), 
-              where('userId', 'in', batchUserIds),
-              where('status', '==', 'approved'),
-              where('startDate', '<=', monthEnd)
-          );
-          const leaveSnap = await getDocs(leaveQuery);
-          leaveSnap.forEach(doc => {
-              const leave = doc.data();
-              if (leave.endDate.toDate() >= monthStart) {
-                if (!leaveData[leave.userId]) leaveData[leave.userId] = [];
-                leaveData[leave.userId].push(leave);
-              }
-          });
-      }
-      
-      const schoolConfigRef = doc(firestore, 'schoolConfig', 'default');
-      const monthlyConfigRef = doc(firestore, 'monthlyConfigs', format(currentMonth, 'yyyy-MM'));
-      const [schoolConfigSnap, monthlyConfigSnap] = await Promise.all([getDocs(query(collection(firestore, 'schoolConfig'))), getDocs(query(collection(firestore, 'monthlyConfigs'), where('__name__', '==', format(currentMonth, 'yyyy-MM'))))]);
+      const processedData = await Promise.all(usersData.map(async (u) => {
+        const attendanceQuery = query(
+          collection(firestore, 'users', u.id, 'attendanceRecords'),
+          where('checkInTime', '>=', monthStart),
+          where('checkInTime', '<=', monthEnd)
+        );
+        const leaveQuery = query(
+          collection(firestore, 'users', u.id, 'leaveRequests'),
+          where('status', '==', 'approved'),
+          where('startDate', '<=', monthEnd)
+        );
 
-      const offDays = schoolConfigSnap.docs[0]?.data()?.offDays ?? [0, 6];
-      const holidays = monthlyConfigSnap.docs[0]?.data()?.holidays ?? [];
-      
-      const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-      
-      const processedData = usersData.map(u => {
-        const userAttendance = attendanceData[u.id] || {};
-        const userLeaves = leaveData[u.id] || [];
+        const [attendanceSnap, leaveSnap] = await Promise.all([getDocs(attendanceQuery), getDocs(leaveQuery)]);
+
+        const userAttendance = attendanceSnap.docs.map(d => ({ ...d.data(), checkInTime: d.data().checkInTime.toDate() }));
+        const userLeaves = leaveSnap.docs.map(d => ({ ...d.data(), startDate: d.data().startDate.toDate(), endDate: d.data().endDate.toDate() })).filter(l => l.endDate >= monthStart);
+
         const dailyStatuses: { [key: string]: string } = {};
         let totalHadir = 0, totalSakit = 0, totalIzin = 0, totalAlpa = 0;
 
-        daysInMonth.forEach(day => {
-            const dayKey = format(day, 'yyyy-MM-dd');
-            const dayOfWeek = day.getDay();
+        effectiveWorkDays.forEach(day => {
+          const dayKey = format(day, 'yyyy-MM-dd');
+          const attendanceRecord = userAttendance.find(att => format(att.checkInTime, 'yyyy-MM-dd') === dayKey);
+          const leaveRecord = userLeaves.find(l => isWithinInterval(day, { start: l.startDate, end: l.endDate }));
 
-            if (holidays.includes(dayKey) || offDays.includes(dayOfWeek)) {
-                dailyStatuses[dayKey] = 'L'; // Libur
-                return;
-            }
-            
-            if (userAttendance[dayKey]) {
-                dailyStatuses[dayKey] = 'H'; // Hadir
-                totalHadir++;
-            } else {
-                const foundLeave = userLeaves.find(l => 
-                    isWithinInterval(day, { start: l.startDate.toDate(), end: l.endDate.toDate() })
-                );
-                if (foundLeave) {
-                    if (foundLeave.type === 'Sakit') {
-                        dailyStatuses[dayKey] = 'S';
-                        totalSakit++;
-                    } else {
-                        dailyStatuses[dayKey] = 'I';
-                        totalIzin++;
-                    }
-                } else {
-                    dailyStatuses[dayKey] = 'A'; // Alpa
-                    totalAlpa++;
-                }
-            }
+          if (attendanceRecord) {
+              dailyStatuses[dayKey] = attendanceRecord.isLate ? 'T' : 'H';
+              totalHadir++;
+          } else if (leaveRecord) {
+              if (leaveRecord.type === 'Sakit') {
+                  dailyStatuses[dayKey] = 'S';
+                  totalSakit++;
+              } else {
+                  dailyStatuses[dayKey] = 'I';
+                  totalIzin++;
+              }
+          } else {
+              dailyStatuses[dayKey] = 'A';
+              totalAlpa++;
+          }
         });
+
+        // Fill in off days
+        eachDayOfInterval({start: monthStart, end: monthEnd}).forEach(day => {
+          const dayKey = format(day, 'yyyy-MM-dd');
+          if (dailyStatuses[dayKey]) return;
+
+          if(holidays.includes(dayKey) || offDays.includes(day.getDay())){
+            dailyStatuses[dayKey] = 'L';
+          }
+        })
+
         return { ...u, dailyStatuses, totalHadir, totalIzin, totalSakit, totalAlpa };
-      });
+      }));
 
       setReportData(processedData);
       setIsReportLoading(false);
     };
 
-    fetchReports();
-  }, [currentMonth, usersData, firestore]);
+    fetchReports().catch(err => {
+      console.error("Failed to fetch reports:", err);
+      toast({variant: 'destructive', title: 'Gagal Memuat Laporan', description: 'Terjadi kesalahan saat mengambil data.'})
+      setIsReportLoading(false);
+    });
+  }, [currentMonth, usersData, firestore, schoolConfigData, monthlyConfigData, toast]);
 
   const daysInMonth = useMemo(() => {
     const start = startOfMonth(currentMonth);
@@ -254,7 +236,6 @@ export default function AdminLaporanPage() {
     setIsDownloading(true);
     
     try {
-        // Header
         const header = [
             'No. Urut',
             'Nama',
@@ -263,7 +244,6 @@ export default function AdminLaporanPage() {
             'H', 'S', 'I', 'A'
         ];
 
-        // Body
         const body = filteredData.map(user => [
             user.sequenceNumber ?? '-',
             user.name,
@@ -278,7 +258,6 @@ export default function AdminLaporanPage() {
         const worksheetData = [header, ...body];
         const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
 
-        // Set column widths
         const colWidths = [
             { wch: 8 }, // No
             { wch: 35 }, // Nama
@@ -303,7 +282,7 @@ export default function AdminLaporanPage() {
     }
   };
 
-  const isLoading = isUserLoading || isUserDataLoading || isUsersLoading || isReportLoading;
+  const isLoading = isUserLoading || isUserDataLoading || isReportLoading;
 
   if (!user || !isAllowed) {
     return <div className="flex h-screen items-center justify-center"><Loader2 className="h-12 w-12 animate-spin" /></div>;
@@ -362,7 +341,7 @@ export default function AdminLaporanPage() {
                         />
                     </div>
                 </div>
-                <Button onClick={handleDownload} disabled={isDownloading}>
+                <Button onClick={handleDownload} disabled={isDownloading || isLoading}>
                     {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                     Unduh Laporan
                 </Button>
