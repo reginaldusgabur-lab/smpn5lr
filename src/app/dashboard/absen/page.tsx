@@ -35,6 +35,20 @@ const getCurrentPosition = (options?: PositionOptions): Promise<GeolocationPosit
 
 type AttendanceStatus = 'idle' | 'loading' | 'locating' | 'success_in' | 'success_out' | 'error_radius' | 'error_time' | 'error_already_in' | 'error_not_checked_in' | 'error_already_out' | 'error_generic' | 'error_location';
 
+// Placeholder component to show while loading
+const ScannerPlaceholder = () => (
+    <div className="w-full max-w-md flex flex-col text-center">
+        <div className="pt-16 pb-8 px-4">
+            <h1 className="text-2xl font-bold tracking-tight">Pindai QR Code Absensi</h1>
+            <p className="text-muted-foreground mt-2">Arahkan kamera ke QR Code yang ditampilkan oleh Admin.</p>
+        </div>
+        <div className="relative w-full aspect-square bg-muted flex flex-col items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+            <p className="text-muted-foreground mt-4">Mempersiapkan kamera...</p>
+        </div>
+    </div>
+);
+
 export default function AbsenPage() {
   const [status, setStatus] = useState<AttendanceStatus>('idle');
   const [locationVerified, setLocationVerified] = useState(false);
@@ -468,12 +482,7 @@ export default function AbsenPage() {
  return (
     <PageWrapper>
         <div className="flex-grow flex flex-col items-center justify-center w-full p-4">
-            {/* 
-              PERBAIKAN: Sesuai permintaan, ikon pemuat awal telah dihapus.
-              Sekarang, jika `isLoading` bernilai true, komponen ini akan me-render `null`,
-              sehingga menghasilkan layar kosong singkat alih-alih pemuat yang posisinya salah.
-            */}
-            {isLoading ? null : (
+            {isLoading ? <ScannerPlaceholder /> : (
                 <div className="w-full flex flex-col items-center">
                     {renderContent()}
                     {showQuote && userData?.role !== 'admin' && (
