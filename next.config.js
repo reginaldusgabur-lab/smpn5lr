@@ -6,8 +6,48 @@ const withPWA = require('next-pwa')({
   disable: process.env.NODE_ENV === 'development'
 });
 
+// GABUNGAN: Konfigurasi dari file .ts lama telah disalin ke sini
 const nextConfig = {
-  // Konfigurasi Next.js lainnya bisa ditambahkan di sini jika perlu
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'placehold.co',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
 };
 
 module.exports = withPWA(nextConfig);
