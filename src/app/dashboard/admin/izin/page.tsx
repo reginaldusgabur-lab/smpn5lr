@@ -27,7 +27,7 @@ import { id } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
-
+import type { LeaveRequest } from '@/types';
 
 const approvalStatusVariant: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
     'approved': 'default',
@@ -87,7 +87,7 @@ export default function PersetujuanIzinPage() {
     return new Map(usersData.map(u => [u.id, u.name]));
   }, [usersData]);
 
-  const [allRequests, setAllRequests] = useState<DocumentData[]>([]);
+  const [allRequests, setAllRequests] = useState<LeaveRequest[]>([]);
   const [isLeaveRequestsLoading, setIsLeaveRequestsLoading] = useState(true);
 
   useEffect(() => {
@@ -107,7 +107,7 @@ export default function PersetujuanIzinPage() {
             const requestPromises = usersToQuery.map(u => {
                 const q = query(collection(firestore, 'users', u.id, 'leaveRequests'));
                 return getDocs(q).then(snapshot => 
-                    snapshot.docs.map(d => ({ ...d.data(), id: d.id, userId: u.id }))
+                    snapshot.docs.map(d => ({ ...d.data(), id: d.id, userId: u.id }) as LeaveRequest)
                 );
             });
             
@@ -173,7 +173,7 @@ export default function PersetujuanIzinPage() {
     }
   }, [isRoleCheckLoading, user, isPrivileged, router]);
 
-  const handleUpdateRequestStatus = async (request: any, newStatus: 'approved' | 'rejected') => {
+  const handleUpdateRequestStatus = async (request: LeaveRequest, newStatus: 'approved' | 'rejected') => {
     if (!firestore || updatingId) return;
     setUpdatingId(request.id);
 
@@ -327,5 +327,3 @@ export default function PersetujuanIzinPage() {
     </div>
   );
 }
-
-    

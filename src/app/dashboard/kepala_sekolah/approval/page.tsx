@@ -26,6 +26,7 @@ import { id } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { LeaveRequest } from '@/types';
 
 const approvalStatusVariant: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
     'approved': 'default',
@@ -81,7 +82,7 @@ export default function ApprovalPage() {
     return new Map(usersForApprovalData.map(u => [u.id, u.name]));
   }, [usersForApprovalData]);
 
-  const [allRequests, setAllRequests] = useState<DocumentData[]>([]);
+  const [allRequests, setAllRequests] = useState<LeaveRequest[]>([]);
   const [isLeaveRequestsLoading, setIsLeaveRequestsLoading] = useState(true);
 
   useEffect(() => {
@@ -114,7 +115,7 @@ export default function ApprovalPage() {
             const fetchedRequests = leaveRequestsSnapshot.docs.map(doc => {
                 const userId = doc.ref.parent.parent?.id;
                 return { ...doc.data(), id: doc.id, userId: userId };
-            }).filter(Boolean) as DocumentData[];
+            }).filter(Boolean) as LeaveRequest[];
             
             setAllRequests(fetchedRequests);
         } catch (error) {
@@ -156,7 +157,7 @@ export default function ApprovalPage() {
     }
   }, [isRoleCheckLoading, user, isKepalaSekolah, router]);
 
-  const handleUpdateRequestStatus = async (request: any, newStatus: 'approved' | 'rejected') => {
+  const handleUpdateRequestStatus = async (request: LeaveRequest, newStatus: 'approved' | 'rejected') => {
     if (!firestore || updatingId) return;
     setUpdatingId(request.id);
 

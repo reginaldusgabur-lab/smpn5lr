@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
-import type { ThemeProviderProps } from 'next-themes/dist/types';
+import type { ThemeProviderProps } from 'next-themes';
 
 // Impor hook useTheme langsung dari next-themes agar komponen lain bisa menggunakannya.
 export { useTheme } from 'next-themes';

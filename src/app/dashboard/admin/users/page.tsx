@@ -270,7 +270,7 @@ const editUserSchema = z
   });
 
 
-const roleConfig: { [key in Role]: { label: string; placeholder: string; icon: JSX.Element; title: string; } } = {
+const roleConfig: { [key in Role]: { label: string; placeholder: string; icon: React.ReactNode; title: string; } } = {
   kepala_sekolah: {
     label: 'NIP',
     placeholder: 'Masukkan NIP Kepala Sekolah',

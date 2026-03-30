@@ -1,26 +1,31 @@
+
+import type { DocumentData, Timestamp } from 'firebase/firestore';
 import type { User as FirebaseUser } from 'firebase/auth';
 
-/**
- * Represents the user profile data structure stored in the 'users' collection in Firestore.
- */
-export interface UserProfile {
+// Ekspor kembali tipe User dari firebase/auth agar konsisten di seluruh aplikasi
+export type { FirebaseUser };
+
+// Tipe data untuk profil pengguna yang disimpan di Firestore
+export interface UserProfile extends DocumentData {
+  id: string; // Biasanya sama dengan UID pengguna
   name: string;
-  email: string; // This can override the optional email from FirebaseUser if present
+  email: string;
   role: 'admin' | 'kepala_sekolah' | 'guru' | 'pegawai' | 'siswa';
-  nip?: string;
-  nisn?: string;
-  position?: string;
-  createdAt: any; // Firestore Timestamp
+  employmentStatus?: string; // Contoh: 'PNS', 'GTT', 'Honor'
+  photoURL?: string | null; // Izinkan null agar cocok dengan tipe Firebase
 }
 
-/**
- * Represents the complete application user, combining Firebase Auth information
- * with the custom user profile data from Firestore. The 'id' will come from the doc id, which is the user's uid.
- */
-export type AppUser = FirebaseUser & UserProfile & { id: string };
+// Gabungkan User dari Firebase dengan UserProfile kita
+export type User = FirebaseUser & UserProfile;
 
-/**
- * A generic user type that can be used throughout the application.
- * For now, it aliases to AppUser.
- */
-export type User = AppUser;
+// Tipe data untuk dokumen permintaan izin (leave request)
+export interface LeaveRequest extends DocumentData {
+  id: string;
+  userId: string;
+  userName: string;
+  startDate: Timestamp;
+  endDate: Timestamp;
+  type: 'Izin' | 'Sakit';
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+}

@@ -194,7 +194,7 @@ export default function UserFormSheet({ isOpen, setIsOpen, editingUser, refreshU
                 <SheetFooter className="pt-4">
                     <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Batal</Button>
                     <Button type="submit" disabled={isSubmitting}>
-                        {isSubstituting ? 'Menyimpan...' : 'Simpan'}
+                        {isSubmitting ? 'Menyimpan...' : 'Simpan'}
                     </Button>
                 </SheetFooter>
             </form>
