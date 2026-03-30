@@ -1,110 +1,72 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper Functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function getRequestingUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
-    function getRequestingUserRole() {
-      let userData = getRequestingUserData();
-      if (userData != null && 'role' in userData.data) {
-        return userData.data.role;
-      }
-      return ''; 
+    // --- Helper Function ---
+    // Checks if the requesting user has a specific role.
+    function isRole(role) {
+      // This get() call is safe because of the explicit read rule for a user's own document below.
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
     }
     
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function isAdmin() {
-      return isSignedIn() && getRequestingUserRole() == 'admin';
-    }
-    
-    function isHeadmaster() {
-      return isSignedIn() && getRequestingUserRole() == 'kepala_sekolah';
-    }
-
-    function isPrivileged() {
-      let role = getRequestingUserRole();
-      return isSignedIn() && (role == 'admin' || role == 'kepala_sekolah');
-    }
-     
-    function docExists() {
-      return resource != null;
-    }
-    
-    function isOwnerOfExistingDoc(userId) {
-      return isOwner(userId) && docExists();
-    }
-    
-    function incomingUserProfileIsValid(userId) {
-      return request.resource.data.id == userId;
-    }
-    
-    function userProfileIdIsImmutable() {
-      return request.resource.data.id == resource.data.id;
-    }
-    
-    function incomingSubDocIsValid(userId) {
-      return request.resource.data.userId == userId;
-    }
-    
-    function subDocOwnerIsImmutable() {
-      return request.resource.data.userId == resource.data.userId;
-    }
-
-    // Rules for specific collections
+    // --- Collection: users ---
     match /users/{userId} {
-      allow get: if isOwner(userId) || isPrivileged();
-      allow list: if isPrivileged();
-      allow create: if (isOwner(userId) && incomingUserProfileIsValid(userId)) || isAdmin();
-      allow update: if (isOwnerOfExistingDoc(userId) && userProfileIdIsImmutable()) || isAdmin();
-      allow delete: if isAdmin();
 
-      match /attendanceRecords/{attendanceRecordId} {
-        allow read: if isOwner(userId) || isPrivileged();
-        allow create: if (isOwner(userId) && incomingSubDocIsValid(userId)) || isAdmin();
-        allow update, delete: if isOwner(userId) || isAdmin();
-      }
+      // READ:
+      // 1. A user can always read their own document. This is CRITICAL for role-based access to work.
+      // 2. An admin or a kepala_sekolah can read ANY user document.
+      allow read: if request.auth.uid == userId || isRole('admin') || isRole('kepala_sekolah');
 
-      match /leaveRequests/{leaveRequestId} {
-        allow read: if isOwner(userId) || isPrivileged();
-        allow create: if isOwner(userId) && incomingSubDocIsValid(userId);
-        allow update: if isHeadmaster() || (isOwner(userId) && subDocOwnerIsImmutable());
-        allow delete: if isOwner(userId) || isAdmin();
-      }
+      // LIST:
+      // An admin or kepala_sekolah can list the users collection (e.g., for reports and user management).
+      allow list: if isRole('admin') || isRole('kepala_sekolah');
+      
+      // CREATE:
+      // Only an admin can create new users.
+      allow create: if isRole('admin');
+
+      // UPDATE:
+      // A user can update their own profile, OR an admin can update any profile.
+      allow update: if request.auth.uid == userId || isRole('admin');
+
+      // DELETE:
+      // Only an admin can delete users.
+      allow delete: if isRole('admin');
+    }
+
+    // --- Sub-collections under users (attendance, leave requests) ---
+    match /users/{userId}/{subCollection}/{docId} {
+      
+      // READ/WRITE (OWNER): The user owns their sub-collection documents.
+      allow read, write: if request.auth.uid == userId;
+      
+      // READ (ADMIN/KEPSEK): Admins and Kepsek can also READ these for reports. (This is additive with the rule above)
+      allow read: if isRole('admin') || isRole('kepala_sekolah');
+
+      // UPDATE (KEPSEK): A Kepsek can UPDATE these documents (e.g., to approve leave).
+      allow update: if isRole('kepala_sekolah');
     }
     
-    // Rules for collection groups (for cross-user queries)
-    match /{path=**}/attendanceRecords/{attendanceRecordId} {
-      allow read: if isPrivileged();
+    // --- Global Configuration & Other Collections ---
+    match /schoolConfig/{docId} {
+      allow read: if isRole('admin') || isRole('kepala_sekolah');
+      allow write: if isRole('admin');
     }
 
-    match /{path=**}/leaveRequests/{leaveRequestId} {
-      allow read: if isPrivileged();
+    match /monthlyConfigs/{docId} {
+      allow read: if isRole('admin') || isRole('kepala_sekolah');
+      allow write: if isRole('admin');
     }
 
-    // Rules for global configuration collections
-    match /schoolConfig/{schoolConfigId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-    }
-
-    match /monthlyConfigs/{yearMonth} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+    match /quotes/{quoteId} {
+      allow read: if request.auth != null; // Any signed-in user
+      allow write: if isRole('admin');
     }
 
     match /activities/{activityId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read: if isRole('admin') || isRole('kepala_sekolah');
+      allow create: if request.auth != null; // Any signed-in user
     }
   }
 }

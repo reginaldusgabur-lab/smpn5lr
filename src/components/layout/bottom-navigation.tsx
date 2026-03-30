@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, QrCode, FileText, Users, MailCheck, ClipboardCheck } from 'lucide-react';
+import { Home, QrCode, FileText, Users, MailCheck, ClipboardCheck, BookCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -18,14 +18,14 @@ const adminNavItems = [
   { href: '/dashboard', icon: Home, label: 'Beranda' },
   { href: '/dashboard/admin/users', icon: Users, label: 'Pengguna' },
   { href: '/dashboard/admin/konfigurasi', icon: QrCode, label: 'Absen' },
-  { href: '/dashboard/admin/laporan', icon: FileText, label: 'Laporan' },
+  { href: '/dashboard/laporan-sekolah', icon: BookCheck, label: 'Laporan' }, // CORRECTED
 ];
 
 const headmasterNavItems = [
   { href: '/dashboard', icon: Home, label: 'Beranda' },
   { href: '/dashboard/absen', icon: QrCode, label: 'Absen' },
   { href: '/dashboard/izin-kepala-sekolah', icon: ClipboardCheck, label: 'Persetujuan' },
-  { href: '/dashboard/laporan', icon: FileText, label: 'Laporan' },
+  { href: '/dashboard/laporan-sekolah', icon: BookCheck, label: 'Laporan' }, // CORRECTED
 ];
 
 export function BottomNavigation() {

@@ -22,19 +22,11 @@ import {
 import { deleteDoc, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
-const UserActions = ({ user, onEdit }: { user: any; onEdit: (user: any) => void }) => {
-  const firestore = useFirestore();
-
-  const handleDelete = async () => {
+// Action component remains the same
+const UserActions = ({ user, onEdit, onDelete }: { user: any; onEdit: (user: any) => void; onDelete: (userId: string) => void; }) => {
+  const handleDelete = () => {
     if (window.confirm(`Apakah Anda yakin ingin menghapus pengguna ${user.name}?`)) {
-      try {
-        if (!firestore) throw new Error("Firestore is not initialized");
-        await deleteDoc(doc(firestore, 'users', user.id));
-        alert('Pengguna berhasil dihapus.');
-      } catch (error) {
-        console.error('Error deleting user:', error);
-        alert('Gagal menghapus pengguna.');
-      }
+      onDelete(user.id);
     }
   };
 
@@ -55,7 +47,8 @@ const UserActions = ({ user, onEdit }: { user: any; onEdit: (user: any) => void 
   );
 };
 
-const UserTable = ({ users, onEdit }: { users: any[]; onEdit: (user: any) => void }) => {
+// Main table component is updated
+const UserTable = ({ users, onEdit, onDelete }: { users: any[]; onEdit: (user: any) => void; onDelete: (userId: string) => void; }) => {
   if (!users || users.length === 0) {
     return <div className="text-center text-muted-foreground py-10">Tidak ada data pengguna.</div>;
   }
@@ -68,6 +61,7 @@ const UserTable = ({ users, onEdit }: { users: any[]; onEdit: (user: any) => voi
           <TableHead>Nama</TableHead>
           <TableHead>Email</TableHead>
           <TableHead>Role</TableHead>
+          <TableHead>Status Kepegawaian</TableHead> {/* New Column Header */}
           <TableHead>
             <span className="sr-only">Aksi</span>
           </TableHead>
@@ -82,8 +76,10 @@ const UserTable = ({ users, onEdit }: { users: any[]; onEdit: (user: any) => voi
             <TableCell>
                 <Badge variant="outline">{user.role}</Badge>
             </TableCell>
+            {/* New Column Cell */}
+            <TableCell>{user.employmentStatus || '-'}</TableCell> 
             <TableCell>
-              <UserActions user={user} onEdit={onEdit} />
+              <UserActions user={user} onEdit={onEdit} onDelete={onDelete} />
             </TableCell>
           </TableRow>
         ))}

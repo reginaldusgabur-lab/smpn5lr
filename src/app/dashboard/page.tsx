@@ -9,18 +9,19 @@ import {
   Card,  CardContent,  CardDescription,  CardHeader,  CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFirestore, useUser, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import {
-  collection,  query,  where,  Timestamp,  onSnapshot,  getCountFromServer, collectionGroup, orderBy, limit, doc
+  collection,  query,  where,  Timestamp,  getDocs, getCountFromServer, collectionGroup, orderBy, limit, doc
 } from 'firebase/firestore';
 import { startOfMonth, endOfMonth, startOfDay, endOfDay, format, isWithinInterval, addDays, subDays, setHours, setMinutes, eachDayOfInterval } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
 import { useRouter } from 'next/navigation';
-import RecentAttendanceTable from '@/components/dashboard/RecentAttendanceTable';
 import { getFromCache, setInCache } from '@/lib/cache';
+
+// NOTE: RecentAttendanceTable is temporarily disabled as it relies on collectionGroup
+// import RecentAttendanceTable from '@/components/dashboard/RecentAttendanceTable';
 
 
 // ====================================================================
@@ -159,7 +160,7 @@ const MonthlyAttendanceChartUI = ({ summaryData, isLoading }: { summaryData: any
 
 
 // ====================================================================
-// C. DATA-FETCHING HOOKS (WITH CACHING)
+// C. DATA-FETCHING HOOKS (REWRITTEN FOR FREE PLAN)
 // ====================================================================
 
 function useMonthlyAttendanceSummary(user: any) {
@@ -221,74 +222,83 @@ function useMonthlyAttendanceSummary(user: any) {
     return { summary, isLoading };
 }
 
-function useStaffDashboardStats(firestore: any, user: any) {
-  const cacheKey = 'staffDashboardStats';
-  const [stats, setStats] = useState<{ totalStaff: number; hadir: number; izin: number; sakit: number; }>(() => getFromCache(cacheKey) || { totalStaff: 0, hadir: 0, izin: 0, sakit: 0 });
-  const [isLoading, setIsLoading] = useState(!getFromCache(cacheKey));
+// REWRITTEN HOOK to avoid collectionGroup queries.
+function useStaffDashboardStats_FreePlan(firestore: any, user: any) {
+  const [stats, setStats] = useState({ totalStaff: 0, hadir: 0, izin: 0, sakit: 0 });
+  const [isLoading, setIsLoading] = useState(true);
 
   const alpaCount = useMemo(() => Math.max(0, stats.totalStaff - stats.hadir - stats.izin - stats.sakit), [stats]);
 
   useEffect(() => {
     if (!firestore || !user) return;
 
-    let unsubStaff = () => {};
-    let unsubAttendance = () => {};
-    let unsubLeave = () => {};
-
-    try {
+    const fetchStats = async () => {
+      try {
+        setIsLoading(true);
         const staffQuery = query(collection(firestore, 'users'), where('role', 'in', ['guru', 'pegawai', 'kepala_sekolah']));
-        const attendanceTodayQuery = query(collectionGroup(firestore, 'attendanceRecords'), where('checkInTime', '>=', startOfDay(new Date())), where('checkInTime', '<=', endOfDay(new Date())));
-        const leaveTodayQuery = query(collectionGroup(firestore, 'leaveRequests'), where('status', '==', 'approved'));
-
-        const processAndCacheStats = (data: Partial<typeof stats>) => {
-            setStats(currentStats => {
-                const newStats = { ...currentStats, ...data };
-                setInCache(cacheKey, newStats);
-                return newStats;
-            });
+        const staffSnap = await getDocs(staffQuery);
+        const totalStaff = staffSnap.size;
+        
+        if (totalStaff === 0) {
+          setStats({ totalStaff: 0, hadir: 0, izin: 0, sakit: 0 });
+          setIsLoading(false);
+          return;
         }
 
-        unsubStaff = onSnapshot(staffQuery, snap => {
-            processAndCacheStats({ totalStaff: snap.size });
-            if (isLoading) setIsLoading(false);
-        }, (error) => {
-            console.error("Staff listener failed:", error);
-            if (isLoading) setIsLoading(false);
-        });
+        let hadirCount = 0;
+        let izinCount = 0;
+        let sakitCount = 0;
 
-        unsubAttendance = onSnapshot(attendanceTodayQuery, snap => processAndCacheStats({ hadir: snap.size }), (error) => {
-            console.error("Attendance listener failed:", error);
-        });
-        
-        unsubLeave = onSnapshot(leaveTodayQuery, snap => {
-            let izinCount = 0, sakitCount = 0;
-            const today = new Date();
-            snap.forEach(doc => {
-                const leave = doc.data();
-                if (leave.startDate && leave.endDate && isWithinInterval(startOfDay(today), { start: leave.startDate.toDate(), end: leave.endDate.toDate() })) {
-                    if (leave.type === 'Izin') izinCount++;
-                    else if (leave.type === 'Sakit') sakitCount++;
+        const todayStart = startOfDay(new Date());
+        const todayEnd = endOfDay(new Date());
+
+        const promises = staffSnap.docs.map(async (userDoc) => {
+          // Check attendance for today
+          const attendanceQuery = query(
+            collection(firestore, 'users', userDoc.id, 'attendanceRecords'),
+            where('checkInTime', '>=', todayStart),
+            where('checkInTime', '<=', todayEnd),
+            limit(1)
+          );
+          const attendanceSnap = await getDocs(attendanceQuery);
+          if (!attendanceSnap.empty) {
+            hadirCount++;
+          }
+
+          // Check approved leave for today
+          const leaveQuery = query(
+            collection(firestore, 'users', userDoc.id, 'leaveRequests'),
+            where('status', '==', 'approved')
+          );
+          const leaveSnap = await getDocs(leaveQuery);
+          leaveSnap.forEach(leaveDoc => {
+            const leaveData = leaveDoc.data();
+            if (leaveData.startDate && leaveData.endDate) {
+                 if (isWithinInterval(todayStart, { start: leaveData.startDate.toDate(), end: leaveData.endDate.toDate() })) {
+                    if (leaveData.type === 'Izin') izinCount++;
+                    else if (leaveData.type === 'Sakit') sakitCount++;
                 }
-            });
-            processAndCacheStats({ izin: izinCount, sakit: sakitCount });
-        }, (error) => {
-            console.error("Leave listener failed:", error);
+            }
+          });
         });
 
-    } catch (error) {
-        console.error("Error setting up dashboard listeners:", error);
-        setIsLoading(false);
-    }
+        await Promise.all(promises);
 
-    return () => {
-        unsubStaff();
-        unsubAttendance();
-        unsubLeave();
+        setStats({ totalStaff, hadir: hadirCount, izin: izinCount, sakit: sakitCount });
+      } catch (error) {
+        console.error("Error fetching dashboard stats for free plan:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
+
+    fetchStats();
+
   }, [firestore, user]);
 
   return { stats: {...stats, alpa: alpaCount}, isLoading };
 }
+
 
 // ====================================================================
 // D. ROLE-BASED DASHBOARD COMPONENTS (SMART)
@@ -297,7 +307,7 @@ function useStaffDashboardStats(firestore: any, user: any) {
 const HeadmasterDashboard = ({ user, router }: any) => {
     const firestore = useFirestore();
 
-    const { stats, isLoading: isStatsLoading } = useStaffDashboardStats(firestore, user);
+    const { stats, isLoading: isStatsLoading } = useStaffDashboardStats_FreePlan(firestore, user);
     const { summary: personalSummary, isLoading: isPersonalSummaryLoading } = useMonthlyAttendanceSummary(user);
     
     const todaysAttendanceQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'attendanceRecords'), where('checkInTime', '>=', startOfDay(new Date())), limit(1)) : null, [firestore, user]);
@@ -311,9 +321,9 @@ const HeadmasterDashboard = ({ user, router }: any) => {
                 <Skeleton className="h-[480px] w-full" />
                 <Skeleton className="h-[320px] w-full" />
                 {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-[120px] w-full" />)}
-                <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
+                {/* <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
                     <Skeleton className="h-[200px] w-full" />
-                </div>
+                </div> */}
             </>
         );
     }
@@ -334,16 +344,16 @@ const HeadmasterDashboard = ({ user, router }: any) => {
             <StatCard title="Total Alpa Hari Ini" value={stats.alpa} icon={UserX} />
             <StatCard title="Total Guru & Pegawai" value={stats.totalStaff} icon={Users} />
             
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 overflow-x-auto">
-                <RecentAttendanceTable />
-            </div>
+            {/* <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 overflow-x-auto">
+               <p className='text-sm text-center text-muted-foreground p-4'>Tabel riwayat absen terbaru sedang dalam perbaikan.</p>
+            </div> */}
         </>
     );
 };
 
 const AdminDashboard = ({ user, router }: any) => {
     const firestore = useFirestore();
-    const { stats, isLoading: isStatsLoading } = useStaffDashboardStats(firestore, user);
+    const { stats, isLoading: isStatsLoading } = useStaffDashboardStats_FreePlan(firestore, user);
 
     return (
         <>
@@ -351,9 +361,9 @@ const AdminDashboard = ({ user, router }: any) => {
             <StatCard title="Total Izin/Sakit Hari Ini" value={stats.izin + stats.sakit} icon={BookUser} isLoading={isStatsLoading} />
             <StatCard title="Total Alpa Hari Ini" value={stats.alpa} icon={UserX} isLoading={isStatsLoading} />
             <StatCard title="Total Guru & Pegawai" value={stats.totalStaff} icon={Users} isLoading={isStatsLoading} />
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 overflow-x-auto">
-                <RecentAttendanceTable />
-            </div>
+            {/* <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 overflow-x-auto">
+                 <p className='text-sm text-center text-muted-foreground p-4'>Tabel riwayat absen terbaru sedang dalam perbaikan.</p>
+            </div> */}
         </>
     );
 };
