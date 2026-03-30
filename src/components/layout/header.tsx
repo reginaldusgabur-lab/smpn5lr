@@ -24,14 +24,12 @@ import {
 } from '@/components/ui/dialog';
 import { LogOut, Settings, ShieldAlert } from 'lucide-react';
 import { signOut } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
 import { ModeToggle } from '@/components/theme-toggle';
 
 export function Header({ isTransparent }: { isTransparent?: boolean }) {
   const firestore = useFirestore();
   const { user } = useUser();
   const auth = useAuth();
-  const router = useRouter();
 
   const appLogo = PlaceHolderImages.find(p => p.id === 'app-logo');
 
@@ -45,7 +43,8 @@ export function Header({ isTransparent }: { isTransparent?: boolean }) {
   const handleLogout = async () => {
     if(!auth) return;
     await signOut(auth);
-    router.replace('/');
+    // PERBAIKAN: Menggunakan window.location.href untuk full page reload
+    window.location.href = '/'; 
   };
 
   const getInitials = (name: string | undefined | null) => {

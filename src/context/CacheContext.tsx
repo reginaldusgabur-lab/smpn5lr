@@ -33,17 +33,6 @@ export function CacheProvider({ children }: { children: ReactNode }) {
     isCacheLoading,
   }), [schoolConfig, userProfile, isCacheLoading]);
 
-  if (isCacheLoading) {
-      return (
-          <div className="flex h-screen w-full items-center justify-center bg-background">
-              <div className="flex flex-col items-center gap-4">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  <p className="text-muted-foreground">Memuat konfigurasi...</p>
-              </div>
-          </div>
-      );
-  }
-
   return <CacheContext.Provider value={value}>{children}</CacheContext.Provider>;
 }
 

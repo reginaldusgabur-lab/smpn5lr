@@ -449,7 +449,7 @@ export default function AbsenPage() {
     }
     if (status === 'idle') {
         return (
-            <div className="w-full max-w-md flex flex-col text-center">
+            <div className="w-full flex flex-col text-center">
                 <div className="pt-16 pb-8 px-4">
                     <h1 className="text-2xl font-bold tracking-tight">Pindai QR Code Absensi</h1>
                     <p className="text-muted-foreground mt-2">Arahkan kamera ke QR Code yang ditampilkan oleh Admin.</p>
@@ -465,24 +465,19 @@ export default function AbsenPage() {
     return null;
   };
 
- return (
+  return (
     <PageWrapper>
-        <div className="flex-grow flex flex-col items-center justify-center w-full p-4">
-            {/* 
-              PERBAIKAN: Sesuai permintaan, ikon pemuat awal telah dihapus.
-              Sekarang, jika `isLoading` bernilai true, komponen ini akan me-render `null`,
-              sehingga menghasilkan layar kosong singkat alih-alih pemuat yang posisinya salah.
-            */}
-            {isLoading ? null : (
-                <div className="w-full flex flex-col items-center">
-                    {renderContent()}
-                    {showQuote && userData?.role !== 'admin' && (
-                        <div className="w-full max-w-md mt-4">
-                            <QuoteOfTheDay category={userData.role} />
-                        </div>
-                    )}
-                </div>
-            )}
+        <div className="flex flex-col items-center gap-6">
+        {isLoading ? (
+            <div className="flex flex-col items-center justify-center w-full min-h-[550px]">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        ) : <div className="w-full">{renderContent()}</div>}
+        {showQuote && userData?.role !== 'admin' && (
+            <div className="w-full max-w-md mt-2 px-4 mx-auto">
+                <QuoteOfTheDay category={userData.role} />
+            </div>
+        )}
         </div>
     </PageWrapper>
   );
