@@ -20,8 +20,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useRouter } from 'next/navigation';
 import { getFromCache, setInCache } from '@/lib/cache';
 
-// NOTE: RecentAttendanceTable is temporarily disabled as it relies on collectionGroup
-// import RecentAttendanceTable from '@/components/dashboard/RecentAttendanceTable';
+import TodaysActivityTable from '@/components/dashboard/RecentAttendanceTable';
 
 
 // ====================================================================
@@ -318,12 +317,11 @@ const HeadmasterDashboard = ({ user, router }: any) => {
     if (isStatsLoading) {
         return (
             <>
-                <Skeleton className="h-[480px] w-full" />
-                <Skeleton className="h-[320px] w-full" />
-                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-[120px] w-full" />)}
-                {/* <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
+                {/* Placeholder skeleton for the entire dashboard while loading */}
+                {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-[120px] w-full" />)}
+                <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
                     <Skeleton className="h-[200px] w-full" />
-                </div> */}
+                </div>
             </>
         );
     }
@@ -344,9 +342,9 @@ const HeadmasterDashboard = ({ user, router }: any) => {
             <StatCard title="Total Alpa Hari Ini" value={stats.alpa} icon={UserX} />
             <StatCard title="Total Guru & Pegawai" value={stats.totalStaff} icon={Users} />
             
-            {/* <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 overflow-x-auto">
-               <p className='text-sm text-center text-muted-foreground p-4'>Tabel riwayat absen terbaru sedang dalam perbaikan.</p>
-            </div> */}
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 overflow-x-auto">
+               <TodaysActivityTable />
+            </div>
         </>
     );
 };
@@ -361,9 +359,9 @@ const AdminDashboard = ({ user, router }: any) => {
             <StatCard title="Total Izin/Sakit Hari Ini" value={stats.izin + stats.sakit} icon={BookUser} isLoading={isStatsLoading} />
             <StatCard title="Total Alpa Hari Ini" value={stats.alpa} icon={UserX} isLoading={isStatsLoading} />
             <StatCard title="Total Guru & Pegawai" value={stats.totalStaff} icon={Users} isLoading={isStatsLoading} />
-            {/* <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 overflow-x-auto">
-                 <p className='text-sm text-center text-muted-foreground p-4'>Tabel riwayat absen terbaru sedang dalam perbaikan.</p>
-            </div> */}
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 overflow-x-auto">
+                 <TodaysActivityTable />
+            </div>
         </>
     );
 };
@@ -381,10 +379,11 @@ const StaffDashboard = ({ user }: any) => {
 
     return (
         <>
-            <div className="lg:col-span-2 xl:col-span-2">
+            {/* FIX: Explicitly define column spans to prevent chart collapsing */}
+            <div className="md:col-span-2 lg:col-span-2 xl:col-span-2">
                 <PersonalAttendanceCardUI attendanceData={todaysAttendance} schoolConfigData={schoolConfig} isLoading={isPersonalLoading} />
             </div>
-            <div>
+            <div className="md:col-span-2 lg:col-span-1 xl:col-span-2">
                 <MonthlyAttendanceChartUI summaryData={summary} isLoading={isSummaryLoading} />
             </div>
         </>
