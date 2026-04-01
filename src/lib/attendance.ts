@@ -92,12 +92,15 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
     
     const totalWorkingDaysForPercentage = effectiveWorkingDays.length;
     const percentageRaw = totalWorkingDaysForPercentage > 0 ? (hadirCount / totalWorkingDaysForPercentage) * 100 : 0;
+    
+    // Ensure percentage does not exceed 100%
+    const finalPercentage = Math.min(percentageRaw, 100);
 
     return {
         totalHadir: hadirCount,
         totalIzin: izinCount,
         totalSakit: sakitCount,
         totalAlpa: alpaCount,
-        persentase: percentageRaw.toFixed(1) + '%',
+        persentase: finalPercentage.toFixed(1) + '%',
     };
 }
