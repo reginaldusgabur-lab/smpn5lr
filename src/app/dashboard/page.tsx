@@ -159,7 +159,7 @@ const MonthlyAttendanceChartUI = ({ summaryData, isLoading }: { summaryData: any
 
 
 // ====================================================================
-// C. DATA-FETCHING HOOKS (REWRITTEN FOR FREE PLAN)
+// C. DATA-FETCHING HOOK (MODIFIED)
 // ====================================================================
 
 function useMonthlyAttendanceSummary(user: any) {
@@ -185,35 +185,54 @@ function useMonthlyAttendanceSummary(user: any) {
     useEffect(() => {
         const allDataLoaded = user && !isSchoolConfigLoading && !isMonthlyConfigLoading && !isAttendanceLoading && !isLeaveLoading;
         if (allDataLoaded && cacheKey) {
-            const offDays: number[] = schoolConfig?.offDays ?? [0, 6];
+            const offDays: number[] = schoolConfig?.offDays ?? [0, 6]; // Default: Sunday, Saturday
             const holidays: string[] = monthlyConfig?.holidays ?? [];
             const monthStart = startOfMonth(now);
             const monthEnd = endOfMonth(now);
-            const todayStart = startOfDay(new Date());
+            const today = startOfDay(new Date());
 
-            const totalWorkingDays = eachDayOfInterval({ start: monthStart, end: monthEnd }).filter(day => !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd'))).length;
-            const pastWorkingDays = eachDayOfInterval({ start: monthStart, end: subDays(todayStart, 1) }).filter(day => day >= monthStart && !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd'))).length;
+            // MODIFIED: Calculate effective working days passed, including today
+            const effectiveWorkingDaysPassed = eachDayOfInterval({ start: monthStart, end: today }).filter(day => 
+                !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd'))
+            ).length;
+
+            // MODIFIED: Count any attendance record as 'hadir' for the day
+            const validAttendanceCount = attendanceData?.length ?? 0;
+
+            // --- Calculation for alpa (absent) days ---
+            const pastWorkingDays = eachDayOfInterval({ start: monthStart, end: subDays(today, 1) }).filter(day => 
+                day >= monthStart && !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd'))
+            ).length;
             
-            const validAttendanceCount = attendanceData?.filter(rec => rec.checkInTime && rec.checkOutTime).length ?? 0;
-            const pastValidAttendanceCount = attendanceData?.filter(att => att.checkInTime.toDate() < todayStart && att.checkInTime && att.checkOutTime).length ?? 0;
+            const pastValidAttendanceCount = attendanceData?.filter(att => att.checkInTime.toDate() < today).length ?? 0;
 
             let izinCount = 0, sakitCount = 0, pastIzinCount = 0, pastSakitCount = 0;
             leaveData?.forEach(leave => {
                 if (leave.status !== 'approved') return;
                 eachDayOfInterval({ start: leave.startDate.toDate(), end: leave.endDate.toDate() }).forEach(day => {
                     if (isWithinInterval(day, { start: monthStart, end: monthEnd }) && !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd'))) {
-                        if (leave.type === 'Izin') { izinCount++; if (day < todayStart) pastIzinCount++; }
-                        else if (leave.type === 'Sakit') { sakitCount++; if (day < todayStart) pastSakitCount++; }
+                        if (leave.type === 'Izin') { 
+                            izinCount++; 
+                            if (day < today) pastIzinCount++; 
+                        }
+                        else if (leave.type === 'Sakit') { 
+                            sakitCount++; 
+                            if (day < today) pastSakitCount++; 
+                        }
                     }
                 });
             });
+            // --- End of alpa calculation ---
 
             const alpaCount = Math.max(0, pastWorkingDays - pastValidAttendanceCount - pastIzinCount - pastSakitCount);
-            const percentage = totalWorkingDays > 0 ? Math.round((validAttendanceCount / totalWorkingDays) * 100) : 0;
+            
+            // MODIFIED: Calculate percentage based on days passed and format to 1 decimal place
+            const percentageRaw = effectiveWorkingDaysPassed > 0 ? (validAttendanceCount / effectiveWorkingDaysPassed) * 100 : 0;
+            const percentage = percentageRaw.toFixed(1);
             
             const newSummary = { attendanceCount: validAttendanceCount, alpaCount, izinCount, sakitCount, percentage };
             setSummary(newSummary);
-            setInCache(cacheKey, newSummary);
+            setInCache(cacheKey, newSummary, 900); // Cache for 15 minutes
             setIsLoading(false);
         }
     }, [user, isSchoolConfigLoading, isMonthlyConfigLoading, isAttendanceLoading, isLeaveLoading, schoolConfig, monthlyConfig, attendanceData, leaveData, now, cacheKey]);

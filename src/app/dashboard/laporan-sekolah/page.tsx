@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Download, AlertCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import * as XLSX from 'xlsx';
+import { calculateAttendanceStats } from '@/lib/attendance'; // <-- IMPORT THE CENTRALIZED FUNCTION
 
 // Interface data untuk setiap baris dalam laporan
 interface ReportRowData {
@@ -50,9 +51,7 @@ export default function SchoolReportPage() {
             try {
                 const monthStart = startOfMonth(currentMonth);
                 const monthEnd = endOfMonth(currentMonth);
-
-                const workingDaysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd })
-                    .filter(day => getDay(day) > 0 && getDay(day) < 6).length;
+                const dateRange = { start: monthStart, end: monthEnd };
 
                 const usersQuery = query(collection(firestore, 'users'), where('role', 'in', ['guru', 'pegawai', 'kepala_sekolah']));
                 const usersSnapshot = await getDocs(usersQuery);
@@ -62,63 +61,31 @@ export default function SchoolReportPage() {
                     setIsLoading(false);
                     return;
                 }
-
-                let reports: Omit<ReportRowData, 'no' | 'totalAlpa' | 'persentase'>[] = [];
-
-                const promises = usersSnapshot.docs.map(async (userDoc) => {
+                
+                // REFACTORED: Use the centralized function for calculation
+                const reportPromises = usersSnapshot.docs.map(async (userDoc) => {
                     const userData = userDoc.data();
                     const userId = userDoc.id;
 
-                    const attendanceQuery = query(collection(firestore, 'users', userId, 'attendanceRecords'), where('checkInTime', '>=', monthStart), where('checkInTime', '<=', monthEnd));
-                    const leaveQuery = query(collection(firestore, 'users', userId, 'leaveRequests'), where('status', '==', 'approved'));
-                    
-                    const [attendanceSnapshot, leaveSnapshot] = await Promise.all([getDocs(attendanceQuery), getDocs(leaveQuery)]);
+                    // Call the single source of truth for calculations
+                    const stats = await calculateAttendanceStats(firestore, userId, dateRange);
 
-                    const totalHadir = attendanceSnapshot.docs.filter(doc => {
-                        const dayOfWeek = getDay(doc.data().checkInTime.toDate());
-                        return dayOfWeek > 0 && dayOfWeek < 6;
-                    }).length;
-
-                    let totalIzin = 0;
-                    let totalSakit = 0;
-                    leaveSnapshot.forEach(doc => {
-                        const leave = doc.data();
-                        eachDayOfInterval({ start: leave.startDate.toDate(), end: leave.endDate.toDate() }).forEach(day => {
-                             if (day >= monthStart && day <= monthEnd && getDay(day) > 0 && getDay(day) < 6) {
-                                if (leave.type === 'Izin') totalIzin++;
-                                else if (leave.type === 'Sakit') totalSakit++;
-                            }
-                        });
-                    });
-                    
-                    reports.push({
+                    return {
                         uid: userId,
                         name: userData.name || 'Nama Tidak Ada',
                         nip: userData.nip || '-', 
                         position: userData.position || '-',
                         role: userData.role || 'tidak diketahui',
-                        totalHadir,
-                        totalIzin,
-                        totalSakit,
-                    });
-                });
-
-                await Promise.all(promises);
-                
-                const finalReportData = reports.map((report, index) => {
-                    const totalAbsence = report.totalHadir + report.totalIzin + report.totalSakit;
-                    const totalAlpa = Math.max(0, workingDaysInMonth - totalAbsence);
-                    const persentase = workingDaysInMonth > 0 ? Math.round((report.totalHadir / workingDaysInMonth) * 100) : 0;
-
-                    return {
-                        ...report,
-                        no: index + 1,
-                        totalAlpa,
-                        persentase: `${persentase}%`,
+                        ...stats,
                     };
                 });
 
+                const results = await Promise.all(reportPromises);
+
+                const finalReportData = results.map((report, index) => ({ ...report, no: index + 1 }));
+                
                 setReportData(finalReportData);
+
             } catch (err: any) {
                 console.error("Error fetching full report data:", err);
                 setError("Gagal mengambil data laporan. Pastikan aturan keamanan Firestore Anda memperbolehkan akses ini.");
