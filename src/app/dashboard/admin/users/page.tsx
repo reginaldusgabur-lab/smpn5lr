@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -126,97 +126,98 @@ const UserTable = ({ data, userType, canManage, onEdit, onToggleStatus, onDelete
   const hasIdentifierColumn = userType === 'Guru' || userType === 'Kepala Sekolah' || userType === 'Pegawai';
   const hasPositionColumn = userType === 'Guru' || userType === 'Kepala Sekolah' || userType === 'Pegawai';
   
-  // Calculate colspan dynamically
-  let colSpan = 3; // No, Nama, Email
+  let colSpan = 3;
   if (hasIdentifierColumn) colSpan++;
   if (hasPositionColumn) colSpan++;
-  colSpan++; // Status
+  colSpan++;
   if (canManage) colSpan++;
 
   return (
-      <Table className="min-w-[960px]">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[50px] text-center whitespace-nowrap">
-              {(userType === 'Guru' || userType === 'Kepala Sekolah') ? 'No. Urut' : 'No.'}
-            </TableHead>
-            <TableHead>Nama</TableHead>
-            <TableHead>Email</TableHead>
-            {hasIdentifierColumn && (
-              <TableHead>
-                NIP
-              </TableHead>
-            )}
-            {hasPositionColumn && <TableHead className="whitespace-nowrap">Status Kepegawaian</TableHead>}
-            <TableHead className="text-center">Status</TableHead>
-            {canManage && (
-              <TableHead className="text-right">
-                  <span className="sr-only">Aksi</span>
-              </TableHead>
-            )}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.length > 0 ? (
-            data.map((user, index) => (
-              <TableRow key={user.id}>
-                <TableCell className="text-center font-medium">
-                  {(userType === 'Guru' || userType === 'Kepala Sekolah') ? (user.sequenceNumber ?? '-') : (index + 1)}
-                </TableCell>
-                <TableCell className="font-medium whitespace-nowrap">{user.name}</TableCell>
-                <TableCell className="font-medium">{user.email || '-'}</TableCell>
+      <div className="border rounded-md overflow-x-auto">
+        <Table className="min-w-[960px]">
+            <TableHeader>
+            <TableRow>
+                <TableHead className="w-[50px] text-center whitespace-nowrap">
+                {(userType === 'Guru' || userType === 'Kepala Sekolah') ? 'No. Urut' : 'No.'}
+                </TableHead>
+                <TableHead>Nama</TableHead>
+                <TableHead>Email</TableHead>
                 {hasIdentifierColumn && (
-                  <TableCell className="font-medium">
-                    {user.nip || '-'}
-                  </TableCell>
+                <TableHead>
+                    NIP
+                </TableHead>
                 )}
-                {hasPositionColumn && <TableCell>{user.position || '-'}</TableCell>}
-                <TableCell className="text-center">
-                  <Badge variant={user.status === 'Aktif' ? 'default' : 'destructive'}>
-                    {user.status}
-                  </Badge>
-                </TableCell>
+                {hasPositionColumn && <TableHead className="whitespace-nowrap">Status Kepegawaian</TableHead>}
+                <TableHead className="text-center">Status</TableHead>
                 {canManage && (
-                  <TableCell className="text-right">
-                      <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                          <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                          </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => onEdit(user)}>Edit Pengguna</DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => onToggleStatus(user)}
-                            disabled={user.email === 'admin@sekolah.sch.id'}
-                          >
-                            {user.status === 'Aktif' ? 'Non-aktifkan' : 'Aktifkan'}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                              onClick={() => onDelete(user)}
-                              disabled={user.email === 'admin@sekolah.sch.id'}
-                          >
-                              Hapus Pengguna
-                          </DropdownMenuItem>
-                      </DropdownMenuContent>
-                      </DropdownMenu>
-                  </TableCell>
+                <TableHead className="text-right">
+                    <span className="sr-only">Aksi</span>
+                </TableHead>
                 )}
-              </TableRow>
-            ))
-          ) : (
-              <TableRow>
-                  <TableCell colSpan={colSpan} className="h-24 text-center">
-                      Tidak ada data pengguna.
-                  </TableCell>
-              </TableRow>
-          )}
-        </TableBody>
-      </Table>
+            </TableRow>
+            </TableHeader>
+            <TableBody>
+            {data.length > 0 ? (
+                data.map((user, index) => (
+                <TableRow key={user.id}>
+                    <TableCell className="text-center font-medium">
+                    {(userType === 'Guru' || userType === 'Kepala Sekolah') ? (user.sequenceNumber ?? '-') : (index + 1)}
+                    </TableCell>
+                    <TableCell className="font-medium whitespace-nowrap">{user.name}</TableCell>
+                    <TableCell className="font-medium">{user.email || '-'}</TableCell>
+                    {hasIdentifierColumn && (
+                    <TableCell className="font-medium">
+                        {user.nip || '-'}
+                    </TableCell>
+                    )}
+                    {hasPositionColumn && <TableCell>{user.position || '-'}</TableCell>}
+                    <TableCell className="text-center">
+                    <Badge variant={user.status === 'Aktif' ? 'default' : 'destructive'}>
+                        {user.status}
+                    </Badge>
+                    </TableCell>
+                    {canManage && (
+                    <TableCell className="text-right">
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Aksi</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => onEdit(user)}>Edit Pengguna</DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onClick={() => onToggleStatus(user)}
+                                disabled={user.email === 'admin@sekolah.sch.id'}
+                            >
+                                {user.status === 'Aktif' ? 'Non-aktifkan' : 'Aktifkan'}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                onClick={() => onDelete(user)}
+                                disabled={user.email === 'admin@sekolah.sch.id'}
+                            >
+                                Hapus Pengguna
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
+                    )}
+                </TableRow>
+                ))
+            ) : (
+                <TableRow>
+                    <TableCell colSpan={colSpan} className="h-24 text-center">
+                        Tidak ada data pengguna untuk peran ini.
+                    </TableCell>
+                </TableRow>
+            )}
+            </TableBody>
+        </Table>
+      </div>
   );
 };
 
@@ -241,11 +242,12 @@ const addUserSchema = z
   })
   .refine((data) => {
     if (data.role === 'guru' || data.role === 'kepala_sekolah') {
-      return data.sequenceNumber && /^\d+$/.test(data.sequenceNumber);
+        if (!data.sequenceNumber) return false; // Must exist
+        return /^\d+$/.test(data.sequenceNumber); // Must be a number
     }
     return true;
   }, {
-    message: 'Nomor urut wajib diisi dengan angka.',
+    message: 'No. urut wajib diisi dengan angka.',
     path: ['sequenceNumber'],
   });
 
@@ -261,22 +263,17 @@ const editUserSchema = z
   })
   .refine((data) => {
     if (data.role === 'guru' || data.role === 'kepala_sekolah') {
-      return data.sequenceNumber && /^\d+$/.test(data.sequenceNumber);
+        if (!data.sequenceNumber) return false; // Must exist
+        return /^\d+$/.test(data.sequenceNumber); // Must be a number
     }
     return true;
   }, {
-    message: 'Nomor urut wajib diisi dengan angka.',
+    message: 'No. urut wajib diisi dengan angka.',
     path: ['sequenceNumber'],
   });
 
 
 const roleConfig: { [key in Role]: { label: string; placeholder: string; icon: React.ReactNode; title: string; } } = {
-  kepala_sekolah: {
-    label: 'NIP',
-    placeholder: 'Masukkan NIP Kepala Sekolah',
-    icon: <Crown className="h-5 w-5" />,
-    title: 'Kepala Sekolah',
-  },
   guru: {
     label: 'NIP',
     placeholder: 'Masukkan NIP Pengguna',
@@ -289,6 +286,12 @@ const roleConfig: { [key in Role]: { label: string; placeholder: string; icon: R
     icon: <Briefcase className="h-5 w-5" />,
     title: 'Pegawai',
   },
+  kepala_sekolah: {
+    label: 'NIP',
+    placeholder: 'Masukkan NIP Kepala Sekolah',
+    icon: <Crown className="h-5 w-5" />,
+    title: 'Kepala Sekolah',
+  },
   admin: {
       label: 'Email',
       placeholder: 'admin.baru@sekolah.sch.id',
@@ -298,7 +301,7 @@ const roleConfig: { [key in Role]: { label: string; placeholder: string; icon: R
 };
 
 function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: boolean }) {
-  const [activeTab, setActiveTab] = useState('guru');
+  const [activeRole, setActiveRole] = useState<Role>('guru');
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
@@ -333,10 +336,10 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
     const allUsers = [...usersData];
     
     const sortWithSequence = (a: any, b: any) => {
-        const seqA = a.sequenceNumber ?? Infinity;
-        const seqB = b.sequenceNumber ?? Infinity;
-        if (seqA !== seqB) {
-            return seqA - seqB;
+        const numA = a.sequenceNumber ? Number(a.sequenceNumber) : Infinity;
+        const numB = b.sequenceNumber ? Number(b.sequenceNumber) : Infinity;
+        if (numA !== numB) {
+            return numA - numB;
         }
         return a.name.localeCompare(b.name);
     };
@@ -357,11 +360,20 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
       user.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   };
+  
+  const tableData = useMemo(() => {
+    const dataMap = {
+        guru: filterData(guruData),
+        pegawai: filterData(pegawaiData),
+        kepala_sekolah: filterData(kepalaSekolahData),
+        admin: filterData(adminData),
+    };
+    return dataMap[activeRole] || [];
+  }, [activeRole, searchQuery, guruData, pegawaiData, kepalaSekolahData, adminData]);
 
-  const filteredKepalaSekolahData = useMemo(() => filterData(kepalaSekolahData), [searchQuery, kepalaSekolahData]);
-  const filteredGuruData = useMemo(() => filterData(guruData), [searchQuery, guruData]);
-  const filteredPegawaiData = useMemo(() => filterData(pegawaiData), [searchQuery, pegawaiData]);
-  const filteredAdminData = useMemo(() => filterData(adminData), [searchQuery, adminData]);
+  const userTypeTitle = useMemo(() => {
+      return roleConfig[activeRole]?.title || 'Pengguna';
+  }, [activeRole]);
 
   const addForm = useForm<z.infer<typeof addUserSchema>>({
     resolver: zodResolver(addUserSchema),
@@ -391,6 +403,15 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
   const selectedRoleForAdd = addForm.watch('role');
   const selectedRoleForEdit = editForm.watch('role');
   
+  const isSequenceNumberTaken = (sequenceNumber: string, currentUserId: string | null = null) => {
+      if (!usersData || !sequenceNumber) return false;
+      return usersData.some(u => 
+          (u.role === 'guru' || u.role === 'kepala_sekolah') && 
+          u.id !== currentUserId &&
+          String(u.sequenceNumber) === sequenceNumber
+      );
+  }
+
   async function handleCreateUser(values: z.infer<typeof addUserSchema>) {
     if (!firestore) {
         toast({ variant: 'destructive', title: 'Kesalahan', description: 'Layanan database tidak tersedia.' });
@@ -399,6 +420,11 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
     
     if (values.role === 'kepala_sekolah' && headmasterExists) {
         toast({ variant: 'destructive', title: 'Gagal', description: 'Posisi Kepala Sekolah sudah terisi.' });
+        return;
+    }
+
+    if ((values.role === 'guru' || values.role === 'kepala_sekolah') && isSequenceNumberTaken(values.sequenceNumber!)) {
+        toast({ variant: 'destructive', title: 'Nomor Urut Terpakai', description: 'Nomor Urut SK ini sudah digunakan oleh pengguna lain.' });
         return;
     }
 
@@ -487,6 +513,11 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
     if (values.role === 'kepala_sekolah' && headmasterExists && selectedUser.role !== 'kepala_sekolah') {
       toast({ variant: 'destructive', title: 'Gagal', description: 'Posisi Kepala Sekolah sudah terisi.' });
       return;
+    }
+    
+    if ((values.role === 'guru' || values.role === 'kepala_sekolah') && isSequenceNumberTaken(values.sequenceNumber!, selectedUser.id)) {
+        toast({ variant: 'destructive', title: 'Nomor Urut Terpakai', description: 'Nomor Urut SK ini sudah digunakan oleh pengguna lain.' });
+        return;
     }
 
     setIsSaving(true);
@@ -611,7 +642,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
   if (!isAllowed) return null;
   
   const skeletonCols = useMemo(() => {
-    switch(activeTab) {
+    switch(activeRole) {
         case 'guru':
         case 'kepala_sekolah':
         case 'pegawai':
@@ -621,7 +652,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
         default:
             return 6;
     }
-  }, [activeTab, canManage]);
+  }, [activeRole, canManage]);
 
   return (
     <>
@@ -631,202 +662,179 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
             <div>
               <CardTitle>Manajemen Pengguna</CardTitle>
               <CardDescription>
-                Kelola data Guru, Pegawai, dan Kepala Sekolah.
+                Kelola data Guru, Pegawai, Kepala Sekolah, dan Admin.
               </CardDescription>
             </div>
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-              <div className="relative w-full sm:w-auto">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Cari berdasarkan nama..."
-                  className="w-full rounded-lg bg-background pl-8 sm:w-[200px] md:w-[250px]"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              {canManage && (
-                <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="w-full sm:w-auto">
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      <span>Tambah Pengguna</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[480px]">
-                    <DialogHeader>
-                      <DialogTitle>Tambah Pengguna Baru</DialogTitle>
-                      <DialogDescription>
-                        Isi detail di bawah untuk membuat akun baru.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <Form {...addForm}>
-                      <form onSubmit={addForm.handleSubmit(handleCreateUser)}>
-                        <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto pr-4">
-                           <FormField
-                              control={addForm.control}
-                              name="role"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Peran Pengguna</FormLabel>
-                                  <FormControl>
-                                    <RadioGroup
-                                      onValueChange={field.onChange}
-                                      value={field.value}
-                                      className="grid grid-cols-2 sm:grid-cols-3 gap-2"
-                                    >
-                                      {Object.keys(roleConfig).map((role) => {
-                                        const isHeadmasterRole = role === 'kepala_sekolah';
-                                        const isDisabled = isHeadmasterRole && headmasterExists;
-                                        const radioItem = (
-                                            <FormItem key={role}>
-                                            <FormControl>
-                                                <RadioGroupItem
-                                                value={role}
-                                                id={`add-${role}`}
-                                                className="sr-only"
-                                                disabled={isDisabled}
-                                                />
-                                            </FormControl>
-                                            <Label
-                                                htmlFor={`add-${role}`}
-                                                className={cn(
-                                                    'flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-3 text-center hover:bg-accent hover:text-accent-foreground cursor-pointer',
-                                                    selectedRoleForAdd === role ? 'border-primary' : '',
-                                                    isDisabled ? 'cursor-not-allowed opacity-50' : ''
-                                                )}
-                                            >
-                                                {roleConfig[role as Role].icon}
-                                                <span className="mt-1.5 text-xs">
-                                                  {roleConfig[role as Role].title}
-                                                </span>
-                                            </Label>
-                                            </FormItem>
-                                        );
-
-                                        if (isDisabled) {
-                                            return (
-                                            <TooltipProvider key={role} delayDuration={100}>
-                                                <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <div className="w-full h-full">{radioItem}</div>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>Posisi Kepala Sekolah sudah terisi.</p>
-                                                </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
+            <div className="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row sm:items-center">
+                {canManage && (
+                    <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button className="w-full sm:w-auto">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        <span>Tambah Pengguna</span>
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[480px]">
+                        <DialogHeader>
+                        <DialogTitle>Tambah Pengguna Baru</DialogTitle>
+                        <DialogDescription>
+                            Isi detail di bawah untuk membuat akun baru.
+                        </DialogDescription>
+                        </DialogHeader>
+                        <Form {...addForm}>
+                        <form onSubmit={addForm.handleSubmit(handleCreateUser)}>
+                            <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto pr-4">
+                            <FormField
+                                control={addForm.control}
+                                name="role"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Peran Pengguna</FormLabel>
+                                    <FormControl>
+                                        <RadioGroup
+                                        onValueChange={field.onChange}
+                                        value={field.value}
+                                        className="grid grid-cols-2 sm:grid-cols-3 gap-2"
+                                        >
+                                        {Object.keys(roleConfig).map((role) => {
+                                            const isHeadmasterRole = role === 'kepala_sekolah';
+                                            const isDisabled = isHeadmasterRole && headmasterExists;
+                                            const radioItem = (
+                                                <FormItem key={role}>
+                                                <FormControl>
+                                                    <RadioGroupItem
+                                                    value={role}
+                                                    id={`add-${role}`}
+                                                    className="sr-only"
+                                                    disabled={isDisabled}
+                                                    />
+                                                </FormControl>
+                                                <Label
+                                                    htmlFor={`add-${role}`}
+                                                    className={cn(
+                                                        'flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-3 text-center hover:bg-accent hover:text-accent-foreground cursor-pointer',
+                                                        selectedRoleForAdd === role ? 'border-primary' : '',
+                                                        isDisabled ? 'cursor-not-allowed opacity-50' : ''
+                                                    )}
+                                                >
+                                                    {roleConfig[role as Role].icon}
+                                                    <span className="mt-1.5 text-xs">
+                                                    {roleConfig[role as Role].title}
+                                                    </span>
+                                                </Label>
+                                                </FormItem>
                                             );
-                                        }
-                                        return radioItem;
-                                        })}
-                                    </RadioGroup>
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
 
-                          <FormField control={addForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nama Lengkap</FormLabel><FormControl><Input placeholder="Nama lengkap dengan gelar..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                          <FormField control={addForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="email.aktif@contoh.com" {...field} /></FormControl><FormDescription className="text-xs">Pengguna akan menerima email verifikasi.</FormDescription><FormMessage /></FormItem>)}/>
-                          
-                          {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah') && (
-                              <FormField control={addForm.control} name="sequenceNumber" render={({ field }) => (
-                                  <FormItem>
-                                      <FormLabel>Nomor Urut SK</FormLabel>
-                                      <FormControl><Input type="number" placeholder="Nomor untuk pengurutan daftar" {...field} /></FormControl>
-                                      <FormDescription className="text-xs">Sesuai nomor urut pada SK pembagian tugas.</FormDescription>
-                                      <FormMessage />
-                                  </FormItem>
-                              )}/>
-                          )}
-                          
-                          {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah' || selectedRoleForAdd === 'pegawai') && (
-                              <FormField control={addForm.control} name="identifier" render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>{roleConfig[selectedRoleForAdd as Role]?.label} <span className="text-muted-foreground">(Opsional)</span></FormLabel>
-                                  <FormControl><Input placeholder={roleConfig[selectedRoleForAdd as Role]?.placeholder} {...field} /></FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}/>
-                          )}
+                                            if (isDisabled) {
+                                                return (
+                                                <TooltipProvider key={role} delayDuration={100}>
+                                                    <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className="w-full h-full">{radioItem}</div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Posisi Kepala Sekolah sudah terisi.</p>
+                                                    </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                                );
+                                            }
+                                            return radioItem;
+                                            })}
+                                        </RadioGroup>
+                                    </FormControl>
+                                    </FormItem>
+                                )}
+                                />
 
-                          {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah') && (
-                              <FormField control={addForm.control} name="position" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex items-center space-x-4"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PNS" /></FormControl><FormLabel className="font-normal">PNS</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
-                          )}
-                          {selectedRoleForAdd === 'pegawai' && (
-                              <FormField control={addForm.control} name="position" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-wrap items-center gap-x-4 gap-y-2"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="Honorer" /></FormControl><FormLabel className="font-normal">Honorer</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PW" /></FormControl><FormLabel className="font-normal">PW (PPPK Paruh Waktu)</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
-                          )}
+                            <FormField control={addForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nama Lengkap</FormLabel><FormControl><Input placeholder="Nama lengkap dengan gelar..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={addForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="email.aktif@contoh.com" {...field} /></FormControl><FormDescription className="text-xs">Pengguna akan menerima email verifikasi.</FormDescription><FormMessage /></FormItem>)}/>
+                            
+                            {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah') && (
+                                <FormField control={addForm.control} name="sequenceNumber" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Nomor Urut SK</FormLabel>
+                                        <FormControl><Input type="number" placeholder="Nomor untuk pengurutan daftar" {...field} /></FormControl>
+                                        <FormDescription className="text-xs">Sesuai nomor urut pada SK pembagian tugas.</FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                            )}
+                            
+                            {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah' || selectedRoleForAdd === 'pegawai') && (
+                                <FormField control={addForm.control} name="identifier" render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>{roleConfig[selectedRoleForAdd as Role]?.label} <span className="text-muted-foreground">(Opsional)</span></FormLabel>
+                                    <FormControl><Input placeholder={roleConfig[selectedRoleForAdd as Role]?.placeholder} {...field} /></FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}/>
+                            )}
 
-                          <FormField control={addForm.control} name="password" render={({ field }) => (<FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Minimal 6 karakter" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                          <FormField control={addForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>Konfirmasi Password</FormLabel><FormControl><Input type="password" placeholder="Ulangi password di atas" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                        </div>
-                        <DialogFooter>
-                          <Button type="submit" className="w-full" disabled={isSaving}>
-                            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            <span>Buat Akun Pengguna</span>
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-              )}
+                            {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah') && (
+                                <FormField control={addForm.control} name="position" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex items-center space-x-4"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PNS" /></FormControl><FormLabel className="font-normal">PNS</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
+                            )}
+                            {selectedRoleForAdd === 'pegawai' && (
+                                <FormField control={addForm.control} name="position" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-wrap items-center gap-x-4 gap-y-2"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="Honorer" /></FormControl><FormLabel className="font-normal">Honorer</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PW" /></FormControl><FormLabel className="font-normal">PW (PPPK Paruh Waktu)</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>
+                            )}
+
+                            <FormField control={addForm.control} name="password" render={({ field }) => (<FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Minimal 6 karakter" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={addForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>Konfirmasi Password</FormLabel><FormControl><Input type="password" placeholder="Ulangi password di atas" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            </div>
+                            <DialogFooter>
+                            <Button type="submit" className="w-full" disabled={isSaving}>
+                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                <span>Buat Akun Pengguna</span>
+                            </Button>
+                            </DialogFooter>
+                        </form>
+                        </Form>
+                    </DialogContent>
+                    </Dialog>
+                )}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          <Tabs defaultValue="guru" className="w-full" onValueChange={setActiveTab}>
-              <div className="border-b">
-                <div className="overflow-x-auto px-4 md:px-6">
-                    <TabsList className="w-max">
-                        <TabsTrigger value="guru">Guru</TabsTrigger>
-                        <TabsTrigger value="pegawai">Pegawai</TabsTrigger>
-                        <TabsTrigger value="kepala_sekolah">Kepala Sekolah</TabsTrigger>
-                        <TabsTrigger value="admin">Admin</TabsTrigger>
-                    </TabsList>
+        <CardContent className="p-4 md:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1">
+                    <Select value={activeRole} onValueChange={(value) => setActiveRole(value as Role)}>
+                        <SelectTrigger className="w-full sm:w-[220px]">
+                            <SelectValue placeholder="Pilih peran..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="guru">Guru</SelectItem>
+                            <SelectItem value="pegawai">Pegawai</SelectItem>
+                            <SelectItem value="kepala_sekolah">Kepala Sekolah</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
-              </div>
-              <div className="py-4">
+                <div className="relative flex-1 sm:flex-initial sm:w-auto">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        type="search"
+                        placeholder={`Cari nama ${userTypeTitle}...`}
+                        className="w-full rounded-lg bg-background pl-8 sm:w-[250px] md:w-[300px]"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+            </div>
+            <div className="mt-4">
                 {isUsersLoading ? (
-                    <div className="px-4 md:px-6">
-                      <div className="border rounded-md overflow-x-auto">
-                        <UserTableSkeleton cols={skeletonCols} />
-                      </div>
-                    </div>
+                    <UserTableSkeleton cols={skeletonCols} />
                 ) : (
-                    <>
-                        <TabsContent value="guru" className="m-0 p-0">
-                          <div className="px-4 md:px-6">
-                            <div className="border rounded-md overflow-x-auto">
-                              <UserTable data={filteredGuruData} userType="Guru" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
-                            </div>
-                          </div>
-                        </TabsContent>
-                        <TabsContent value="pegawai" className="m-0 p-0">
-                          <div className="px-4 md:px-6">
-                             <div className="border rounded-md overflow-x-auto">
-                              <UserTable data={filteredPegawaiData} userType="Pegawai" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
-                            </div>
-                          </div>
-                        </TabsContent>
-                        <TabsContent value="kepala_sekolah" className="m-0 p-0">
-                          <div className="px-4 md:px-6">
-                             <div className="border rounded-md overflow-x-auto">
-                              <UserTable data={filteredKepalaSekolahData} userType="Kepala Sekolah" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
-                            </div>
-                          </div>
-                        </TabsContent>
-                        <TabsContent value="admin" className="m-0 p-0">
-                          <div className="px-4 md:px-6">
-                             <div className="border rounded-md overflow-x-auto">
-                              <UserTable data={filteredAdminData} userType="Admin" canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />
-                            </div>
-                          </div>
-                        </TabsContent>
-                    </>
+                    <UserTable 
+                        data={tableData} 
+                        userType={userTypeTitle} 
+                        canManage={canManage} 
+                        onEdit={openEditDialog} 
+                        onToggleStatus={handleToggleStatus} 
+                        onDelete={openDeleteDialog} 
+                    />
                 )}
-              </div>
-          </Tabs>
+            </div>
         </CardContent>
       </Card>
 

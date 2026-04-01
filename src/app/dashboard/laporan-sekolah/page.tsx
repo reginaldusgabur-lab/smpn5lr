@@ -36,6 +36,7 @@ interface ReportRowData {
     totalSakit: number;
     totalAlpa: number;
     persentase: string;
+    sequenceNumber: number | null;
 }
 
 export default function SchoolReportPage() {
@@ -84,11 +85,31 @@ export default function SchoolReportPage() {
                         nip: userData.nip || '-', 
                         position: userData.position || '-',
                         role: userData.role || 'tidak diketahui',
+                        sequenceNumber: userData.sequenceNumber || null,
                         ...stats,
                     };
                 });
 
                 const results = await Promise.all(reportPromises);
+                
+                results.sort((a, b) => {
+                    const seqA = a.sequenceNumber;
+                    const seqB = b.sequenceNumber;
+
+                    const hasSeqA = seqA !== null && seqA !== undefined;
+                    const hasSeqB = seqB !== null && seqB !== undefined;
+
+                    if (hasSeqA && !hasSeqB) return -1;
+                    if (!hasSeqA && hasSeqB) return 1;
+                    if (!hasSeqA && !hasSeqB) {
+                        return a.name.localeCompare(b.name);
+                    }
+                    
+                    if (seqA! < seqB!) return -1;
+                    if (seqA! > seqB!) return 1;
+
+                    return a.name.localeCompare(b.name);
+                });
 
                 const finalReportData = results.map((report, index) => ({ ...report, no: index + 1 }));
                 
@@ -168,7 +189,6 @@ export default function SchoolReportPage() {
         finalY += 4;
         
         const lineY = finalY; // Store Y position for the line
-        doc.setLineWidth(1.5);
         finalY += 8;
 
         // 2. Add Title
@@ -201,7 +221,7 @@ export default function SchoolReportPage() {
             head: [['No', 'Nama', 'NIP', 'Status', 'Hadir', 'Izin', 'Sakit', 'Alpa', 'Persen']],
             body: tableData,
             theme: 'grid',
-            styles: { fontSize: 8, font: 'times' },
+            styles: { fontSize: 9, font: 'times' },
             headStyles: { fillColor: [45, 115, 174], textColor: 255, fontStyle: 'bold' }, // #2d73ae
             didDrawPage: (data) => {
                 if (data.pageNumber === 1) {
@@ -228,19 +248,23 @@ export default function SchoolReportPage() {
                 const footerY = pageHeight - 10;
                 doc.setLineWidth(0.5);
                 doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
-                doc.text('Dokumen ini merupakan laporan absensi resmi yang dihasilkan oleh sistem online (E-SPENLI).', margin, footerY);
+                doc.text('Dokumen ini adalah laporan absensi resmi yang dihasilkan secara otomatis oleh aplikasi E-SPENLI.', margin, footerY);
                 doc.text(`Halaman ${pageNumber} dari ${pageCount}`, pageWidth - margin, footerY, { align: 'right' });
             }
         });
         
         // Draw the header line on the first page after autoTable has finished
         doc.setPage(1);
+        doc.setLineWidth(0.7); // Set line width
+        doc.setDrawColor(150, 150, 150); // Set line to a soft gray color
+
         if (tableWidth > 0 && typeof tableStartX === 'number') {
              doc.line(tableStartX, lineY, tableStartX + tableWidth, lineY);
         } else {
             // Fallback if table dimensions are not available for some reason
             doc.line(margin, lineY, pageWidth - margin, lineY);
         }
+        doc.setDrawColor(0, 0, 0); // Reset draw color to black
 
         // 5. Add Signature block
         let lastY = (doc as any).lastAutoTable.finalY;
@@ -312,7 +336,7 @@ export default function SchoolReportPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Laporan Ringkasan Kehadiran</CardTitle>
-                    <CardDescription>Ringkasan kehadiran bulanan untuk guru dan pegawai.</CardDescription>
+                    <CardDescription>Ringkasan kehadiran bulanan untuk seluruh personil sekolah.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
@@ -359,7 +383,7 @@ export default function SchoolReportPage() {
                     <div className="overflow-x-auto border rounded-md">
                         {isLoading ? (
                             <div className="p-4 space-y-3">
-                            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+                            {[...Array(10)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
                             </div>
                         ) : (
                             <Table>
@@ -378,9 +402,9 @@ export default function SchoolReportPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {filteredReports.length > 0 ? (
-                                        filteredReports.map((item, index) => (
+                                        filteredReports.map((item) => (
                                             <TableRow key={item.uid}>
-                                                <TableCell>{index + 1}</TableCell>
+                                                <TableCell>{item.no}</TableCell>
                                                 <TableCell className="font-medium">{item.name}</TableCell>
                                                 <TableCell>{item.nip}</TableCell>
                                                 <TableCell>{item.position}</TableCell> 
