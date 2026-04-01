@@ -20,21 +20,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import * as XLSX from 'xlsx';
-import { jsPDF } from "jspdf";
+import { jsPDF, GState } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { calculateAttendanceStats } from '@/lib/attendance';
-
-// Helper to convert image URL to Base64
-const toBase64 = async (url: string) => {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-};
 
 interface ReportRowData {
     no: number;
@@ -55,19 +43,19 @@ export default function SchoolReportPage() {
     const firestore = useFirestore();
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [reportData, setReportData] = useState<ReportRowData[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isReportLoading, setIsReportLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState("all");
 
     const schoolConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'schoolConfig', 'default') : null, [firestore]);
-    const { data: schoolConfigData } = useDoc(user, schoolConfigRef);
+    const { data: schoolConfigData, loading: isConfigLoading } = useDoc(user, schoolConfigRef);
 
     useEffect(() => {
         if (!user || isUserLoading || !firestore) return;
 
         const fetchAndCalculateReportData = async () => {
-            setIsLoading(true);
+            setIsReportLoading(true);
             setError(null);
 
             try {
@@ -80,7 +68,7 @@ export default function SchoolReportPage() {
 
                 if (usersSnapshot.empty) {
                     setReportData([]);
-                    setIsLoading(false);
+                    setIsReportLoading(false);
                     return;
                 }
                 
@@ -110,7 +98,7 @@ export default function SchoolReportPage() {
                 console.error("Error fetching full report data:", err);
                 setError("Gagal mengambil data laporan. Pastikan aturan keamanan Firestore Anda memperbolehkan akses ini.");
             } finally {
-                setIsLoading(false);
+                setIsReportLoading(false);
             }
         };
 
@@ -125,7 +113,7 @@ export default function SchoolReportPage() {
     const monthName = format(currentMonth, 'MMMM yyyy', { locale: id });
 
     const handleDownloadExcel = () => {
-        if (user?.role !== 'admin') return;
+        if (user?.role !== 'admin' || !filteredReports.length) return;
         const dataToExport = filteredReports.map(item => ({
             'No.': item.no,
             'Nama': item.name,
@@ -146,30 +134,50 @@ export default function SchoolReportPage() {
     };
 
     const handleDownloadPdf = async () => {
-        if (user?.role !== 'admin' || !filteredReports.length) return;
+        if (user?.role !== 'admin' || !filteredReports.length || !schoolConfigData) return;
         
         const doc = new jsPDF();
-        let finalY = 0;
+        let finalY = 15;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const centerX = pageWidth / 2;
+        const margin = 14;
+
+        const getConfig = (key: string, fallback: string) => schoolConfigData?.[key] || fallback;
 
         // 1. Add Header (Kop Surat)
-        if (schoolConfigData?.letterheadUrl) {
-            try {
-                const base64Image = await toBase64(schoolConfigData.letterheadUrl);
-                doc.addImage(base64Image as string, 'PNG', 10, 8, 190, 40);
-                finalY = 55; // Initial Y position after header
-            } catch (error) {
-                console.error("Error adding letterhead image:", error);
-                finalY = 15; // Fallback Y position
-            }
-        } else {
-            doc.setFontSize(16).setFont(undefined, 'bold');
-            doc.text('Laporan Kehadiran Bulanan', 105, 15, { align: 'center' });
-            finalY = 25;
-        }
+        doc.setFont('times', 'bold');
+        doc.setFontSize(14);
+        
+        const headerText1 = getConfig('governmentAgency', 'PEMERINTAH KABUPATEN MANGGARAI').toUpperCase();
+        doc.text(headerText1, centerX, finalY, { align: 'center' });
+        finalY += 6;
+
+        const headerText2 = getConfig('educationAgency', 'DINAS PENDIDIKAN PEMUDA DAN OLAHRAGA').toUpperCase();
+        doc.text(headerText2, centerX, finalY, { align: 'center' });
+        finalY += 6;
+        
+        const headerText3 = getConfig('schoolName', 'SMP NEGERI 5 LANGKE REMBONG').toUpperCase();
+        doc.setFontSize(14);
+        doc.text(headerText3, centerX, finalY, { align: 'center' });
+        finalY += 6;
+        
+        doc.setFont('times', 'normal');
+        doc.setFontSize(10);
+        const address = getConfig('address', 'Alamat Sekolah Belum Diatur');
+        doc.text(`Alamat: ${address}`, centerX, finalY, { align: 'center' });
+        finalY += 4;
+        
+        const lineY = finalY; // Store Y position for the line
+        doc.setLineWidth(1.5);
+        finalY += 8;
 
         // 2. Add Title
-        doc.setFontSize(12).setFont(undefined, 'normal');
-        doc.text(`Periode: ${monthName}`, 105, finalY, { align: 'center' });
+        doc.setFontSize(12);
+        doc.setFont('times', 'bold');
+        doc.text(`LAPORAN KEHADIRAN BULANAN`, centerX, finalY, { align: 'center' });
+        finalY += 6;
+        doc.setFont('times', 'normal');
+        doc.text(`Periode: ${monthName}`, centerX, finalY, { align: 'center' });
         finalY += 10;
 
         // 3. Add Table
@@ -185,64 +193,87 @@ export default function SchoolReportPage() {
             item.persentase,
         ]);
 
+        let tableWidth = 0;
+        let tableStartX = 0;
+
         autoTable(doc, {
             startY: finalY,
             head: [['No', 'Nama', 'NIP', 'Status', 'Hadir', 'Izin', 'Sakit', 'Alpa', 'Persen']],
             body: tableData,
             theme: 'grid',
-            styles: { fontSize: 8 },
-            headStyles: { fillColor: [34, 197, 94] }, // Green-500
+            styles: { fontSize: 8, font: 'times' },
+            headStyles: { fillColor: [45, 115, 174], textColor: 255, fontStyle: 'bold' }, // #2d73ae
             didDrawPage: (data) => {
-                // 4. Add Watermark and Footer to each page
-                const totalPages = doc.getNumberOfPages();
-                for (let i = 1; i <= totalPages; i++) {
-                    doc.setPage(i);
-
-                    // Watermark
-                    doc.saveGraphicsState(); // Save the current graphics state
-                    doc.setGState((doc as any).GState({opacity: 0.1})); // This is a known way for jspdf, might need casting
-                    doc.setFontSize(40).setTextColor(150);
-                    doc.text('E-SPENLI OFFICIAL', doc.internal.pageSize.getWidth() / 2, doc.internal.pageSize.getHeight() / 2, {
-                        angle: -45,
-                        align: 'center'
-                    });
-                    doc.restoreGraphicsState(); // Restore the graphics state
-
-                    // Footer
-                    const pageHeight = doc.internal.pageSize.getHeight();
-                    doc.setLineWidth(0.5);
-                    doc.line(14, pageHeight - 15, 196, pageHeight - 15);
-                    doc.setFontSize(8).setTextColor(100);
-                    doc.text(`Dokumen ini merupakan laporan absensi resmi yang dihasilkan oleh sistem E-SPENLI.`, 14, pageHeight - 10);
-                    doc.text(`Halaman ${i} dari ${totalPages}`, 196, pageHeight - 10, { align: 'right' });
+                if (data.pageNumber === 1) {
+                    tableWidth = data.table.width;
+                    tableStartX = data.table.pageStartX;
                 }
+
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const pageNumber = data.pageNumber;
+                const pageCount = (doc as any).internal.getNumberOfPages();
+
+                // Watermark
+                doc.saveGraphicsState();
+                doc.setGState(new (doc as any).GState({ opacity: 0.08 })); // Lower opacity
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(80);
+                doc.setTextColor(150);
+                doc.text('E-SPENLI', centerX, pageHeight / 2, { angle: -45, align: 'center' });
+                doc.restoreGraphicsState();
+
+                // Footer
+                doc.setFont('times', 'normal');
+                doc.setFontSize(8).setTextColor(100);
+                const footerY = pageHeight - 10;
+                doc.setLineWidth(0.5);
+                doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+                doc.text('Dokumen ini merupakan laporan absensi resmi yang dihasilkan oleh sistem online (E-SPENLI).', margin, footerY);
+                doc.text(`Halaman ${pageNumber} dari ${pageCount}`, pageWidth - margin, footerY, { align: 'right' });
             }
         });
+        
+        // Draw the header line on the first page after autoTable has finished
+        doc.setPage(1);
+        if (tableWidth > 0 && typeof tableStartX === 'number') {
+             doc.line(tableStartX, lineY, tableStartX + tableWidth, lineY);
+        } else {
+            // Fallback if table dimensions are not available for some reason
+            doc.line(margin, lineY, pageWidth - margin, lineY);
+        }
 
         // 5. Add Signature block
-        finalY = (doc as any).lastAutoTable.finalY + 15;
-        const pageWidth = doc.internal.pageSize.getWidth();
+        let lastY = (doc as any).lastAutoTable.finalY;
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const totalPages = (doc as any).internal.getNumberOfPages();
 
-        if (schoolConfigData?.principalName) {
-            const signatureBlockX = pageWidth - 70;
-            doc.setFontSize(10).setTextColor(0);
-            doc.text('Mengetahui,', signatureBlockX, finalY);
-            doc.text('Kepala Sekolah', signatureBlockX, finalY + 5);
-
-            if (schoolConfigData.signatureUrl) {
-                 try {
-                    const base64Image = await toBase64(schoolConfigData.signatureUrl);
-                    doc.addImage(base64Image as string, 'PNG', signatureBlockX, finalY + 7, 40, 20);
-                } catch (error) {
-                    console.error("Error adding signature image:", error);
-                }
-            }
-            
-            doc.setFont(undefined, 'bold');
-            doc.text(schoolConfigData.principalName, signatureBlockX, finalY + 32);
-            doc.setFont(undefined, 'normal');
-            doc.text(`NIP: ${schoolConfigData.principalNip || '-'}`, signatureBlockX, finalY + 37);
+        if (lastY + 50 > pageHeight - 20) {
+            doc.addPage();
+            lastY = 20;
+        } else {
+            lastY += 15;
         }
+
+        const signatureBlockX = pageWidth - 80;
+        const reportCity = getConfig('reportCity', 'Kota');
+        const principalName = getConfig('headmasterName', '[Nama Kepala Sekolah]');
+        
+        const principalUser = reportData.find(user => user.role === 'kepala_sekolah');
+        const principalNip = principalUser ? principalUser.nip : getConfig('nipKepalaSekolah', '[NIP tidak ditemukan]');
+
+        doc.setPage(totalPages);
+        doc.setFontSize(10).setFont('times', 'normal');
+        doc.text(`${reportCity}, ${format(new Date(), 'd MMMM yyyy', { locale: id })}`, signatureBlockX, lastY);
+        lastY += 6;
+        doc.text('Mengetahui,', signatureBlockX, lastY);
+        lastY += 6;
+        doc.text('Kepala Sekolah', signatureBlockX, lastY);
+        lastY += 25; // Space for signature
+        doc.setFont('times', 'bold');
+        doc.text(principalName, signatureBlockX, lastY);
+        doc.setFont('times', 'normal');
+        lastY += 5;
+        doc.text(`NIP: ${principalNip}`, signatureBlockX, lastY);
 
         doc.save(`Laporan Kehadiran Resmi - ${monthName}.pdf`);
     };
@@ -253,10 +284,17 @@ export default function SchoolReportPage() {
             .filter(report => report.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }, [reportData, roleFilter, searchTerm]);
     
-    if (!isUserLoading && !user) {
+    const isLoading = isReportLoading || isConfigLoading;
+
+    if (isUserLoading) {
+        return <div className="p-6">Memuat data pengguna...</div>;
+    }
+
+    if (!user) {
         return null;
     }
-    if (!isUserLoading && user && !['admin', 'kepala_sekolah'].includes(user.role)) {
+
+    if (!['admin', 'kepala_sekolah'].includes(user.role)) {
       return (
            <div className="p-4">
               <Alert variant="destructive">
@@ -267,6 +305,7 @@ export default function SchoolReportPage() {
           </div>
       );
     }
+
 
     return (
         <div className="flex-1 min-w-0 p-2 pt-0 pb-24 md:p-6 md:pt-8">
@@ -318,7 +357,7 @@ export default function SchoolReportPage() {
                     )}
 
                     <div className="overflow-x-auto border rounded-md">
-                        {isLoading && !error ? (
+                        {isLoading ? (
                             <div className="p-4 space-y-3">
                             {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
                             </div>
@@ -338,7 +377,7 @@ export default function SchoolReportPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {!isLoading && filteredReports.length > 0 ? (
+                                    {filteredReports.length > 0 ? (
                                         filteredReports.map((item, index) => (
                                             <TableRow key={item.uid}>
                                                 <TableCell>{index + 1}</TableCell>
@@ -354,7 +393,7 @@ export default function SchoolReportPage() {
                                         ))
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={9} className="h-24 text-center">{isLoading ? 'Memuat data...' : 'Tidak ada data untuk ditampilkan pada periode ini.'}</TableCell>
+                                            <TableCell colSpan={9} className="h-24 text-center">{isReportLoading ? 'Memuat data...' : 'Tidak ada data untuk ditampilkan pada periode ini.'}</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
