@@ -1,87 +1,90 @@
-'use client';
-
 import { useEffect, useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { AlertCircle, X } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+interface QuoteOfTheDayProps {
+  category: string | null;
+}
 
 interface Quote {
   content: string;
   author: string;
 }
 
-// Komponen sekarang menerima `category` sebagai sebuah properti (prop)
-export function QuoteOfTheDay({ category }: { category: string | null | undefined }) {
+const QuoteOfTheDay = ({ category }: QuoteOfTheDayProps) => {
   const [quote, setQuote] = useState<Quote | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isVisible, setIsVisible] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Jangan lakukan apa-apa jika category belum siap
-    if (!category) {
-      setIsLoading(false);
-      return;
-    }
-
-    const lastShown = localStorage.getItem('quoteLastShown');
-    const today = new Date().toISOString().split('T')[0];
-
-    if (lastShown === today) {
-      setIsLoading(false);
-      return;
-    }
-
     const fetchQuote = async () => {
-      setIsLoading(true);
       try {
-        // Gunakan category yang diterima dari prop untuk membuat request
-        const response = await fetch(`/api/quote?category=${category}`);
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ message: 'Gagal mengambil kutipan' }));
-          throw new Error(errorData.message || 'Gagal mengambil kutipan');
+        const lastShown = localStorage.getItem('quoteLastShown');
+        const today = new Date().toISOString().split('T')[0];
+        if (lastShown === today) {
+          return; // Jangan tampilkan jika sudah ditampilkan hari ini
         }
+
+        const response = await fetch(`/api/quote?category=${category || 'default'}`);
+        
+        if (!response.ok) {
+          // Coba parse JSON error dari backend
+          const errorData = await response.json().catch(() => ({ error: 'Gagal mengambil data error dari server' }));
+          // Gunakan pesan error dari backend jika ada, jika tidak, gunakan pesan default
+          throw new Error(errorData.error || 'Gagal mengambil kutipan dari API');
+        }
+
         const data = await response.json();
         if (data.content && data.author) {
-            setQuote({ content: data.content, author: data.author });
-            setIsVisible(true);
-            localStorage.setItem('quoteLastShown', today);
-        } else {
-            setIsVisible(false);
+          setQuote(data);
+          localStorage.setItem('quoteLastShown', today);
         }
-      } catch (error) {
-        console.error("Error fetching quote:", error);
-        setIsVisible(false);
-      } finally {
-        setIsLoading(false);
+      } catch (e: any) {
+        console.error('Error di dalam komponen QuoteOfTheDay:', e.message);
+        setError(e.message);
       }
     };
 
-    fetchQuote();
-  }, [category]); // Efek ini hanya akan berjalan jika `category` berubah
+    if (category) { // Hanya panggil jika kategori tersedia
+        fetchQuote();
+    }
+  }, [category]);
 
-  if (isLoading || !isVisible || !quote) {
+  if (!quote && !error) {
+    // Jangan tampilkan apa-apa selagi loading atau jika sudah ditampilkan hari ini
     return null;
   }
 
+  if (error) {
+    // Secara development, kita bisa tampilkan error di UI untuk debugging
+    // Di production, mungkin lebih baik log saja tanpa merusak UI
+    if (process.env.NODE_ENV === 'development') {
+      return (
+        <Card className="bg-red-100 border-red-500 text-red-900">
+            <CardHeader>
+                <CardTitle>Error Fetching Quote</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p>{error}</p>
+            </CardContent>
+        </Card>
+      )
+    }
+    return null; // Di production, sembunyikan saja jika error
+  }
+
   return (
-    <Card className="mb-6 relative bg-sky-50 border-sky-200 dark:bg-sky-950/50 dark:border-sky-800">
-      <CardContent className="p-4">
-        <button
-          onClick={() => setIsVisible(false)}
-          className="absolute top-2 right-2 text-sky-600 dark:text-sky-400 hover:text-sky-800 dark:hover:text-sky-200"
-          aria-label="Tutup kutipan"
-        >
-          <X className="h-4 w-4" />
-        </button>
-        <div className="flex items-start gap-4">
-          <AlertCircle className="h-5 w-5 text-sky-600 dark:text-sky-400 mt-1 flex-shrink-0" />
-          <div>
-            <p className="font-medium text-sky-900 dark:text-sky-200">
-              \"{quote.content}\"
-            </p>
-            <footer className="text-xs text-sky-700 dark:text-sky-500 mt-1">- {quote.author}</footer>
-          </div>
-        </div>
+    <Card className="bg-green-50 border-green-200">
+      <CardHeader>
+        <CardTitle className="text-lg">Kutipan Hari Ini</CardTitle>
+        <CardDescription>Semoga harimu menyenangkan!</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <blockquote className="italic text-gray-700">
+          <p>"{quote?.content}"</p>
+        </blockquote>
+        <cite className="block text-right mt-2 text-gray-500">- {quote?.author}</cite>
       </CardContent>
     </Card>
   );
-}
+};
+
+export default QuoteOfTheDay;
