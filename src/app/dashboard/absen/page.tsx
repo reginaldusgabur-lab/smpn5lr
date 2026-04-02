@@ -10,7 +10,7 @@ import { doc, collection, query, where, Timestamp, addDoc, updateDoc } from 'fir
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { QuoteOfTheDay } from '@/components/layout/quote-of-the-day';
+import QuoteOfTheDay from '@/components/layout/quote-of-the-day'; // <-- PERBAIKAN DI SINI
 import { PageWrapper } from '@/components/layout/page-wrapper';
 
 // --- Helper Functions ---
