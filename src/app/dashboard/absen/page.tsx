@@ -168,7 +168,6 @@ export default function AbsenPage() {
 
         if (qrCode.getState() !== 2) { // 2: SCANNING
             setIsScannerReady(false);
-            // Config without qrbox to use full-screen camera view
             const config: Html5QrcodeCameraScanConfig = { fps: 10 };
             qrCode.start(
                 { facingMode: 'environment' },
@@ -192,7 +191,8 @@ export default function AbsenPage() {
 
   return (
     <PageWrapper>
-      <div className="relative w-full bg-black" style={{ minHeight: 'calc(100vh - 112px)' }}>
+      <div className="relative w-full bg-background" style={{ height: 'calc(100vh - 68px)' }}>
+        {/* Video feed will be the background */}
         {(showScanner || isCameraInitializing) && (
           <div className="absolute inset-0 z-0">
             <div id={readerId} className="w-full h-full" />
@@ -201,6 +201,7 @@ export default function AbsenPage() {
                     width: 100% !important;
                     height: 100% !important;
                     object-fit: cover !important;
+                    /* Fade in the video feed */
                     opacity: ${isScannerReady ? 1 : 0};
                     transition: opacity 0.5s ease-in-out;
                 }
@@ -212,29 +213,31 @@ export default function AbsenPage() {
           </div>
         )}
 
-        <div className="relative z-10 flex flex-col items-center justify-between p-4 py-8 text-center w-full min-h-[calc(100vh-112px)] pointer-events-none">
+        {/* UI Overlay */}
+        <div className="relative z-10 flex flex-col items-center justify-between p-4 py-8 text-center w-full h-full pointer-events-none">
           <div className="w-full pointer-events-auto">
-            <h1 className="text-3xl font-bold tracking-tight text-white" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.7)' }}>Pindai QR Code</h1>
-            <p className="text-white/80 mt-2" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.7)' }}>Arahkan kamera ke QR Code yang ditampilkan.</p>
+            <h1 className={cn("text-3xl font-bold tracking-tight", isScannerReady ? 'text-white' : 'text-foreground', 'dark:text-white')} style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>Pindai QR Code</h1>
+            <p className={cn("mt-2", isScannerReady ? 'text-white/80' : 'text-muted-foreground', 'dark:text-white/80')} style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>Arahkan kamera ke QR Code yang ditampilkan.</p>
           </div>
 
+          {/* Scanner Frame and Loader */}
           <div className="relative w-full max-w-[280px] sm:max-w-xs aspect-square">
-            {(showScanner || isCameraInitializing) && (
+            {(!isHoliday && !hasCheckedOut) && (
               <>
-                <div className="absolute top-0 left-0 w-1/4 h-1/4 border-t-4 border-l-4 border-white rounded-tl-xl" />
-                <div className="absolute top-0 right-0 w-1/4 h-1/4 border-t-4 border-r-4 border-white rounded-tr-xl" />
-                <div className="absolute bottom-0 left-0 w-1/4 h-1/4 border-b-4 border-l-4 border-white rounded-bl-xl" />
-                <div className="absolute bottom-0 right-0 w-1/4 h-1/4 border-b-4 border-r-4 border-white rounded-br-xl" />
+                <div className={cn("absolute top-0 left-0 w-1/4 h-1/4 border-t-4 border-l-4 rounded-tl-xl", isScannerReady ? 'border-white' : 'border-foreground', 'dark:border-white')} />
+                <div className={cn("absolute top-0 right-0 w-1/4 h-1/4 border-t-4 border-r-4 rounded-tr-xl", isScannerReady ? 'border-white' : 'border-foreground', 'dark:border-white')} />
+                <div className={cn("absolute bottom-0 left-0 w-1/4 h-1/4 border-b-4 border-l-4 rounded-bl-xl", isScannerReady ? 'border-white' : 'border-foreground', 'dark:border-white')} />
+                <div className={cn("absolute bottom-0 right-0 w-1/4 h-1/4 border-b-4 border-r-4 rounded-br-xl", isScannerReady ? 'border-white' : 'border-foreground', 'dark:border-white')} />
 
                 {showLoader ? (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white/80">
-                    <Loader2 className="h-10 w-10 animate-spin" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground dark:text-white/80">
+                    <Loader2 className="h-10 w-10 animate-spin text-foreground dark:text-white" />
                     <p className="mt-4 text-sm font-medium">
                       {isDataLoading ? 'Memuat data...' : 'Menyiapkan kamera...'}
                     </p>
                   </div>
                 ) : (
-                  <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full h-1 bg-red-500/70 shadow-[0_0_15px_3px_theme(colors.red.500)] animate-scan-line" />
+                  isScannerReady && <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full h-1 bg-red-500/70 shadow-[0_0_15px_3px_theme(colors.red.500)] animate-scan-line" />
                 )}
               </>
             )}
@@ -243,6 +246,7 @@ export default function AbsenPage() {
           <div className="w-full max-w-md h-10 pointer-events-auto">{showQuote && <QuoteOfTheDay category={userData?.role} />}</div>
         </div>
 
+        {/* Status Feedback Overlay */}
         {effectiveStatus !== 'idle' && <StatusFeedbackOverlay status={effectiveStatus} locationError={locationError} onClose={() => setStatus('idle')} />}
       </div>
     </PageWrapper>
