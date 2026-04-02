@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeCameraScanConfig } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin, CheckCircle, Clock, X, Loader2, AlertTriangle, CameraOff, CalendarOff } from 'lucide-react';
@@ -168,9 +168,11 @@ export default function AbsenPage() {
 
         if (qrCode.getState() !== 2) { // 2: SCANNING
             setIsScannerReady(false);
+            // Config without qrbox to use full-screen camera view
+            const config: Html5QrcodeCameraScanConfig = { fps: 10 };
             qrCode.start(
                 { facingMode: 'environment' },
-                { fps: 10, qrbox: { width: 280, height: 280 }, aspectRatio: 1.0 },
+                config,
                 onScanSuccess,
                 undefined
             )
@@ -196,35 +198,49 @@ export default function AbsenPage() {
             <div id={readerId} className="w-full h-full" />
             <style>{`
                 #${readerId} > video {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
+                    width: 100% !important;
+                    height: 100% !important;
+                    object-fit: cover !important;
                     opacity: ${isScannerReady ? 1 : 0};
                     transition: opacity 0.5s ease-in-out;
                 }
-                #${readerId}__scan_region { display: none; }
+                /* Hide all library-generated UI */
+                #${readerId}__scan_region, #${readerId}__dashboard_section_csr {
+                  display: none !important;
+                }
             `}</style>
           </div>
         )}
 
-        <div className="relative z-10 flex flex-col items-center justify-between p-4 py-8 text-center w-full min-h-[calc(100vh-112px)]">
-          <div className="w-full">
+        <div className="relative z-10 flex flex-col items-center justify-between p-4 py-8 text-center w-full min-h-[calc(100vh-112px)] pointer-events-none">
+          <div className="w-full pointer-events-auto">
             <h1 className="text-3xl font-bold tracking-tight text-white" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.7)' }}>Pindai QR Code</h1>
             <p className="text-white/80 mt-2" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.7)' }}>Arahkan kamera ke QR Code yang ditampilkan.</p>
           </div>
 
-          <div className="relative w-full max-w-[280px] sm:max-w-xs aspect-square flex items-center justify-center">
-            {showLoader ? (
-                <div className="flex flex-col items-center text-white/80">
+          <div className="relative w-full max-w-[280px] sm:max-w-xs aspect-square">
+            {(showScanner || isCameraInitializing) && (
+              <>
+                <div className="absolute top-0 left-0 w-1/4 h-1/4 border-t-4 border-l-4 border-white rounded-tl-xl" />
+                <div className="absolute top-0 right-0 w-1/4 h-1/4 border-t-4 border-r-4 border-white rounded-tr-xl" />
+                <div className="absolute bottom-0 left-0 w-1/4 h-1/4 border-b-4 border-l-4 border-white rounded-bl-xl" />
+                <div className="absolute bottom-0 right-0 w-1/4 h-1/4 border-b-4 border-r-4 border-white rounded-br-xl" />
+
+                {showLoader ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white/80">
                     <Loader2 className="h-10 w-10 animate-spin" />
-                    <p className="mt-4 text-sm font-medium">Menyiapkan kamera...</p>
-                </div>
-            ) : (
-                <ScannerFrame />
+                    <p className="mt-4 text-sm font-medium">
+                      {isDataLoading ? 'Memuat data...' : 'Menyiapkan kamera...'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full h-1 bg-red-500/70 shadow-[0_0_15px_3px_theme(colors.red.500)] animate-scan-line" />
+                )}
+              </>
             )}
           </div>
           
-          <div className="w-full max-w-md h-10">{showQuote && <QuoteOfTheDay category={userData?.role} />}</div>
+          <div className="w-full max-w-md h-10 pointer-events-auto">{showQuote && <QuoteOfTheDay category={userData?.role} />}</div>
         </div>
 
         {effectiveStatus !== 'idle' && <StatusFeedbackOverlay status={effectiveStatus} locationError={locationError} onClose={() => setStatus('idle')} />}
@@ -234,16 +250,6 @@ export default function AbsenPage() {
 }
 
 // --- UI Sub-Components ---
-const ScannerFrame = () => (
-    <div className="relative w-full h-full pointer-events-none">
-        <div className="absolute top-0 left-0 w-1/4 h-1/4 border-t-4 border-l-4 border-white rounded-tl-xl" />
-        <div className="absolute top-0 right-0 w-1/4 h-1/4 border-t-4 border-r-4 border-white rounded-tr-xl" />
-        <div className="absolute bottom-0 left-0 w-1/4 h-1/4 border-b-4 border-l-4 border-white rounded-bl-xl" />
-        <div className="absolute bottom-0 right-0 w-1/4 h-1/4 border-b-4 border-r-4 border-white rounded-br-xl" />
-        <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full h-1 bg-red-500/70 shadow-[0_0_15px_3px_theme(colors.red.500)] animate-scan-line" />
-    </div>
-);
-
 const StatusFeedbackOverlay = ({ status, locationError, onClose }: { status: FeedbackStatus, locationError: string | null, onClose: () => void }) => {
     const feedback = useMemo(() => {
         switch (status) {
