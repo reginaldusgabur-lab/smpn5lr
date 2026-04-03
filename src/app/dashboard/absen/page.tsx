@@ -272,6 +272,12 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData }: { s
         (status === 'success_in' || status === 'success_out') && userData?.role !== 'admin',
     [status, userData]);
 
+    const attendanceType = useMemo(() => {
+        if (status === 'success_in') return 'in';
+        if (status === 'success_out') return 'out';
+        return null;
+    }, [status]);
+
     if (status === 'idle') return null;
 
     return (
@@ -281,7 +287,7 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData }: { s
                 <CardHeader className="items-center pt-8"><div className="mb-4">{feedback.icon}</div><CardTitle className="text-2xl font-bold">{feedback.title}</CardTitle></CardHeader>
                 <CardContent className="pb-8">
                     <p className="text-muted-foreground ">{feedback.desc}</p>
-                    {showQuote && <QuoteOfTheDay category={userData?.role} />}
+                    {showQuote && attendanceType && <QuoteOfTheDay category={userData?.role} attendanceType={attendanceType} />}
                 </CardContent>
             </Card>
         </div>
