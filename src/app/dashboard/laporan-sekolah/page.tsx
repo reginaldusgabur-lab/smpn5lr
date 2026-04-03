@@ -5,13 +5,14 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, getDocs, query, where, doc } from 'firebase/firestore';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Download, AlertCircle, FileText, FileSpreadsheet } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, AlertCircle, FileText, FileSpreadsheet, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -20,7 +21,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import * as XLSX from 'xlsx';
-import { jsPDF, GState } from "jspdf";
+import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { calculateAttendanceStats } from '@/lib/attendance';
 
@@ -48,6 +49,8 @@ export default function SchoolReportPage() {
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState("all");
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncMessage, setSyncMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
     const schoolConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'schoolConfig', 'default') : null, [firestore]);
     const { data: schoolConfigData, loading: isConfigLoading } = useDoc(user, schoolConfigRef);
@@ -141,27 +144,21 @@ export default function SchoolReportPage() {
         const principalNip = principalUser ? principalUser.nip : getConfig('nipKepalaSekolah', '[NIP tidak ditemukan]');
         const principalName = getConfig('headmasterName', '[Nama Kepala Sekolah]');
         const reportCity = getConfig('reportCity', 'Kota');
-        const numberOfColumns = 9; // Number of columns in the main table
+        const numberOfColumns = 9;
 
-        // 1. Build data array for the sheet
         let data = [];
-        // Header
         data.push([getConfig('governmentAgency', 'PEMERINTAH KABUPATEN MANGGARAI').toUpperCase()]);
         data.push([getConfig('educationAgency', 'DINAS PENDIDIKAN PEMUDA DAN OLAHRAGA').toUpperCase()]);
         data.push([getConfig('schoolName', 'SMP NEGERI 5 LANGKE REMBONG').toUpperCase()]);
         data.push([`Alamat: ${getConfig('address', 'Alamat Sekolah Belum Diatur')}`]);
-        data.push([]); // Empty line for separation
-
-        // Title
+        data.push([]);
         data.push(['LAPORAN KEHADIRAN BULANAN']);
         data.push([`Periode: ${monthName}`]);
-        data.push([]); // Empty line for separation
+        data.push([]);
 
-        // Table Header
         const tableHeader = ['No', 'Nama', 'NIP', 'Status Kepegawaian', 'Hadir', 'Izin', 'Sakit', 'Alpa', 'Persentase'];
         data.push(tableHeader);
 
-        // Table Body
         filteredReports.forEach(item => {
             data.push([
                 item.no,
@@ -176,70 +173,52 @@ export default function SchoolReportPage() {
             ]);
         });
 
-        data.push([]); // Empty line for separation
-        data.push([]); 
+        data.push([]);
+        data.push([]);
 
-        // Signature Block (align right by adding empty cells before)
         const emptyCells = Array(numberOfColumns - 3).fill('');
         data.push([...emptyCells, `${reportCity}, ${format(new Date(), 'd MMMM yyyy', { locale: id })}`]);
         data.push([...emptyCells, 'Mengetahui,']);
         data.push([...emptyCells, 'Kepala Sekolah']);
-        data.push([]);
-        data.push([]);
-        data.push([]);
+        data.push([], [], []);
         data.push([...emptyCells, principalName]);
         data.push([...emptyCells, `NIP: ${principalNip}`]);
 
-        // 2. Create worksheet and workbook
         const worksheet = XLSX.utils.aoa_to_sheet(data, { cellStyles: true });
 
-        // 3. Define merges for centered text
         worksheet['!merges'] = [
-            { s: { r: 0, c: 0 }, e: { r: 0, c: numberOfColumns - 1 } }, // governmentAgency
-            { s: { r: 1, c: 0 }, e: { r: 1, c: numberOfColumns - 1 } }, // educationAgency
-            { s: { r: 2, c: 0 }, e: { r: 2, c: numberOfColumns - 1 } }, // schoolName
-            { s: { r: 3, c: 0 }, e: { r: 3, c: numberOfColumns - 1 } }, // address
-            { s: { r: 5, c: 0 }, e: { r: 5, c: numberOfColumns - 1 } }, // Title
-            { s: { r: 6, c: 0 }, e: { r: 6, c: numberOfColumns - 1 } }, // Period
+            { s: { r: 0, c: 0 }, e: { r: 0, c: numberOfColumns - 1 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: numberOfColumns - 1 } },
+            { s: { r: 2, c: 0 }, e: { r: 2, c: numberOfColumns - 1 } },
+            { s: { r: 3, c: 0 }, e: { r: 3, c: numberOfColumns - 1 } },
+            { s: { r: 5, c: 0 }, e: { r: 5, c: numberOfColumns - 1 } },
+            { s: { r: 6, c: 0 }, e: { r: 6, c: numberOfColumns - 1 } },
         ];
         
-        // 4. Apply styles and alignment
         const headerStyle = { font: { bold: true }, alignment: { horizontal: 'center', vertical: 'middle' } };
         const tableHeaderStyle = { font: { bold: true }, alignment: { horizontal: 'center' } };
         const centerAlign = { alignment: { horizontal: 'center' } };
 
         for (let C = 0; C < numberOfColumns; C++) {
-            // Center headers
             if (worksheet[XLSX.utils.encode_cell({r:0,c:C})]) worksheet[XLSX.utils.encode_cell({r:0,c:C})].s = headerStyle;
             if (worksheet[XLSX.utils.encode_cell({r:1,c:C})]) worksheet[XLSX.utils.encode_cell({r:1,c:C})].s = headerStyle;
             if (worksheet[XLSX.utils.encode_cell({r:2,c:C})]) worksheet[XLSX.utils.encode_cell({r:2,c:C})].s = {...headerStyle, font: { bold: true, sz: 14 } };
             if (worksheet[XLSX.utils.encode_cell({r:3,c:C})]) worksheet[XLSX.utils.encode_cell({r:3,c:C})].s = { alignment: { horizontal: 'center' } };
             if (worksheet[XLSX.utils.encode_cell({r:5,c:C})]) worksheet[XLSX.utils.encode_cell({r:5,c:C})].s = headerStyle;
             if (worksheet[XLSX.utils.encode_cell({r:6,c:C})]) worksheet[XLSX.utils.encode_cell({r:6,c:C})].s = headerStyle;
-            // Center table header
             const tableHeaderCell = XLSX.utils.encode_cell({r:8, c:C});
             if (worksheet[tableHeaderCell]) worksheet[tableHeaderCell].s = tableHeaderStyle;
 
-             // Center align number columns
              for (let R = 9; R < 9 + filteredReports.length; R++) {
-                if(C === 0 || C > 3) { // No, Hadir, Izin, Sakit, Alpa, Persentase
+                if(C === 0 || C > 3) { 
                     const cell = XLSX.utils.encode_cell({r:R, c:C});
                      if (worksheet[cell]) worksheet[cell].s = centerAlign;
                 }
             }
         }
         
-        // 5. Set column widths
         worksheet['!cols'] = [
-            { wch: 5 },   // No
-            { wch: 30 },  // Nama
-            { wch: 20 },  // NIP
-            { wch: 20 },  // Status Kepegawaian
-            { wch: 7 },   // Hadir
-            { wch: 7 },   // Izin
-            { wch: 7 },   // Sakit
-            { wch: 7 },   // Alpa
-            { wch: 12 },  // Persentase
+            { wch: 5 }, { wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 7 }, { wch: 7 }, { wch: 7 }, { wch: 7 }, { wch: 12 },
         ];
 
         const workbook = XLSX.utils.book_new();
@@ -258,56 +237,26 @@ export default function SchoolReportPage() {
 
         const getConfig = (key: string, fallback: string) => schoolConfigData?.[key] || fallback;
 
-        // 1. Add Header (Kop Surat)
-        doc.setFont('times', 'bold');
-        doc.setFontSize(14);
-        
-        const headerText1 = getConfig('governmentAgency', 'PEMERINTAH KABUPATEN MANGGARAI').toUpperCase();
-        doc.text(headerText1, centerX, finalY, { align: 'center' });
+        doc.setFont('times', 'bold').setFontSize(14);
+        doc.text(getConfig('governmentAgency', 'PEMERINTAH KABUPATEN MANGGARAI').toUpperCase(), centerX, finalY, { align: 'center' });
         finalY += 6;
-
-        const headerText2 = getConfig('educationAgency', 'DINAS PENDIDIKAN PEMUDA DAN OLAHRAGA').toUpperCase();
-        doc.text(headerText2, centerX, finalY, { align: 'center' });
+        doc.text(getConfig('educationAgency', 'DINAS PENDIDIKAN PEMUDA DAN OLAHRAGA').toUpperCase(), centerX, finalY, { align: 'center' });
         finalY += 6;
-        
-        const headerText3 = getConfig('schoolName', 'SMP NEGERI 5 LANGKE REMBONG').toUpperCase();
-        doc.setFontSize(14);
-        doc.text(headerText3, centerX, finalY, { align: 'center' });
+        doc.setFontSize(14).text(getConfig('schoolName', 'SMP NEGERI 5 LANGKE REMBONG').toUpperCase(), centerX, finalY, { align: 'center' });
         finalY += 6;
-        
-        doc.setFont('times', 'normal');
-        doc.setFontSize(10);
-        const address = getConfig('address', 'Alamat Sekolah Belum Diatur');
-        doc.text(`Alamat: ${address}`, centerX, finalY, { align: 'center' });
+        doc.setFont('times', 'normal').setFontSize(10).text(`Alamat: ${getConfig('address', 'Alamat Sekolah Belum Diatur')}`, centerX, finalY, { align: 'center' });
         finalY += 4;
-        
-        const lineY = finalY; // Store Y position for the line
+        const lineY = finalY; 
         finalY += 8;
 
-        // 2. Add Title
-        doc.setFontSize(12);
-        doc.setFont('times', 'bold');
-        doc.text(`LAPORAN KEHADIRAN BULANAN`, centerX, finalY, { align: 'center' });
+        doc.setFontSize(12).setFont('times', 'bold').text(`LAPORAN KEHADIRAN BULANAN`, centerX, finalY, { align: 'center' });
         finalY += 6;
-        doc.setFont('times', 'normal');
-        doc.text(`Periode: ${monthName}`, centerX, finalY, { align: 'center' });
+        doc.setFont('times', 'normal').text(`Periode: ${monthName}`, centerX, finalY, { align: 'center' });
         finalY += 10;
 
-        // 3. Add Table
-        const tableData = filteredReports.map(item => [
-            item.no,
-            item.name,
-            item.nip,
-            item.position,
-            item.totalHadir,
-            item.totalIzin,
-            item.totalSakit,
-            item.totalAlpa,
-            item.persentase,
-        ]);
+        const tableData = filteredReports.map(item => [item.no, item.name, item.nip, item.position, item.totalHadir, item.totalIzin, item.totalSakit, item.totalAlpa, item.persentase]);
 
-        let tableWidth = 0;
-        let tableStartX = 0;
+        let tableWidth = 0, tableStartX = 0;
 
         autoTable(doc, {
             startY: finalY,
@@ -315,66 +264,32 @@ export default function SchoolReportPage() {
             body: tableData,
             theme: 'grid',
             styles: { fontSize: 9, font: 'times' },
-            headStyles: { fillColor: [45, 115, 174], textColor: 255, fontStyle: 'bold' }, // #2d73ae
+            headStyles: { fillColor: [45, 115, 174], textColor: 255, fontStyle: 'bold' },
             didDrawPage: (data) => {
-                if (data.pageNumber === 1) {
-                    tableWidth = data.table.width;
-                    tableStartX = data.table.pageStartX;
-                }
-
+                if (data.pageNumber === 1) { tableWidth = data.table.width; tableStartX = data.table.pageStartX; }
                 const pageHeight = doc.internal.pageSize.getHeight();
-                const pageNumber = data.pageNumber;
-                const pageCount = (doc as any).internal.getNumberOfPages();
-
-                // Watermark
-                doc.saveGraphicsState();
-                doc.setGState(new (doc as any).GState({ opacity: 0.08 })); // Lower opacity
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(80);
-                doc.setTextColor(150);
-                doc.text('E-SPENLI', centerX, pageHeight / 2, { angle: -45, align: 'center' });
-                doc.restoreGraphicsState();
-
-                // Footer
-                doc.setFont('times', 'normal');
-                doc.setFontSize(8).setTextColor(100);
+                doc.setFont('times', 'normal').setFontSize(8).setTextColor(100);
                 const footerY = pageHeight - 10;
-                doc.setLineWidth(0.5);
-                doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+                doc.setLineWidth(0.5).line(margin, footerY - 5, pageWidth - margin, footerY - 5);
                 doc.text('Dokumen ini adalah laporan absensi resmi yang dihasilkan secara otomatis oleh aplikasi E-SPENLI.', margin, footerY);
-                doc.text(`Halaman ${pageNumber} dari ${pageCount}`, pageWidth - margin, footerY, { align: 'right' });
+                doc.text(`Halaman ${data.pageNumber} dari ${(doc as any).internal.getNumberOfPages()}`, pageWidth - margin, footerY, { align: 'right' });
             }
         });
         
-        // Draw the header line on the first page after autoTable has finished
         doc.setPage(1);
-        doc.setLineWidth(0.7); // Set line width
-        doc.setDrawColor(150, 150, 150); // Set line to a soft gray color
+        doc.setLineWidth(0.7).setDrawColor(150, 150, 150);
+        if (tableWidth > 0 && typeof tableStartX === 'number') doc.line(tableStartX, lineY, tableStartX + tableWidth, lineY);
+        else doc.line(margin, lineY, pageWidth - margin, lineY);
+        doc.setDrawColor(0, 0, 0);
 
-        if (tableWidth > 0 && typeof tableStartX === 'number') {
-             doc.line(tableStartX, lineY, tableStartX + tableWidth, lineY);
-        } else {
-            // Fallback if table dimensions are not available for some reason
-            doc.line(margin, lineY, pageWidth - margin, lineY);
-        }
-        doc.setDrawColor(0, 0, 0); // Reset draw color to black
-
-        // 5. Add Signature block
         let lastY = (doc as any).lastAutoTable.finalY;
         const pageHeight = doc.internal.pageSize.getHeight();
         const totalPages = (doc as any).internal.getNumberOfPages();
-
-        if (lastY + 50 > pageHeight - 20) {
-            doc.addPage();
-            lastY = 20;
-        } else {
-            lastY += 15;
-        }
+        if (lastY + 50 > pageHeight - 20) { doc.addPage(); lastY = 20; } else { lastY += 15; }
 
         const signatureBlockX = pageWidth - 80;
         const reportCity = getConfig('reportCity', 'Kota');
         const principalName = getConfig('headmasterName', '[Nama Kepala Sekolah]');
-        
         const principalUser = reportData.find(user => user.role === 'kepala_sekolah');
         const principalNip = principalUser ? principalUser.nip : getConfig('nipKepalaSekolah', '[NIP tidak ditemukan]');
 
@@ -385,14 +300,29 @@ export default function SchoolReportPage() {
         doc.text('Mengetahui,', signatureBlockX, lastY);
         lastY += 6;
         doc.text('Kepala Sekolah', signatureBlockX, lastY);
-        lastY += 25; // Space for signature
-        doc.setFont('times', 'bold');
-        doc.text(principalName, signatureBlockX, lastY);
-        doc.setFont('times', 'normal');
+        lastY += 25;
+        doc.setFont('times', 'bold').text(principalName, signatureBlockX, lastY);
         lastY += 5;
-        doc.text(`NIP: ${principalNip}`, signatureBlockX, lastY);
+        doc.setFont('times', 'normal').text(`NIP: ${principalNip}`, signatureBlockX, lastY);
 
         doc.save(`Laporan Kehadiran Resmi - ${monthName}.pdf`);
+    };
+    
+    const handleSyncToSheet = async () => {
+        setIsSyncing(true);
+        setSyncMessage(null);
+        try {
+            const response = await fetch('/api/sync-to-sheet', { method: 'POST' });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Gagal melakukan sinkronisasi.');
+            setSyncMessage({ type: 'success', message: 'Sinkronisasi ke Google Sheets berhasil! Data sedang diproses di latar belakang.' });
+        } catch (err: any) {
+            console.error("Sync to sheet error:", err);
+            setSyncMessage({ type: 'error', message: `Error: ${err.message}` });
+        } finally {
+            setIsSyncing(false);
+            setTimeout(() => setSyncMessage(null), 7000);
+        }
     };
 
     const filteredReports = useMemo(() => {
@@ -454,16 +384,29 @@ export default function SchoolReportPage() {
                             {user?.role === 'admin' && (
                                 <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button disabled={isLoading || filteredReports.length === 0}><Download className="mr-2 h-4 w-4" />Unduh Laporan</Button>
+                                    <Button><Download className="mr-2 h-4 w-4" />Opsi Lanjutan</Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
                                     <DropdownMenuItem onClick={handleDownloadExcel}><FileSpreadsheet className="mr-2 h-4 w-4"/>Unduh Excel</DropdownMenuItem>
                                     <DropdownMenuItem onClick={handleDownloadPdf}><FileText className="mr-2 h-4 w-4"/>Unduh PDF</DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={handleSyncToSheet} disabled={isSyncing}>
+                                        {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4"/>}
+                                        Sinkronkan & Cadangkan
+                                    </DropdownMenuItem>
                                 </DropdownMenuContent>
                                 </DropdownMenu>
                             )}
                         </div>
                     </div>
+
+                    {syncMessage && (
+                        <Alert className="mb-4" variant={syncMessage.type === 'error' ? 'destructive' : 'default'}>
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>{syncMessage.type === 'error' ? 'Sinkronisasi Gagal' : 'Proses Sinkronisasi Dimulai'}</AlertTitle>
+                            <AlertDescription>{syncMessage.message}</AlertDescription>
+                        </Alert>
+                    )}
 
                     {error && (
                         <Alert variant="destructive" className="mb-4">
