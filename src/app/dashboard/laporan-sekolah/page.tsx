@@ -134,24 +134,117 @@ export default function SchoolReportPage() {
     const monthName = format(currentMonth, 'MMMM yyyy', { locale: id });
 
     const handleDownloadExcel = () => {
-        if (user?.role !== 'admin' || !filteredReports.length) return;
-        const dataToExport = filteredReports.map(item => ({
-            'No.': item.no,
-            'Nama': item.name,
-            'NIP': item.nip,
-            'Status Kepegawaian': item.position,
-            'Peran': item.role.charAt(0).toUpperCase() + item.role.slice(1).replace('_',' '),
-            'Hadir': item.totalHadir,
-            'Izin': item.totalIzin,
-            'Sakit': item.totalSakit,
-            'Alpa': item.totalAlpa,
-            'Persentase Kehadiran': item.persentase,
-        }));
+        if (user?.role !== 'admin' || !filteredReports.length || !schoolConfigData) return;
 
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const getConfig = (key: string, fallback: string) => schoolConfigData?.[key] || fallback;
+        const principalUser = reportData.find(user => user.role === 'kepala_sekolah');
+        const principalNip = principalUser ? principalUser.nip : getConfig('nipKepalaSekolah', '[NIP tidak ditemukan]');
+        const principalName = getConfig('headmasterName', '[Nama Kepala Sekolah]');
+        const reportCity = getConfig('reportCity', 'Kota');
+        const numberOfColumns = 9; // Number of columns in the main table
+
+        // 1. Build data array for the sheet
+        let data = [];
+        // Header
+        data.push([getConfig('governmentAgency', 'PEMERINTAH KABUPATEN MANGGARAI').toUpperCase()]);
+        data.push([getConfig('educationAgency', 'DINAS PENDIDIKAN PEMUDA DAN OLAHRAGA').toUpperCase()]);
+        data.push([getConfig('schoolName', 'SMP NEGERI 5 LANGKE REMBONG').toUpperCase()]);
+        data.push([`Alamat: ${getConfig('address', 'Alamat Sekolah Belum Diatur')}`]);
+        data.push([]); // Empty line for separation
+
+        // Title
+        data.push(['LAPORAN KEHADIRAN BULANAN']);
+        data.push([`Periode: ${monthName}`]);
+        data.push([]); // Empty line for separation
+
+        // Table Header
+        const tableHeader = ['No', 'Nama', 'NIP', 'Status Kepegawaian', 'Hadir', 'Izin', 'Sakit', 'Alpa', 'Persentase'];
+        data.push(tableHeader);
+
+        // Table Body
+        filteredReports.forEach(item => {
+            data.push([
+                item.no,
+                item.name,
+                item.nip,
+                item.position,
+                item.totalHadir,
+                item.totalIzin,
+                item.totalSakit,
+                item.totalAlpa,
+                item.persentase,
+            ]);
+        });
+
+        data.push([]); // Empty line for separation
+        data.push([]); 
+
+        // Signature Block (align right by adding empty cells before)
+        const emptyCells = Array(numberOfColumns - 3).fill('');
+        data.push([...emptyCells, `${reportCity}, ${format(new Date(), 'd MMMM yyyy', { locale: id })}`]);
+        data.push([...emptyCells, 'Mengetahui,']);
+        data.push([...emptyCells, 'Kepala Sekolah']);
+        data.push([]);
+        data.push([]);
+        data.push([]);
+        data.push([...emptyCells, principalName]);
+        data.push([...emptyCells, `NIP: ${principalNip}`]);
+
+        // 2. Create worksheet and workbook
+        const worksheet = XLSX.utils.aoa_to_sheet(data, { cellStyles: true });
+
+        // 3. Define merges for centered text
+        worksheet['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: numberOfColumns - 1 } }, // governmentAgency
+            { s: { r: 1, c: 0 }, e: { r: 1, c: numberOfColumns - 1 } }, // educationAgency
+            { s: { r: 2, c: 0 }, e: { r: 2, c: numberOfColumns - 1 } }, // schoolName
+            { s: { r: 3, c: 0 }, e: { r: 3, c: numberOfColumns - 1 } }, // address
+            { s: { r: 5, c: 0 }, e: { r: 5, c: numberOfColumns - 1 } }, // Title
+            { s: { r: 6, c: 0 }, e: { r: 6, c: numberOfColumns - 1 } }, // Period
+        ];
+        
+        // 4. Apply styles and alignment
+        const headerStyle = { font: { bold: true }, alignment: { horizontal: 'center', vertical: 'middle' } };
+        const tableHeaderStyle = { font: { bold: true }, alignment: { horizontal: 'center' } };
+        const centerAlign = { alignment: { horizontal: 'center' } };
+
+        for (let C = 0; C < numberOfColumns; C++) {
+            // Center headers
+            if (worksheet[XLSX.utils.encode_cell({r:0,c:C})]) worksheet[XLSX.utils.encode_cell({r:0,c:C})].s = headerStyle;
+            if (worksheet[XLSX.utils.encode_cell({r:1,c:C})]) worksheet[XLSX.utils.encode_cell({r:1,c:C})].s = headerStyle;
+            if (worksheet[XLSX.utils.encode_cell({r:2,c:C})]) worksheet[XLSX.utils.encode_cell({r:2,c:C})].s = {...headerStyle, font: { bold: true, sz: 14 } };
+            if (worksheet[XLSX.utils.encode_cell({r:3,c:C})]) worksheet[XLSX.utils.encode_cell({r:3,c:C})].s = { alignment: { horizontal: 'center' } };
+            if (worksheet[XLSX.utils.encode_cell({r:5,c:C})]) worksheet[XLSX.utils.encode_cell({r:5,c:C})].s = headerStyle;
+            if (worksheet[XLSX.utils.encode_cell({r:6,c:C})]) worksheet[XLSX.utils.encode_cell({r:6,c:C})].s = headerStyle;
+            // Center table header
+            const tableHeaderCell = XLSX.utils.encode_cell({r:8, c:C});
+            if (worksheet[tableHeaderCell]) worksheet[tableHeaderCell].s = tableHeaderStyle;
+
+             // Center align number columns
+             for (let R = 9; R < 9 + filteredReports.length; R++) {
+                if(C === 0 || C > 3) { // No, Hadir, Izin, Sakit, Alpa, Persentase
+                    const cell = XLSX.utils.encode_cell({r:R, c:C});
+                     if (worksheet[cell]) worksheet[cell].s = centerAlign;
+                }
+            }
+        }
+        
+        // 5. Set column widths
+        worksheet['!cols'] = [
+            { wch: 5 },   // No
+            { wch: 30 },  // Nama
+            { wch: 20 },  // NIP
+            { wch: 20 },  // Status Kepegawaian
+            { wch: 7 },   // Hadir
+            { wch: 7 },   // Izin
+            { wch: 7 },   // Sakit
+            { wch: 7 },   // Alpa
+            { wch: 12 },  // Persentase
+        ];
+
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, `Laporan ${monthName}`);
-        XLSX.writeFile(workbook, `Laporan Kehadiran Bulanan - ${monthName}.xlsx`);
+        XLSX.writeFile(workbook, `Laporan Resmi Kehadiran - ${monthName}.xlsx`);
     };
 
     const handleDownloadPdf = async () => {
