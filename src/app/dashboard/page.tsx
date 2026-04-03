@@ -19,6 +19,7 @@ import { id } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
 import { useRouter } from 'next/navigation';
 import { getFromCache, setInCache } from '@/lib/cache';
+import { calculateAttendanceStats } from '@/lib/attendance'; // <-- IMPORT THE SOURCE OF TRUTH
 
 import TodaysActivityTable from '@/components/dashboard/RecentAttendanceTable';
 
@@ -159,86 +160,55 @@ const MonthlyAttendanceChartUI = ({ summaryData, isLoading }: { summaryData: any
 
 
 // ====================================================================
-// C. DATA-FETCHING HOOK (MODIFIED)
+// C. DATA-FETCHING HOOK (REWRITTEN TO USE CENTRALIZED LOGIC)
 // ====================================================================
 
 function useMonthlyAttendanceSummary(user: any) {
     const firestore = useFirestore();
-    const cacheKey = useMemo(() => user ? `monthlySummary_${user.uid}` : null, [user]);
-    const [summary, setSummary] = useState(() => cacheKey ? getFromCache(cacheKey) || {} : {});
-    const [isLoading, setIsLoading] = useState(!Object.keys(summary).length);
-
-    const now = useMemo(() => new Date(), []);
-    const monthlyConfigId = useMemo(() => format(now, 'yyyy-MM'), [now]);
-
-    const schoolConfigRef = useMemoFirebase(() => user ? doc(firestore, 'schoolConfig', 'default') : null, [firestore, user]);
-    const monthlyConfigRef = useMemoFirebase(() => user ? doc(firestore, 'monthlyConfigs', monthlyConfigId) : null, [firestore, user, monthlyConfigId]);
-    const { data: schoolConfig, isLoading: isSchoolConfigLoading } = useDoc(user, schoolConfigRef);
-    const { data: monthlyConfig, isLoading: isMonthlyConfigLoading } = useDoc(user, monthlyConfigRef);
-    
-    const attendanceQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'attendanceRecords'), where('checkInTime', '>=', startOfMonth(now)), where('checkInTime', '<=', endOfMonth(now))) : null, [user, firestore, now]);
-    const { data: attendanceData, isLoading: isAttendanceLoading } = useCollection(user, attendanceQuery);
-
-    const leaveQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'leaveRequests'), where('status', '==', 'approved'), where('startDate', '<=', endOfMonth(now))) : null, [user, firestore, now]);
-    const { data: leaveData, isLoading: isLeaveLoading } = useCollection(user, leaveQuery);
+    const cacheKey = useMemo(() => user ? `monthlySummary_v3_${user.uid}` : null, [user]);
+    const [summary, setSummary] = useState<any>(() => cacheKey ? getFromCache(cacheKey) || null : null);
+    const [isLoading, setIsLoading] = useState(summary === null);
 
     useEffect(() => {
-        const allDataLoaded = user && !isSchoolConfigLoading && !isMonthlyConfigLoading && !isAttendanceLoading && !isLeaveLoading;
-        if (allDataLoaded && cacheKey) {
-            const offDays: number[] = schoolConfig?.offDays ?? [0, 6]; // Default: Sunday, Saturday
-            const holidays: string[] = monthlyConfig?.holidays ?? [];
-            const monthStart = startOfMonth(now);
-            const monthEnd = endOfMonth(now);
-            const today = startOfDay(new Date());
+        if (!user || !firestore || !cacheKey) return;
 
-            // MODIFIED: Calculate effective working days passed, including today
-            const effectiveWorkingDaysPassed = eachDayOfInterval({ start: monthStart, end: today }).filter(day => 
-                !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd'))
-            ).length;
+        const fetchStats = async () => {
+            setIsLoading(true);
+            try {
+                const now = new Date();
+                const dateRange = { start: startOfMonth(now), end: endOfMonth(now) };
+                
+                // Call the single source of truth
+                const stats = await calculateAttendanceStats(firestore, user.uid, dateRange);
 
-            // MODIFIED: Count any attendance record as 'hadir' for the day
-            const validAttendanceCount = attendanceData?.length ?? 0;
+                const newSummary = {
+                    attendanceCount: stats.totalHadir,
+                    izinCount: stats.totalIzin,
+                    sakitCount: stats.totalSakit,
+                    alpaCount: stats.totalAlpa,
+                    percentage: stats.persentase.replace('%', '') // Remove % for the chart component
+                };
 
-            // --- Calculation for alpa (absent) days ---
-            const pastWorkingDays = eachDayOfInterval({ start: monthStart, end: subDays(today, 1) }).filter(day => 
-                day >= monthStart && !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd'))
-            ).length;
-            
-            const pastValidAttendanceCount = attendanceData?.filter(att => att.checkInTime.toDate() < today).length ?? 0;
-
-            let izinCount = 0, sakitCount = 0, pastIzinCount = 0, pastSakitCount = 0;
-            leaveData?.forEach(leave => {
-                if (leave.status !== 'approved') return;
-                eachDayOfInterval({ start: leave.startDate.toDate(), end: leave.endDate.toDate() }).forEach(day => {
-                    if (isWithinInterval(day, { start: monthStart, end: monthEnd }) && !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd'))) {
-                        if (leave.type === 'Izin') { 
-                            izinCount++; 
-                            if (day < today) pastIzinCount++; 
-                        }
-                        else if (leave.type === 'Sakit') { 
-                            sakitCount++; 
-                            if (day < today) pastSakitCount++; 
-                        }
-                    }
-                });
-            });
-            // --- End of alpa calculation ---
-
-            const alpaCount = Math.max(0, pastWorkingDays - pastValidAttendanceCount - pastIzinCount - pastSakitCount);
-            
-            // MODIFIED: Calculate percentage based on days passed and format to 1 decimal place
-            const percentageRaw = effectiveWorkingDaysPassed > 0 ? (validAttendanceCount / effectiveWorkingDaysPassed) * 100 : 0;
-            const percentage = percentageRaw.toFixed(1);
-            
-            const newSummary = { attendanceCount: validAttendanceCount, alpaCount, izinCount, sakitCount, percentage };
-            setSummary(newSummary);
-            setInCache(cacheKey, newSummary, 900); // Cache for 15 minutes
-            setIsLoading(false);
+                setSummary(newSummary);
+                setInCache(cacheKey, newSummary, 900); // Cache for 15 minutes
+            } catch (error) {
+                console.error("Failed to calculate monthly summary from centralized function:", error);
+                setSummary({}); // Set empty object on error to prevent broken chart
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        
+        // Fetch data if it's not in the cache
+        if (summary === null) {
+           fetchStats();
         }
-    }, [user, isSchoolConfigLoading, isMonthlyConfigLoading, isAttendanceLoading, isLeaveLoading, schoolConfig, monthlyConfig, attendanceData, leaveData, now, cacheKey]);
 
-    return { summary, isLoading };
+    }, [user, firestore, cacheKey, summary]);
+
+    return { summary: summary || {}, isLoading }; // Return empty object if summary is null to prevent errors
 }
+
 
 // REWRITTEN HOOK to avoid collectionGroup queries.
 function useStaffDashboardStats_FreePlan(firestore: any, user: any) {
@@ -381,7 +351,7 @@ const AdminDashboard = ({ user, router }: any) => {
             <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 overflow-x-auto">
                  <TodaysActivityTable />
             </div>
-        </>
+        </> 
     );
 };
 
@@ -405,7 +375,7 @@ const StaffDashboard = ({ user }: any) => {
             <div className="md:col-span-2 lg:col-span-1 xl:col-span-2">
                 <MonthlyAttendanceChartUI summaryData={summary} isLoading={isSummaryLoading} />
             </div>
-        </>
+        </> 
     );
 };
 
