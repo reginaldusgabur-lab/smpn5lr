@@ -1,8 +1,10 @@
+'use client';
+
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Sparkles } from 'lucide-react';
 
 interface QuoteOfTheDayProps {
-  category: string | null;
+  category: string | null | undefined;
 }
 
 interface Quote {
@@ -12,78 +14,64 @@ interface Quote {
 
 const QuoteOfTheDay = ({ category }: QuoteOfTheDayProps) => {
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchQuote = async () => {
+      setIsLoading(true);
       try {
-        const lastShown = localStorage.getItem('quoteLastShown');
-        const today = new Date().toISOString().split('T')[0];
-        if (lastShown === today) {
-          return; // Jangan tampilkan jika sudah ditampilkan hari ini
-        }
-
         const response = await fetch(`/api/quote?category=${category || 'default'}`);
         
         if (!response.ok) {
-          // Coba parse JSON error dari backend
-          const errorData = await response.json().catch(() => ({ error: 'Gagal mengambil data error dari server' }));
-          // Gunakan pesan error dari backend jika ada, jika tidak, gunakan pesan default
-          throw new Error(errorData.error || 'Gagal mengambil kutipan dari API');
+          const errorData = await response.json().catch(() => ({ error: 'Server tidak memberikan respon error yang valid.' }));
+          throw new Error(errorData.error || 'Gagal mengambil kutipan.');
         }
 
         const data = await response.json();
         if (data.content && data.author) {
           setQuote(data);
-          localStorage.setItem('quoteLastShown', today);
+        } else {
+          throw new Error('Respon API tidak mengandung kutipan yang valid.');
         }
       } catch (e: any) {
-        console.error('Error di dalam komponen QuoteOfTheDay:', e.message);
+        console.error('Error fetching quote:', e.message);
         setError(e.message);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    if (category) { // Hanya panggil jika kategori tersedia
-        fetchQuote();
-    }
+    fetchQuote();
+
   }, [category]);
 
-  if (!quote && !error) {
-    // Jangan tampilkan apa-apa selagi loading atau jika sudah ditampilkan hari ini
-    return null;
-  }
-
-  if (error) {
-    // Secara development, kita bisa tampilkan error di UI untuk debugging
-    // Di production, mungkin lebih baik log saja tanpa merusak UI
-    if (process.env.NODE_ENV === 'development') {
-      return (
-        <Card className="bg-red-100 border-red-500 text-red-900">
-            <CardHeader>
-                <CardTitle>Error Fetching Quote</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p>{error}</p>
-            </CardContent>
-        </Card>
-      )
-    }
-    return null; // Di production, sembunyikan saja jika error
-  }
-
   return (
-    <Card className="bg-green-50 border-green-200">
-      <CardHeader>
-        <CardTitle className="text-lg">Kutipan Hari Ini</CardTitle>
-        <CardDescription>Semoga harimu menyenangkan!</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <blockquote className="italic text-gray-700">
-          <p>"{quote?.content}"</p>
-        </blockquote>
-        <cite className="block text-right mt-2 text-gray-500">- {quote?.author}</cite>
-      </CardContent>
-    </Card>
+    <div className="mt-6 pt-4 border-t border-current/20">
+      <div className="flex items-center justify-center text-sm font-semibold mb-2">
+        <Sparkles className="h-4 w-4 mr-2" />
+        Kutipan Hari Ini
+      </div>
+      <div className="text-center text-sm min-h-[60px] flex items-center justify-center px-4">
+        {isLoading && (
+          <div className="flex items-center text-muted-foreground">
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Memuat kutipan inspirasi...
+          </div>
+        )}
+        {!isLoading && error && (
+            <p className="text-destructive/80">Gagal memuat kutipan saat ini.</p>
+        )}
+        {!isLoading && quote && (
+          <div>
+            <blockquote className="italic">
+              <p>"{quote.content}"</p>
+            </blockquote>
+            <cite className="block text-right mt-1 text-current/60">- {quote.author}</cite>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

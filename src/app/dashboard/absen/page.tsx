@@ -33,7 +33,6 @@ type FeedbackStatus = 'idle' | 'processing' | 'locating' | 'success_in' | 'succe
 export default function AbsenPage() {
   const [status, setStatus] = useState<FeedbackStatus>('idle');
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [showQuote, setShowQuote] = useState(false);
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -88,7 +87,6 @@ export default function AbsenPage() {
   // --- Core Functions ---
   const handleAttendance = useCallback(async () => {
     setLocationError(null);
-    setShowQuote(false);
     if (!user || !firestore || !schoolConfig) {
         setStatus('error_generic');
         return toast({ title: 'Gagal', description: 'Data pengguna atau konfigurasi tidak siap.', variant: 'destructive' });
@@ -131,15 +129,13 @@ export default function AbsenPage() {
         if (isCheckInTime) {
             await addDoc(collection(firestore, 'users', user.uid, 'attendanceRecords'), { userId: user.uid, checkInTime: now, checkInLatitude: latitude, checkInLongitude: longitude, checkOutTime: null });
             setStatus('success_in');
-            if (userData?.role !== 'admin') setShowQuote(true);
         } else if (isCheckOutTime) {
             const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', todaysRecord!.id);
             await updateDoc(recordRef, { checkOutTime: now, checkOutLatitude: latitude, checkOutLongitude: longitude });
             setStatus('success_out');
-            if (userData?.role !== 'admin') setShowQuote(true);
         }
     } catch (error) { setStatus('error_generic'); }
-  }, [user, firestore, schoolConfig, todaysRecord, userData]);
+  }, [user, firestore, schoolConfig, todaysRecord]);
   
   const statusRef = useRef(status); statusRef.current = status;
   const handleAttendanceRef = useRef(handleAttendance); handleAttendanceRef.current = handleAttendance;
@@ -201,11 +197,9 @@ export default function AbsenPage() {
                     width: 100% !important;
                     height: 100% !important;
                     object-fit: cover !important;
-                    /* Fade in the video feed */
                     opacity: ${isScannerReady ? 1 : 0};
                     transition: opacity 0.5s ease-in-out;
                 }
-                /* Hide all library-generated UI */
                 #${readerId}__scan_region, #${readerId}__dashboard_section_csr {
                   display: none !important;
                 }
@@ -243,18 +237,18 @@ export default function AbsenPage() {
             )}
           </div>
           
-          <div className="w-full max-w-md h-10 pointer-events-auto">{showQuote && <QuoteOfTheDay category={userData?.role} />}</div>
+          <div className="w-full max-w-md h-10 pointer-events-auto" />
         </div>
 
-        {/* Status Feedback Overlay */}
-        {effectiveStatus !== 'idle' && <StatusFeedbackOverlay status={effectiveStatus} locationError={locationError} onClose={() => setStatus('idle')} />}
+        {/* Status Feedback Overlay, sekarang membawa userData */}
+        {effectiveStatus !== 'idle' && <StatusFeedbackOverlay status={effectiveStatus} locationError={locationError} onClose={() => setStatus('idle')} userData={userData} />}
       </div>
     </PageWrapper>
   );
 }
 
 // --- UI Sub-Components ---
-const StatusFeedbackOverlay = ({ status, locationError, onClose }: { status: FeedbackStatus, locationError: string | null, onClose: () => void }) => {
+const StatusFeedbackOverlay = ({ status, locationError, onClose, userData }: { status: FeedbackStatus, locationError: string | null, onClose: () => void, userData: any }) => {
     const feedback = useMemo(() => {
         switch (status) {
             case 'processing': return { icon: <Loader2 className="h-16 w-16 animate-spin text-primary" />, title: 'Memproses...', desc: 'Sedang memvalidasi absensi Anda.', cardClass: 'bg-background/90' };
@@ -274,6 +268,10 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose }: { status: Fee
         }
     }, [status, locationError]);
 
+    const showQuote = useMemo(() => 
+        (status === 'success_in' || status === 'success_out') && userData?.role !== 'admin',
+    [status, userData]);
+
     if (status === 'idle') return null;
 
     return (
@@ -281,7 +279,10 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose }: { status: Fee
             <Card className={cn("w-full max-w-xs text-center shadow-2xl m-4", feedback.cardClass)} onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-current/60 hover:text-current/90" onClick={onClose}><X className="h-5 w-5" /><span className="sr-only">Tutup</span></Button>
                 <CardHeader className="items-center pt-8"><div className="mb-4">{feedback.icon}</div><CardTitle className="text-2xl font-bold">{feedback.title}</CardTitle></CardHeader>
-                <CardContent className="pb-8"><p className="text-muted-foreground ">{feedback.desc}</p></CardContent>
+                <CardContent className="pb-8">
+                    <p className="text-muted-foreground ">{feedback.desc}</p>
+                    {showQuote && <QuoteOfTheDay category={userData?.role} />}
+                </CardContent>
             </Card>
         </div>
     );
