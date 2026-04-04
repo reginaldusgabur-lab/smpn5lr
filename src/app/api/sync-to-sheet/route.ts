@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/firebase/admin';
+import { adminDb } from '@/lib/firebase';
 import { google } from 'googleapis';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
