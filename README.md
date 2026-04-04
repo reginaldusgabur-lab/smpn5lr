@@ -96,3 +96,4 @@ Di era digital, proses manual pencatatan kehadiran rentan terhadap kesalahan, me
     npm run dev
     ```
     Aplikasi akan berjalan di `http://localhost:3000`.
+
