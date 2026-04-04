@@ -131,17 +131,48 @@ const LaporanGuruPage = () => {
             const docPDF = new jsPDF();
             const period = format(selectedMonth, 'MMMM yyyy', { locale: indonesianLocale });
             const today = format(new Date(), 'd MMMM yyyy', { locale: indonesianLocale });
+            let pageNumber = 1;
 
-            docPDF.setFontSize(12);
-            docPDF.text(schoolHeaderInfo.government, 105, 15, { align: "center" });
-            docPDF.text(schoolHeaderInfo.department, 105, 22, { align: "center" });
-            docPDF.setFontSize(14);
-            docPDF.setFont("helvetica", "bold");
-            docPDF.text(schoolHeaderInfo.name, 105, 29, { align: "center" });
-            docPDF.setFontSize(10);
-            docPDF.setFont("helvetica", "normal");
-            docPDF.text(schoolHeaderInfo.address, 105, 36, { align: "center" });
-            autoTable(docPDF, { startY: 38, head: [[]], body: [[]], theme: 'plain', styles: { lineWidth: 0.5, lineColor: 0 } });
+            const didDrawPage = (data: any) => {
+                // HEADER
+                docPDF.setFontSize(12);
+                docPDF.setFont('helvetica', 'normal');
+                docPDF.text(schoolHeaderInfo.government, 105, 15, { align: "center" });
+                docPDF.text(schoolHeaderInfo.department, 105, 22, { align: "center" });
+                docPDF.setFontSize(14);
+                docPDF.setFont("helvetica", "bold");
+                docPDF.text(schoolHeaderInfo.name, 105, 29, { align: "center" });
+                docPDF.setFontSize(10);
+                docPDF.setFont("helvetica", "normal");
+                docPDF.text(schoolHeaderInfo.address, 105, 36, { align: "center" });
+                docPDF.setDrawColor(0, 0, 0);
+                docPDF.line(14, 38, 196, 38);
+
+                // WATERMARK
+                docPDF.setFont('helvetica', 'bold');
+                docPDF.setFontSize(72);
+                docPDF.setTextColor(220, 220, 220);
+                docPDF.saveGraphicsState();
+                docPDF.setGState(new (docPDF as any).GState({opacity: 0.5}));
+                const pageSize = docPDF.internal.pageSize;
+                const pageWidth = pageSize.getWidth();
+                const pageHeight = pageSize.getHeight();
+                docPDF.text("E-SPENLI", pageWidth / 2, pageHeight / 1.8, { angle: -45, align: 'center' });
+                docPDF.restoreGraphicsState();
+                docPDF.setTextColor(0, 0, 0);
+
+                // FOOTER
+                const footerY = pageHeight - 15;
+                docPDF.setDrawColor(150, 150, 150);
+                docPDF.line(14, footerY, pageWidth - 14, footerY);
+                docPDF.setFont('helvetica', 'normal');
+                docPDF.setFontSize(8);
+                docPDF.setTextColor(100);
+                docPDF.text('Dokumen ini adalah laporan absensi resmi yang dihasilkan secara otomatis oleh aplikasi E-SPENLI.', 14, footerY + 5);
+                const pageNumText = `Halaman ${pageNumber}`;
+                docPDF.text(pageNumText, pageWidth - 14, footerY + 5, { align: 'right' });
+                pageNumber++;
+            };
             
             if (selectedTeacherId === "semua") {
                 docPDF.setFontSize(12);
@@ -155,7 +186,9 @@ const LaporanGuruPage = () => {
                     head: [["No", "Nama", "NIP", "Status", "Hadir", "Izin", "Sakit", "Alpa", "Telat", "Presentasi"]],
                     body: summaryData.map(r => [r.no, r.nama, r.nip, r.statusKepegawaian, r.hadir, r.izin, r.sakit, r.alpa, r.terlambat, r.presentasi]),
                     theme: 'grid',
-                    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' }
+                    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold', halign: 'center' },
+                    margin: { top: 45, bottom: 20 },
+                    didDrawPage: didDrawPage,
                 });
             } else {
                 docPDF.setFontSize(12);
@@ -172,7 +205,7 @@ const LaporanGuruPage = () => {
                         ['Status Kepegawaian', `: ${teacherInfo?.position || '-'}`],
                     ],
                     theme: 'plain',
-                    styles: { cellPadding: 1 },
+                    styles: { cellPadding: 1, fontSize: 10 },
                 });
 
                 autoTable(docPDF, {
@@ -180,16 +213,36 @@ const LaporanGuruPage = () => {
                     head: [["Tanggal", "Masuk", "Pulang", "Status", "Keterangan"]],
                     body: detailData.map(d => [d.tanggal, d.masuk, d.pulang, d.status, d.keterangan]),
                     theme: 'grid',
-                    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' }
+                    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold', halign: 'center' },
+                    margin: { top: 45, bottom: 20 },
+                    didDrawPage: didDrawPage,
                 });
             }
             
-            const finalY = (docPDF as any).lastAutoTable.finalY + 10;
-            docPDF.text(`Mando, ${today}`, 196, finalY, { align: "right" });
-            docPDF.text("Mengetahui,", 196, finalY + 7, { align: "right" });
-            docPDF.text("Kepala Sekolah", 196, finalY + 14, { align: "right" });
-            docPDF.text(schoolHeaderInfo.principal, 196, finalY + 40, { align: "right" });
-            docPDF.text(`NIP: ${schoolHeaderInfo.principalNip}`, 196, finalY + 47, { align: "right" });
+            const finalY = (docPDF as any).lastAutoTable.finalY;
+            let signatureY = finalY + 20;
+            if (signatureY > docPDF.internal.pageSize.getHeight() - 60) {
+                 docPDF.addPage();
+                 signatureY = 45;
+            }
+            
+            docPDF.setFontSize(10);
+            docPDF.setFont('helvetica', 'normal');
+            docPDF.text(`Mando, ${today}`, 196, signatureY, { align: "right" });
+            docPDF.text("Mengetahui,", 196, signatureY + 7, { align: "right" });
+            docPDF.text("Kepala Sekolah", 196, signatureY + 14, { align: "right" });
+            docPDF.text(schoolHeaderInfo.principal, 196, signatureY + 40, { align: "right" });
+            docPDF.text(`NIP: ${schoolHeaderInfo.principalNip}`, 196, signatureY + 47, { align: "right" });
+
+            // Final pass to correct page numbers if a new page was added for the signature
+            const totalPages = docPDF.internal.getNumberOfPages();
+            for (let i = 1; i <= totalPages; i++) {
+                docPDF.setPage(i);
+                docPDF.setFontSize(8);
+                docPDF.setTextColor(100);
+                const pageNumText = `Halaman ${i} dari ${totalPages}`;
+                docPDF.text(pageNumText, docPDF.internal.pageSize.getWidth() - 14, docPDF.internal.pageSize.getHeight() - 10, { align: 'right' });
+            }
 
             const fileName = selectedTeacherId === 'semua' ? `laporan-guru-ringkasan-${format(selectedMonth, 'MMMM-yyyy', { locale: indonesianLocale })}.pdf` : `laporan-guru-${teacherInfo?.name}-${format(selectedMonth, 'MMMM-yyyy', { locale: indonesianLocale })}.pdf`;
             docPDF.save(fileName);
@@ -203,28 +256,49 @@ const LaporanGuruPage = () => {
     const generateExcel = (summaryData: TeacherReportData[], detailData: TeacherDetailRecord[]) => {
         try {
             const wb = XLSX.utils.book_new();
-            const period = format(selectedMonth, 'MMMM-yyyy');
+            const period = format(selectedMonth, 'MMMM yyyy', { locale: indonesianLocale });
+            const footer = [['Dokumen ini adalah laporan absensi resmi yang dihasilkan secara otomatis oleh aplikasi E-SPENLI.']];
 
             if (selectedTeacherId === 'semua') {
-                const ws = XLSX.utils.json_to_sheet(summaryData);
-                XLSX.utils.book_append_sheet(wb, ws, `Ringkasan Guru - ${period}`);
-            } else {
-                const teacherInfo = teachersData?.find(t => t.id === selectedTeacherId);
                 const header = [
-                    [`Laporan Detail Kehadiran Guru`],
-                    [`Periode: ${period}`],
+                    [schoolHeaderInfo.government],
+                    [schoolHeaderInfo.department],
+                    [schoolHeaderInfo.name],
                     [],
-                    ['Nama', teacherInfo?.name],
-                    ['NIP', teacherInfo?.nip || '-'],
-                    ['Status', teacherInfo?.position || '-'],
-                    []
+                    ['LAPORAN RINGKASAN KEHADIRAN GURU & STAF'],
+                    [`Periode: ${period}`],
+                    [] 
                 ];
                 const ws = XLSX.utils.aoa_to_sheet(header);
-                XLSX.utils.sheet_add_json(ws, detailData, { origin: 'A8', skipHeader: true });
-                XLSX.utils.book_append_sheet(wb, ws, `Detail - ${teacherInfo?.name}`);
+                XLSX.utils.sheet_add_json(ws, summaryData.map(d => ({ 
+                    'No': d.no, 'Nama': d.nama, 'NIP': d.nip, 'Status': d.statusKepegawaian, 'Hadir': d.hadir, 'Sakit': d.sakit, 'Izin': d.izin, 'Alpa': d.alpa, 'Terlambat': d.terlambat, 'Presentasi (%)': d.presentasi
+                })), { origin: 'A8', skipHeader: false });
+                XLSX.utils.sheet_add_aoa(ws, footer, { origin: -1 });
+                XLSX.utils.book_append_sheet(wb, ws, `Ringkasan Guru`);
+            } else {
+                const teacherInfo = teachersData?.find(t => t.id === selectedTeacherId);
+                 const header = [
+                    [schoolHeaderInfo.government],
+                    [schoolHeaderInfo.department],
+                    [schoolHeaderInfo.name],
+                    [],
+                    ['LAPORAN DETAIL KEHADIRAN'],
+                    [`Periode: ${period}`],
+                    [],
+                    ['Nama', `: ${teacherInfo?.name}`],
+                    ['NIP', `: ${teacherInfo?.nip || '-'}`],
+                    ['Status', `: ${teacherInfo?.position || '-'}`],
+                    [] 
+                ];
+                const ws = XLSX.utils.aoa_to_sheet(header);
+                const detailHeader = [["Tanggal", "Waktu Masuk", "Waktu Pulang", "Status Kehadiran", "Keterangan"]];
+                XLSX.utils.sheet_add_aoa(ws, detailHeader, {origin: 'A12'})
+                XLSX.utils.sheet_add_json(ws, detailData, { origin: 'A13', skipHeader: true });
+                XLSX.utils.sheet_add_aoa(ws, footer, { origin: -1 });
+                XLSX.utils.book_append_sheet(wb, ws, `Detail - ${teacherInfo?.name?.substring(0, 20)}`);
             }
 
-            const fileName = selectedTeacherId === 'semua' ? `laporan-guru-ringkasan-${period}.xlsx` : `laporan-guru-${teachersData?.find(t => t.id === selectedTeacherId)?.name}-${period}.xlsx`;
+            const fileName = selectedTeacherId === 'semua' ? `laporan-guru-ringkasan-${format(selectedMonth, 'MMMM-yyyy')}.xlsx` : `laporan-guru-${teachersData?.find(t => t.id === selectedTeacherId)?.name}-${format(selectedMonth, 'MMMM-yyyy')}.xlsx`;
             XLSX.writeFile(wb, fileName);
 
         } catch (error) {
@@ -232,6 +306,7 @@ const LaporanGuruPage = () => {
             toast({ variant: "destructive", title: "Gagal Membuat Excel", description: "Terjadi kesalahan saat membuat file Excel." });
         }
     };
+
 
     const handleGenerateReport = async () => {
         if (!firestore || !teachersData) return;
