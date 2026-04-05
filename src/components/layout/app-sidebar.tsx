@@ -23,30 +23,29 @@ import {
 import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
+// Add 'id' for the tour
 const defaultNavItems = [
-  { href: '/dashboard', icon: Home, label: 'Beranda' },
-  { href: '/dashboard/absen', icon: QrCode, label: 'Absen' },
-  { href: '/dashboard/izin', icon: MailCheck, label: 'Izin' },
-  { href: '/dashboard/laporan', icon: FileText, label: 'Laporan' },
-  { href: '/dashboard/pengaturan', icon: Settings, label: 'Pengaturan' },
+  { id: 'nav-beranda', href: '/dashboard', icon: Home, label: 'Beranda' },
+  { id: 'nav-absen', href: '/dashboard/absen', icon: QrCode, label: 'Absen' },
+  { id: 'nav-izin', href: '/dashboard/izin', icon: MailCheck, label: 'Izin' },
+  { id: 'nav-laporan', href: '/dashboard/laporan', icon: FileText, label: 'Laporan' },
+  { id: 'nav-pengaturan', href: '/dashboard/pengaturan', icon: Settings, label: 'Pengaturan' },
 ];
 
-// Unified navigation pointing to the single, smart report page
 const adminNavItems = [
-  { href: '/dashboard', icon: Home, label: 'Beranda' },
-  { href: '/dashboard/admin/users', icon: Users, label: 'Pengguna' },
-  { href: '/dashboard/admin/konfigurasi', icon: QrCode, label: 'Pengaturan Absen' },
-  { href: '/dashboard/laporan-sekolah', icon: BookCheck, label: 'Laporan Sekolah' }, // <-- Points to the unified page
-  { href: '/dashboard/pengaturan', icon: Settings, label: 'Pengaturan' },
+  { id: 'nav-beranda', href: '/dashboard', icon: Home, label: 'Beranda' },
+  { id: 'nav-admin-users', href: '/dashboard/admin/users', icon: Users, label: 'Pengguna' },
+  { id: 'nav-admin-konfigurasi', href: '/dashboard/admin/konfigurasi', icon: QrCode, label: 'Pengaturan Absen' },
+  { id: 'nav-laporan-sekolah', href: '/dashboard/laporan-sekolah', icon: BookCheck, label: 'Laporan Sekolah' },
+  { id: 'nav-pengaturan', href: '/dashboard/pengaturan', icon: Settings, label: 'Pengaturan' },
 ];
 
-// Unified navigation pointing to the single, smart report page
 const headmasterNavItems = [
-    { href: '/dashboard', icon: Home, label: 'Beranda' },
-    { href: '/dashboard/absen', icon: QrCode, label: 'Absen' },
-    { href: '/dashboard/izin-kepala-sekolah', icon: ClipboardCheck, label: 'Persetujuan Izin' },
-    { href: '/dashboard/laporan-sekolah', icon: BookCheck, label: 'Laporan Sekolah' }, // <-- Points to the unified page
-    { href: '/dashboard/pengaturan', icon: Settings, label: 'Pengaturan' },
+    { id: 'nav-beranda', href: '/dashboard', icon: Home, label: 'Beranda' },
+    { id: 'nav-absen', href: '/dashboard/absen', icon: QrCode, label: 'Absen' },
+    { id: 'nav-izin-kepsek', href: '/dashboard/izin-kepala-sekolah', icon: ClipboardCheck, label: 'Persetujuan Izin' },
+    { id: 'nav-laporan-sekolah', href: '/dashboard/laporan-sekolah', icon: BookCheck, label: 'Laporan Sekolah' },
+    { id: 'nav-pengaturan', href: '/dashboard/pengaturan', icon: Settings, label: 'Pengaturan' },
 ];
 
 
@@ -93,7 +92,7 @@ export function AppSidebar() {
                   isActive={isActive}
                   className="justify-start"
                 >
-                  <Link href={item.href}>
+                  <Link href={item.href} id={item.id}>
                     <item.icon className="h-5 w-5" />
                     <span>{item.label}</span>
                   </Link>

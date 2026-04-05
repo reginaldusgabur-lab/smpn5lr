@@ -235,6 +235,13 @@ export default function KonfigurasiAbsenPage() {
     if (!firestore || !user) return null;
     return doc(firestore, 'schoolConfig', 'default');
   }, [firestore, user]);
+
+  // ADDED: Reference to the legacy configuration document for compatibility
+  const legacyConfigRef = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return doc(firestore, 'konfigurasi', 'absensi');
+  }, [firestore]);
+
   const { data: schoolConfigData, isLoading: isConfigLoading } = useDoc(user, schoolConfigRef);
 
   const userDocRef = useMemoFirebase(() => {
@@ -392,8 +399,10 @@ export default function KonfigurasiAbsenPage() {
 
 
   const handleSave = () => {
-    if (!user || !schoolConfigRef) return;
+    if (!user || !schoolConfigRef || !legacyConfigRef) return;
     setIsSaving(true);
+
+    // Main configuration for the new system
     setDocumentNonBlocking(schoolConfigRef, {
       isAttendanceActive: !holidayMode,
       offDays: offDays,
@@ -407,6 +416,16 @@ export default function KonfigurasiAbsenPage() {
       checkOutStartTime: checkOutStart,
       checkOutEndTime: checkOutEnd,
     }, { merge: true });
+
+    // ADDED: Also save to the legacy configuration path to ensure compatibility
+    setDocumentNonBlocking(legacyConfigRef, {
+        jamMasukMulai: checkInStart,
+        jamMasukSelesai: checkInEnd,
+        jamPulangMulai: checkOutStart,
+        jamPulangSelesai: checkOutEnd,
+    }, { merge: true });
+
+
     toast({
       title: 'Pengaturan Disimpan',
       description: 'Konfigurasi absensi telah berhasil diperbarui.',

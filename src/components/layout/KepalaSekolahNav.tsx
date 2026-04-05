@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, QrCode, ClipboardCheck, BookCheck, Settings, FileText } from 'lucide-react';
+import { Home, QrCode, ClipboardCheck, Settings, FileText } from 'lucide-react';
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -10,19 +10,21 @@ import {
 } from '@/components/ui/sidebar';
 
 const headmasterNavItems = [
-  { href: '/dashboard', icon: Home, label: 'Beranda' },
-  { href: '/dashboard/absen', icon: QrCode, label: 'Absen' },
+  { id: 'nav-beranda', href: '/dashboard', icon: Home, label: 'Beranda' },
+  { id: 'nav-absen', href: '/dashboard/absen', icon: QrCode, label: 'Absen' },
   {
+    id: 'nav-izin-kepsek',
     href: '/dashboard/izin-kepala-sekolah',
     icon: ClipboardCheck,
     label: 'Persetujuan Izin',
   },
   {
+    id: 'nav-laporan',
     href: '/dashboard/laporan-staf',
-    icon: FileText, // Using a more appropriate icon
+    icon: FileText,
     label: 'Laporan Staf',
   },
-  { href: '/dashboard/pengaturan', icon: Settings, label: 'Pengaturan' },
+  { id: 'nav-pengaturan', href: '/dashboard/pengaturan', icon: Settings, label: 'Pengaturan' },
 ];
 
 export function KepalaSekolahNav() {
@@ -43,7 +45,7 @@ export function KepalaSekolahNav() {
               isActive={isActive}
               className="justify-start"
             >
-              <Link href={item.href}>
+              <Link href={item.href} id={item.id}>
                 <item.icon className="h-5 w-5" />
                 <span>{item.label}</span>
               </Link>
