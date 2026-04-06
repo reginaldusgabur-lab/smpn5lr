@@ -17,14 +17,13 @@ import { useFirestore } from '@/firebase';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 
-// 1. Add employmentStatus to the validation schema
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Nama harus memiliki setidaknya 2 karakter.' }),
   email: z.string().email({ message: 'Email tidak valid.' }),
   role: z.enum(['admin', 'kepala_sekolah', 'guru', 'pegawai', 'siswa']),
-  employmentStatus: z.string().optional(), // Make it optional or provide a default
+  position: z.string().optional(),
   password: z.string().optional(),
-}).refine(data => !!data.password || !!data.id, { // id is not on the form, this check might be problematic
+}).refine(data => !!data.password || !!data.id, { 
     message: "Kata sandi diperlukan untuk pengguna baru.",
     path: ["password"],
 });
@@ -33,7 +32,7 @@ interface UserFormSheetProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   editingUser: any | null;
-  refreshUsers: () => void; // Add callback to refresh data
+  refreshUsers: () => void;
 }
 
 export default function UserFormSheet({ isOpen, setIsOpen, editingUser, refreshUsers }: UserFormSheetProps) {
@@ -45,7 +44,7 @@ export default function UserFormSheet({ isOpen, setIsOpen, editingUser, refreshU
       name: '',
       email: '',
       role: 'guru',
-      employmentStatus: '', // Default value for the new field
+      position: '',
       password: '',
     },
   });
@@ -58,11 +57,11 @@ export default function UserFormSheet({ isOpen, setIsOpen, editingUser, refreshU
         name: editingUser.name,
         email: editingUser.email,
         role: editingUser.role,
-        employmentStatus: editingUser.employmentStatus || '', // Populate with existing data or empty
+        position: editingUser.position || '',
         password: '',
       });
     } else {
-      reset({ name: '', email: '', role: 'guru', employmentStatus: '', password: '' });
+      reset({ name: '', email: '', role: 'guru', position: '', password: '' });
     }
   }, [editingUser, reset]);
 
@@ -73,27 +72,24 @@ export default function UserFormSheet({ isOpen, setIsOpen, editingUser, refreshU
             name: values.name,
             email: values.email,
             role: values.role,
-            employmentStatus: values.employmentStatus,
+            position: values.position,
         };
 
       if (editingUser) {
-        // Update user in Firestore
         const userDoc = doc(firestore, 'users', editingUser.id);
         await updateDoc(userDoc, userData);
       } else {
-        // Create user in Auth
         if (!values.password) {
             throw new Error("Password is required for a new user.");
         }
         const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
         const uid = userCredential.user.uid;
         
-        // Create user in Firestore
         const userDoc = doc(firestore, 'users', uid);
         await setDoc(userDoc, { ...userData, uid });
       }
       
-      refreshUsers(); // Refresh the user list
+      refreshUsers();
       setIsOpen(false);
       alert(`Pengguna berhasil ${editingUser ? 'diperbarui' : 'dibuat'}!`);
 
@@ -169,10 +165,9 @@ export default function UserFormSheet({ isOpen, setIsOpen, editingUser, refreshU
                         </FormItem>
                     )}
                  />
-                {/* 2. Add the new Employment Status dropdown field */}
                 <FormField
                     control={form.control}
-                    name="employmentStatus"
+                    name="position"
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Status Kepegawaian</FormLabel>
@@ -182,9 +177,9 @@ export default function UserFormSheet({ isOpen, setIsOpen, editingUser, refreshU
                                     <SelectItem value="-">-</SelectItem>
                                     <SelectItem value="PNS">PNS</SelectItem>
                                     <SelectItem value="PPPK">PPPK</SelectItem>
-                                    <SelectItem value="Honorer">Honorer</SelectItem>
-                                    <SelectItem value="GTY">GTY</SelectItem>
-                                    <SelectItem value="PTY">PTY</SelectItem>
+                                    <SelectItem value="Honorer">Honorer</FormLabel></SelectItem>
+                                    <SelectItem value="PPPK PW">PPPK PW</SelectItem>
+                                    <SelectItem value="PW">PW</SelectItem>
                                 </SelectContent>
                             </Select>
                             <FormMessage />

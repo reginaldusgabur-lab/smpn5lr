@@ -248,6 +248,8 @@ export default function RegisterPage() {
                             <>
                               <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PNS" /></FormControl><FormLabel className="font-normal">PNS</FormLabel></FormItem>
                               <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem>
+                              <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="Honorer" /></FormControl><FormLabel className="font-normal">Honorer</FormLabel></FormItem>
+                              <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK PW" /></FormControl><FormLabel className="font-normal">PPPK PW</FormLabel></FormItem>
                             </>
                           ) : (
                             <>
