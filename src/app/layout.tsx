@@ -8,7 +8,7 @@ import PwaInstaller from '@/components/pwa-installer';
 export const metadata: Metadata = {
   title: 'E-SPENLI',
   description: 'Aplikasi Absensi Digital untuk SMPN 5 Langke Rembong',
-  manifest: '/manifest.webmanifest?v=2',
+  manifest: '/manifest.webmanifest?v=3',
   applicationName: 'E-SPENLI',
   appleWebApp: {
     capable: true,
