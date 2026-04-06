@@ -1,19 +1,22 @@
-'use client';
-
 import { useState, useEffect } from 'react';
 import { useFirestore } from '@/firebase';
-import { doc, writeBatch, Timestamp, getDoc, collection } from 'firebase/firestore'; // Added getDoc and collection
-import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { doc, getDoc, writeBatch } from 'firebase/firestore';
 import { fetchUserMonthlyReportData } from '@/lib/attendance';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogHeader, 
+    DialogFooter, 
+    DialogTitle, 
+    DialogDescription,
+    DialogClose
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default function EditAttendanceModal({ user, month, isOpen, onClose, currentUser }) { // Added currentUser prop
+export default function EditAttendanceModal({ user, month, isOpen, onClose, currentUser }) {
     const firestore = useFirestore();
     const [absentDays, setAbsentDays] = useState<any[]>([]);
     const [selectedDays, setSelectedDays] = useState<{ [key: string]: boolean }>({});
@@ -30,14 +33,10 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
             try {
                 const schoolConfigRef = doc(firestore, 'schoolConfig', 'default');
                 const schoolConfigSnap = await getDoc(schoolConfigRef);
-                
-                if (!schoolConfigSnap.exists()) {
-                    throw new Error("Konfigurasi sekolah tidak ditemukan.");
-                }
-                const schoolConfig = schoolConfigSnap.data();
+                const schoolConfig = schoolConfigSnap.data() || {};
 
                 const reportData = await fetchUserMonthlyReportData(firestore, user.uid, month, schoolConfig);
-                const alpaDays = reportData.filter(d => d.status === 'Alpa' && d.description === 'Tidak Ada Keterangan' && !d.date.setHours(0,0,0,0) > new Date().setHours(0,0,0,0));
+                const alpaDays = reportData.filter(d => d.status === 'Alpa' && d.description === 'Tidak Ada Keterangan');
                 setAbsentDays(alpaDays);
                 setSelectedDays({});
             } catch (err) {
@@ -62,8 +61,8 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
             return;
         }
 
-        if (!currentUser) {
-            setError("Gagal mengidentifikasi admin. Silakan muat ulang halaman dan coba lagi.");
+        if (!currentUser || !currentUser.uid) {
+            setError("Gagal mengidentifikasi admin (ID pengguna tidak ditemukan). Silakan muat ulang halaman dan coba lagi.");
             return;
         }
 
@@ -75,27 +74,31 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
             const daysToUpdate = absentDays.filter(day => selectedDays[day.id]);
 
             daysToUpdate.forEach(day => {
-                const recordDate = new Date(day.date);
-                const checkInTime = new Date(recordDate.setHours(7, 0, 0, 0));
-                const checkOutTime = new Date(recordDate.setHours(13, 0, 0, 0));
+                const [year, month, d] = day.id.split('-').map(Number);
 
-                const newRecordRef = doc(collection(firestore, 'users', user.uid, 'attendanceRecords'));
-                
+                // Set a default time, e.g., 07:00 for check-in and 13:00 for check-out
+                const checkInTime = new Date(year, month - 1, d, 7, 0, 0);
+                const checkOutTime = new Date(year, month - 1, d, 13, 0, 0);
+
+                const newRecordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', day.id);
                 batch.set(newRecordRef, {
-                    checkInTime: Timestamp.fromDate(checkInTime),
-                    checkOutTime: Timestamp.fromDate(checkOutTime),
-                    status: 'Hadir',
-                    manualEntry: true,
-                    manualEntryBy: currentUser.uid, // Use passed prop
-                    createdAt: Timestamp.now(),
+                    checkInTime,
+                    checkOutTime,
+                    checkInLocation: { latitude: 0, longitude: 0 },
+                    checkOutLocation: { latitude: 0, longitude: 0 },
+                    status: 'Hadir', // This is implicit but good to be clear
+                    updatedBy: currentUser.uid, 
+                    updatedAt: new Date(), 
+                    reasonForUpdate: 'Input oleh Admin',
+                    manualEntry: true // <-- THE NEW FLAG IS ADDED HERE
                 });
             });
 
             await batch.commit();
-            onClose(); // Close modal on success
+            onClose(); 
         } catch (err) {
-            console.error("Error saving manual attendance:", err);
-            setError("Gagal menyimpan kehadiran. Pastikan Anda memiliki koneksi internet dan izin yang benar.");
+            console.error("Error saving attendance:", err);
+            setError("Gagal menyimpan perubahan. Silakan coba lagi.");
         } finally {
             setIsSaving(false);
         }
@@ -103,43 +106,51 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Edit Kehadiran Manual</DialogTitle>
-                    <DialogDescription>
-                        Pilih tanggal alpa untuk diisi sebagai "Hadir" untuk <strong>{user?.name}</strong>. Ini hanya berlaku untuk hari yang sudah lewat.
-                    </DialogDescription>
+                    <DialogTitle>Ubah Kehadiran (Alpa)</DialogTitle>
+                    {error && (
+                        <Alert variant="destructive" className="mt-4">
+                            <AlertTitle>Error</AlertTitle>
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                    )}
                 </DialogHeader>
-                {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-                <ScrollArea className="h-72 my-4">
-                    <div className="p-4">
-                        {isLoading ? (
-                            <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>
-                        ) : absentDays.length > 0 ? (
-                            absentDays.map(day => (
-                                <div key={day.id} className="flex items-center space-x-2 mb-2 p-2 rounded-md hover:bg-gray-100">
-                                    <Checkbox 
-                                        id={day.id}
-                                        checked={!!selectedDays[day.id]}
-                                        onCheckedChange={() => handleSelectDay(day.id)} 
-                                    />
-                                    <label htmlFor={day.id} className="text-sm font-medium leading-none cursor-pointer">
-                                        {format(day.date, 'EEEE, dd MMMM yyyy', { locale: id })}
-                                    </label>
-                                </div>
-                            ))
-                        ) : (
-                            <p className="text-center text-gray-500 py-10">Tidak ada hari alpa yang bisa diisi pada bulan ini.</p>
-                        )}
+
+                {isLoading ? (
+                    <div className="py-4">
+                        <Skeleton className="h-4 w-full mb-2" />
+                        <Skeleton className="h-4 w-full mb-2" />
+                        <Skeleton className="h-4 w-3/4" />
                     </div>
-                </ScrollArea>
+                ) : absentDays.length > 0 ? (
+                    <div className="flex flex-col gap-2 py-4">
+                        <DialogDescription>
+                           Pilih tanggal alpa yang ingin diubah menjadi "Hadir":
+                        </DialogDescription>
+                        {absentDays.map(day => (
+                            <div key={day.id} className="flex items-center gap-2 pt-2">
+                                <Checkbox 
+                                    id={day.id} 
+                                    checked={!!selectedDays[day.id]}
+                                    onCheckedChange={() => handleSelectDay(day.id)}
+                                />
+                                <label htmlFor={day.id} className="cursor-pointer">
+                                    {day.dateString} 
+                                </label>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="py-4">Tidak ada data alpa yang bisa diubah pada periode ini.</p>
+                )}
+                
                 <DialogFooter>
                     <DialogClose asChild>
-                        <Button type="button" variant="secondary" disabled={isSaving}>Batal</Button>
+                        <Button variant="ghost" disabled={isSaving}>Batal</Button>
                     </DialogClose>
-                    <Button onClick={handleSaveChanges} disabled={isSaving || isLoading || absentDays.length === 0}>
-                        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
-                        Simpan Perubahan
+                    <Button onClick={handleSaveChanges} disabled={isLoading || isSaving || absentDays.length === 0}>
+                        {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
                     </Button>
                 </DialogFooter>
             </DialogContent>

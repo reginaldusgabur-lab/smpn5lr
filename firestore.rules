@@ -4,48 +4,35 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- Helper Function ---
-    // Checks if the requesting user has a specific role.
     function isRole(role) {
-      // This get() call is safe because of the explicit read rule for a user's own document below.
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
     }
     
     // --- Collection: users ---
     match /users/{userId} {
-
-      // READ:
-      // 1. A user can always read their own document. This is CRITICAL for role-based access to work.
-      // 2. An admin or a kepala_sekolah can read ANY user document.
       allow read: if request.auth.uid == userId || isRole('admin') || isRole('kepala_sekolah');
-
-      // LIST:
-      // An admin or kepala_sekolah can list the users collection (e.g., for reports and user management).
       allow list: if isRole('admin') || isRole('kepala_sekolah');
-      
-      // CREATE:
-      // Only an admin can create new users.
       allow create: if isRole('admin');
-
-      // UPDATE:
-      // A user can update their own profile, OR an admin can update any profile.
       allow update: if request.auth.uid == userId || isRole('admin');
-
-      // DELETE:
-      // Only an admin can delete users.
       allow delete: if isRole('admin');
     }
 
     // --- Sub-collections under users (attendance, leave requests) ---
+    // --- FINAL & CORRECTED RULES ---
     match /users/{userId}/{subCollection}/{docId} {
       
-      // READ/WRITE (OWNER): The user owns their sub-collection documents.
-      allow read, write: if request.auth.uid == userId;
+      // READ: A user can read their own data. Admin and Kepsek can read anyone's data.
+      allow read: if request.auth.uid == userId || isRole('admin') || isRole('kepala_sekolah');
       
-      // READ (ADMIN/KEPSEK): Admins and Kepsek can also READ these for reports. (This is additive with the rule above)
-      allow read: if isRole('admin') || isRole('kepala_sekolah');
-
-      // UPDATE (KEPSEK): A Kepsek can UPDATE these documents (e.g., to approve leave).
-      allow update: if isRole('kepala_sekolah');
+      // CREATE: A user can create their own records. An admin can also create records for others.
+      // This is the rule that fixes the "Ubah Kehadiran" feature for admins.
+      allow create: if request.auth.uid == userId || isRole('admin');
+      
+      // UPDATE: A user can update their own records. Admin and Kepsek can also update records for others.
+      allow update: if request.auth.uid == userId || isRole('admin') || isRole('kepala_sekolah');
+      
+      // DELETE: A user can delete their own records. An admin can also delete records for others.
+      allow delete: if request.auth.uid == userId || isRole('admin');
     }
     
     // --- Global Configuration & Other Collections ---

@@ -21,6 +21,9 @@ const QuoteOutputSchema = z.object({
   quote: z
     .string()
     .describe('Teks kutipan yang dihasilkan.'),
+  author: z
+    .string()
+    .describe('Nama penulis fiktif yang sesuai dengan konteks kutipan.'),
 });
 export type QuoteOutput = z.infer<typeof QuoteOutputSchema>;
 
@@ -37,7 +40,16 @@ const quotePrompt = ai.definePrompt(
 
 Audiens: {{category}}
 
-Buatlah satu kutipan orisinal dalam Bahasa Indonesia yang singkat (1-2 kalimat), berkesan, dan benar-benar cocok untuk audiens tersebut. Hindari kutipan yang terlalu umum atau klise. Jangan gunakan tanda kutip di awal dan akhir kutipan.`,
+Buatlah satu kutipan orisinal dalam Bahasa Indonesia yang singkat (1-2 kalimat), berkesan, dan benar-benar cocok untuk audiens tersebut. Hindari kutipan yang terlalu umum atau klise.
+Selain itu, buat juga satu nama penulis fiktif yang terdengar bijaksana atau relevan dengan kutipan dan audiens.
+
+Contoh output:
+{
+  "quote": "Mengajar adalah menyentuh kehidupan selamanya.",
+  "author": "Pendidik Tanpa Nama"
+}
+
+Jangan gunakan tanda kutip di awal dan akhir properti JSON atau isinya.`
   },
 );
 

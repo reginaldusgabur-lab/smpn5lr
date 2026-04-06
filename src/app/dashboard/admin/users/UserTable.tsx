@@ -1,6 +1,7 @@
 'use client';
 
 import { memo } from 'react';
+import Link from 'next/link';
 import { MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,10 +20,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { deleteDoc, doc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
 
-// Action component remains the same
+// Action component
 const UserActions = ({ user, onEdit, onDelete }: { user: any; onEdit: (user: any) => void; onDelete: (userId: string) => void; }) => {
   const handleDelete = () => {
     if (window.confirm(`Apakah Anda yakin ingin menghapus pengguna ${user.name}?`)) {
@@ -40,14 +39,17 @@ const UserActions = ({ user, onEdit, onDelete }: { user: any; onEdit: (user: any
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-        <DropdownMenuItem onClick={() => onEdit(user)}>Edit</DropdownMenuItem>
-        <DropdownMenuItem onClick={handleDelete} className="text-red-500">Hapus</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => window.location.href = `/dashboard/laporan/${user.id}`}>
+          Lihat Detail Laporan
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onEdit(user)}>Edit Pengguna</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleDelete} className="text-red-500">Hapus Pengguna</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 };
 
-// Main table component is updated
+// Main table component
 const UserTable = ({ users, onEdit, onDelete }: { users: any[]; onEdit: (user: any) => void; onDelete: (userId: string) => void; }) => {
   if (!users || users.length === 0) {
     return <div className="text-center text-muted-foreground py-10">Tidak ada data pengguna.</div>;
@@ -61,7 +63,7 @@ const UserTable = ({ users, onEdit, onDelete }: { users: any[]; onEdit: (user: a
           <TableHead>Nama</TableHead>
           <TableHead>Email</TableHead>
           <TableHead>Role</TableHead>
-          <TableHead>Status Kepegawaian</TableHead> {/* New Column Header */}
+          <TableHead>Status Kepegawaian</TableHead>
           <TableHead>
             <span className="sr-only">Aksi</span>
           </TableHead>
@@ -71,13 +73,16 @@ const UserTable = ({ users, onEdit, onDelete }: { users: any[]; onEdit: (user: a
         {users.map((user, index) => (
           <TableRow key={user.id}>
             <TableCell>{index + 1}</TableCell>
-            <TableCell className="font-medium">{user.name}</TableCell>
+            <TableCell className="font-medium">
+              <Link href={`/dashboard/laporan/${user.id}`} className="hover:underline">
+                {user.name}
+              </Link>
+            </TableCell>
             <TableCell>{user.email}</TableCell>
             <TableCell>
                 <Badge variant="outline">{user.role}</Badge>
             </TableCell>
-            {/* New Column Cell */}
-            <TableCell>{user.employmentStatus || '-'}</TableCell> 
+            <TableCell>{user.position || '-'}</TableCell> 
             <TableCell>
               <UserActions user={user} onEdit={onEdit} onDelete={onDelete} />
             </TableCell>

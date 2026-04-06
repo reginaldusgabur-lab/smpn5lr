@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useRouter } from 'next/navigation'; // 1. Impor useRouter
 import { Html5Qrcode, Html5QrcodeCameraScanConfig } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,6 +37,7 @@ export default function AbsenPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const router = useRouter(); // 2. Dapatkan objek router
   
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isScannerReady, setIsScannerReady] = useState(false);
@@ -140,6 +142,12 @@ export default function AbsenPage() {
   const statusRef = useRef(status); statusRef.current = status;
   const handleAttendanceRef = useRef(handleAttendance); handleAttendanceRef.current = handleAttendance;
 
+  // 3. Buat fungsi navigasi
+  const handleCloseRedirect = useCallback(() => {
+    // Arahkan ke halaman beranda (dashboard utama)
+    router.push('/dashboard'); 
+  }, [router]);
+
   useEffect(() => {
     let isMounted = true;
     Html5Qrcode.getCameras().then(devices => isMounted && setHasCameraPermission(!!(devices && devices.length))).catch(() => isMounted && setHasCameraPermission(false));
@@ -184,6 +192,22 @@ export default function AbsenPage() {
         }
     };
   }, [showScanner, status, onScanSuccess]);
+
+  // 4. Tentukan fungsi onClose berdasarkan status
+  const handleOnClose = useMemo(() => {
+    const isSuccessOrFinished = [
+      'success_in',
+      'success_out',
+      'info_checked_out',
+      'info_holiday'
+    ].includes(effectiveStatus);
+
+    if (isSuccessOrFinished) {
+      return handleCloseRedirect;
+    } else {
+      return () => setStatus('idle');
+    }
+  }, [effectiveStatus, handleCloseRedirect]);
 
   return (
     <PageWrapper>
@@ -240,8 +264,8 @@ export default function AbsenPage() {
           <div className="w-full max-w-md h-10 pointer-events-auto" />
         </div>
 
-        {/* Status Feedback Overlay, sekarang membawa userData */}
-        {effectiveStatus !== 'idle' && <StatusFeedbackOverlay status={effectiveStatus} locationError={locationError} onClose={() => setStatus('idle')} userData={userData} />}
+        {/* Status Feedback Overlay, sekarang menggunakan handleOnClose */}
+        {effectiveStatus !== 'idle' && <StatusFeedbackOverlay status={effectiveStatus} locationError={locationError} onClose={handleOnClose} userData={userData} />}
       </div>
     </PageWrapper>
   );

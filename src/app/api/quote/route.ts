@@ -16,33 +16,38 @@ import { z } from 'zod';
  *             schema:
  *               type: object
  *               properties:
- *                 quote: 
+ *                 content:
  *                   type: string
  *                   example: "Pendidikan adalah kunci untuk membuka potensi tak terbatas dalam setiap siswa."
+ *                 author:
+ *                   type: string
+ *                   example: "Seorang Guru Bijak"
  *       500:
  *         description: Terjadi kesalahan pada server.
  */
 
 export const dynamic = 'force-dynamic';
 
+const QuoteApiResponseSchema = z.object({
+  content: z.string(),
+  author: z.string(),
+});
+
 export async function GET() {
   try {
-    // Menjalankan flow AI untuk mendapatkan kutipan dengan kategori spesifik.
-    // Kategori "pendidik dan tenaga kependidikan" dipilih karena relevan untuk semua pengguna aplikasi ini (guru, admin, dll).
-    const response = await getQuote({ category: 'pendidik dan tenaga kependidikan' });
+    const aiResponse = await getQuote({ category: 'pendidik dan tenaga kependidikan' });
 
-    // Memastikan output dari AI sesuai dengan skema yang diharapkan.
-    const QuoteOutputSchema = z.object({
-      quote: z.string(),
-    });
-    
-    const parsedResponse = QuoteOutputSchema.parse(response);
+    const parsedResponse = {
+      content: aiResponse.quote,
+      author: aiResponse.author,
+    };
+
+    // Validasi akhir sebelum mengirim ke klien
+    QuoteApiResponseSchema.parse(parsedResponse);
 
     return NextResponse.json(parsedResponse);
   } catch (error) {
     console.error("[API_QUOTE_ERROR]", error);
-
-    // Jika terjadi error (misal: API key tidak valid, error jaringan), kirim response error.
     return new NextResponse('Gagal menghasilkan kutipan.', { status: 500 });
   }
 }
