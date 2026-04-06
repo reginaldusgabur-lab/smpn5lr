@@ -18,14 +18,13 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useFirestore } from '@/firebase';
-// MODIFIED: Imported collectionGroup to perform the correct query as per security rules.
 import { collection, query, where, getDocs, onSnapshot, documentId, collectionGroup } from 'firebase/firestore';
 import { startOfDay, endOfDay, format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { AlertCircle, Loader2, TimerOff, WifiOff } from 'lucide-react';
-import { useAttendanceWindow } from '@/hooks/use-attendance-window';
+import { useAttendanceWindow } from '@/hooks/use-attendance-window'; // Tetap digunakan untuk status sesi
 
-// Interface for the final formatted data
+// Interface untuk data yang sudah diformat dan siap ditampilkan
 interface Activity {
   no: number;
   name: string;
@@ -36,7 +35,7 @@ interface Activity {
   keterangan: string;
 }
 
-// Interface for raw user data fetched from Firestore
+// Interface untuk data mentah pengguna dari Firestore
 interface UserData {
   [key: string]: {
     name: string;
@@ -44,13 +43,13 @@ interface UserData {
   };
 }
 
-// The main component
+// Komponen utama
 const RecentAttendanceTable = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null); // State to hold any permission errors
+  const [error, setError] = useState<string | null>(null);
   const firestore = useFirestore();
-  const { status, config } = useAttendanceWindow(); // This hook is now for displaying status messages only.
+  const { status, config } = useAttendanceWindow(); // Hook ini tetap digunakan untuk konteks waktu
 
   useEffect(() => {
     if (!firestore) {
@@ -59,19 +58,16 @@ const RecentAttendanceTable = () => {
     }
 
     setIsLoading(true);
-    setError(null); // Reset error on new fetch
+    setError(null);
 
     const todayStart = startOfDay(new Date());
     const todayEnd = endOfDay(new Date());
 
-    // --- CORE FIX ---
-    // The query now uses collectionGroup('attendanceRecords') to match the Firebase Security Rules.
-    // This allows admins/kepsek to read from all user attendance sub-collections at once.
-    // The previous query on collection('absensi') was causing "Missing or insufficient permissions".
+    // Query yang diperbaiki: Menggunakan collectionGroup untuk mengambil semua catatan kehadiran hari ini
     const attendanceQuery = query(
-      collectionGroup(firestore, 'attendanceRecords'), // This is the correct way designed by the security rules.
-      where('tanggal', '>=', todayStart),
-      where('tanggal', '<=', todayEnd)
+      collectionGroup(firestore, 'attendanceRecords'),
+      where('checkInTime', '>=', todayStart),
+      where('checkInTime', '<=', todayEnd)
     );
 
     const unsubscribe = onSnapshot(attendanceQuery, async (attendanceSnap) => {
@@ -82,26 +78,24 @@ const RecentAttendanceTable = () => {
       }
 
       const userIds = new Set<string>();
-      const attendanceRecords: { [userId: string]: any } = {};
-
+      const attendanceRecords: { [key: string]: any } = {};
+      
+      // Ambil semua userId dari path dokumen kehadiran
       attendanceSnap.forEach(doc => {
-        const data = doc.data();
-        // Assuming 'userId' field exists within each attendance record.
-        if (data.userId) {
-            userIds.add(data.userId);
-            attendanceRecords[data.userId] = data;
-        } else {
-            console.warn("Attendance record found without a userId:", doc.id);
+        const userId = doc.ref.parent.parent?.id;
+        if (userId) {
+            userIds.add(userId);
+            attendanceRecords[userId] = doc.data();
         }
       });
 
       if (userIds.size === 0) {
-          setActivities([]);
-          setIsLoading(false);
-          return;
+        setActivities([]);
+        setIsLoading(false);
+        return;
       }
       
-      // Fetch user details for all users who have attendance records
+      // Ambil detail pengguna yang sesuai
       const usersQuery = query(
         collection(firestore, 'users'),
         where(documentId(), 'in', Array.from(userIds))
@@ -109,25 +103,17 @@ const RecentAttendanceTable = () => {
       const userSnap = await getDocs(usersQuery);
       const usersData: UserData = {};
       userSnap.forEach(doc => {
-        const data = doc.data();
-        usersData[doc.id] = { name: data.nama, nip: data.nip || '-' };
+        usersData[doc.id] = { name: doc.data().name, nip: doc.data().nip || '-' };
       });
 
-      // Combine user data with attendance data
-      const finalActivities: Activity[] = Object.keys(usersData).map((userId, index) => {
+      // Gabungkan data pengguna dengan data kehadiran mereka
+      const finalActivities: Activity[] = Object.entries(attendanceRecords).map(([userId, attendance], index) => {
         const userDetail = usersData[userId];
-        const attendance = attendanceRecords[userId];
+        const checkInTime = attendance.checkInTime ? format(attendance.checkInTime.toDate(), 'HH:mm:ss') : '--:--';
+        const checkOutTime = attendance.checkOutTime ? format(attendance.checkOutTime.toDate(), 'HH:mm:ss') : '--:--';
 
-        const checkInTime = attendance.jamMasuk ? format(attendance.jamMasuk.toDate(), 'HH:mm') : '--:--';
-        const checkOutTime = attendance.jamPulang ? format(attendance.jamPulang.toDate(), 'HH:mm') : '--:--';
-
-        let status: Activity['status'] = 'proses';
-        let keterangan = 'Belum Absen Pulang';
-
-        if (attendance.jamMasuk && attendance.jamPulang) {
-          status = 'hadir';
-          keterangan = 'Kehadiran Penuh';
-        }
+        let status: Activity['status'] = (checkInTime !== '--:--' && checkOutTime !== '--:--') ? 'hadir' : 'proses';
+        let keterangan = status === 'hadir' ? 'Kehadiran Penuh' : 'Belum Absen Pulang';
 
         return {
           no: index + 1,
@@ -143,13 +129,8 @@ const RecentAttendanceTable = () => {
       setActivities(finalActivities.sort((a, b) => a.name.localeCompare(b.name)));
       setIsLoading(false);
     }, (err) => {
-      console.error("Error listening to attendance records:", err);
-      // Capture the specific permission error to display a helpful message to the user.
-      if (err.code === 'permission-denied') {
-          setError("Izin ditolak. Periksa Aturan Keamanan (Security Rules) Firestore Anda.");
-      } else {
-          setError("Terjadi kesalahan saat mengambil data.");
-      }
+      console.error("Error saat memuat data kehadiran real-time:", err);
+      setError(err.code === 'permission-denied' ? "Izin ditolak. Periksa Aturan Keamanan Firestore.": "Terjadi kesalahan saat mengambil data.");
       setIsLoading(false);
     });
 
@@ -157,49 +138,30 @@ const RecentAttendanceTable = () => {
   }, [firestore]);
 
   const BadgeStatus = ({ status }: { status: Activity['status'] }) => {
-    const statusMap = {
-      hadir: { variant: 'default', text: 'Hadir' },
-      proses: { variant: 'outline', text: 'Proses' },
-    } as const;
-
-    const { variant, text } = statusMap[status];
+    const variant = status === 'hadir' ? 'default' : 'outline';
+    const text = status === 'hadir' ? 'Hadir' : 'Proses';
     return <Badge variant={variant}>{text}</Badge>;
   };
 
+  // Logika EmptyState yang diperbarui: Menghormati status sesi jika tidak ada aktivitas
   const EmptyState = () => {
-    const getNextSessionTime = () => {
-        if (!config || !config.checkInStartTime || !config.checkOutStartTime) return "Jadwal tidak diatur.";
-        const now = new Date();
-        const checkinStart = new Date(now.toDateString() + ' ' + config.checkInStartTime);
-        if (now < checkinStart) {
-            return `Sesi masuk akan dimulai pukul ${config.checkInStartTime}.`;
-        }
-        const checkoutStart = new Date(now.toDateString() + ' ' + config.checkOutStartTime);
-        if (now < checkoutStart) {
-            return `Sesi pulang akan dimulai pukul ${config.checkOutStartTime}.`;
-        }
-        return "Semua sesi hari ini telah berakhir.";
-    };
-
     if (isLoading) {
-        return <div className="flex flex-col items-center justify-center h-48 text-muted-foreground"><Loader2 className="h-8 w-8 animate-spin mb-3" /><span>Memuat data kehadiran...</span></div>;
+        return <div className="flex flex-col items-center justify-center h-40 text-muted-foreground"><Loader2 className="h-8 w-8 animate-spin mb-3" /><span>Memuat data kehadiran...</span></div>;
     }
-    
-    // If an error (like permission denied) occurred, show it with high priority.
     if (error) {
-        return <div className="flex flex-col items-center justify-center h-48 text-destructive"><AlertCircle className="h-8 w-8 mb-3" /><span>{error}</span></div>;
+        return <div className="flex flex-col items-center justify-center h-40 text-destructive"><AlertCircle className="h-8 w-8 mb-3" /><span>{error}</span></div>;
     }
 
-    // If no data and no error, show status based on the attendance window.
+    // Jika tidak ada error dan tidak ada aktivitas, tampilkan pesan berdasarkan status sesi
     switch (status) {
       case 'CLOSED':
       case 'SESSION_INACTIVE':
-        return <div className="flex flex-col items-center justify-center h-48 text-muted-foreground"><TimerOff className="h-8 w-8 mb-3" /><span>Sesi Absensi Ditutup</span><span className="text-xs mt-1 text-center">{getNextSessionTime()}</span></div>;
+        return <div className="flex flex-col items-center justify-center h-40 text-muted-foreground"><TimerOff className="h-8 w-8 mb-3" /><span>Sesi Absensi Ditutup</span><span className="text-xs mt-1 text-center">Semua sesi hari ini telah berakhir.</span></div>;
       case 'CHECK_IN_OPEN':
       case 'CHECK_OUT_OPEN':
-        return <div className="flex flex-col items-center justify-center h-48 text-muted-foreground"><WifiOff className="h-8 w-8 mb-3" /><span>Menunggu aktivitas...</span><span className="text-xs mt-1">Belum ada absensi yang tercatat pada sesi ini.</span></div>;
+        return <div className="flex flex-col items-center justify-center h-40 text-muted-foreground"><WifiOff className="h-8 w-8 mb-3" /><span>Menunggu Aktivitas</span><span className="text-xs mt-1">Belum ada absensi yang tercatat pada sesi ini.</span></div>;
       default:
-        return <div className="flex flex-col items-center justify-center h-48 text-muted-foreground"><Loader2 className="h-8 w-8 animate-spin mb-3" /><span>Memeriksa jadwal...</span></div>;
+        return <div className="flex flex-col items-center justify-center h-40 text-muted-foreground"><WifiOff className="h-8 w-8 mb-3" /><span>Belum ada aktivitas kehadiran hari ini.</span></div>;
     }
   };
 
@@ -210,7 +172,7 @@ const RecentAttendanceTable = () => {
         <CardDescription>Daftar absensi pada tanggal {format(new Date(), 'd MMMM yyyy', { locale: localeId })}</CardDescription>
       </CardHeader>
       <CardContent>
-        {(!isLoading && activities.length > 0) ? (
+        {activities.length > 0 ? (
           <Table>
             <TableHeader>
               <TableRow>
