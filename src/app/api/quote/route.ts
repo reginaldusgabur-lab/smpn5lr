@@ -1,31 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { getQuote } from '@/ai/flows/quoteFlow';
 import { z } from 'zod';
 
-/**
- * @swagger
- * /api/quote:
- *   get:
- *     summary: Mendapatkan kutipan motivasi.
- *     description: Mengambil kutipan motivasi yang dihasilkan AI untuk pendidik.
- *     responses:
- *       200:
- *         description: Sukses mendapatkan kutipan.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 content:
- *                   type: string
- *                   example: "Pendidikan adalah kunci untuk membuka potensi tak terbatas dalam setiap siswa."
- *                 author:
- *                   type: string
- *                   example: "Seorang Guru Bijak"
- *       500:
- *         description: Terjadi kesalahan pada server.
- */
-
+// Memberitahu Next.js dan Vercel untuk selalu menjalankan rute ini secara dinamis
 export const dynamic = 'force-dynamic';
 
 const QuoteApiResponseSchema = z.object({
@@ -33,9 +10,21 @@ const QuoteApiResponseSchema = z.object({
   author: z.string(),
 });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const aiResponse = await getQuote({ category: 'pendidik dan tenaga kependidikan' });
+    const searchParams = request.nextUrl.searchParams;
+    const category = searchParams.get('category') || 'pendidik';
+    const attendanceType = searchParams.get('attendanceType');
+
+    // Validasi input
+    if (attendanceType !== 'in' && attendanceType !== 'out') {
+      return new NextResponse('Parameter attendanceType tidak valid. Harus \'in\' atau \'out\'.', { status: 400 });
+    }
+
+    const aiResponse = await getQuote({ 
+      category: category, 
+      attendanceType: attendanceType 
+    });
 
     const parsedResponse = {
       content: aiResponse.quote,
@@ -48,6 +37,10 @@ export async function GET() {
     return NextResponse.json(parsedResponse);
   } catch (error) {
     console.error("[API_QUOTE_ERROR]", error);
+    // Periksa apakah error adalah dari Zod validation
+    if (error instanceof z.ZodError) {
+      return new NextResponse(JSON.stringify({ message: 'Struktur output AI tidak valid.', issues: error.issues }), { status: 500 });
+    }
     return new NextResponse('Gagal menghasilkan kutipan.', { status: 500 });
   }
 }

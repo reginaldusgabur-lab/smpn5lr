@@ -2,7 +2,7 @@
 /**
  * @fileOverview Flow untuk menghasilkan kutipan motivasi/lucu.
  *
- * - getQuote - Fungsi untuk mendapatkan kutipan berdasarkan kategori.
+ * - getQuote - Fungsi untuk mendapatkan kutipan berdasarkan kategori dan jenis absensi.
  * - QuoteInput - Tipe input untuk flow.
  * - QuoteOutput - Tipe output untuk flow.
  */
@@ -14,6 +14,9 @@ const QuoteInputSchema = z.object({
   category: z
     .string()
     .describe('Audiens target untuk kutipan, contoh: "pendidik", "pelajar SMP".'),
+  attendanceType: z
+    .enum(['in', 'out'])
+    .describe('Jenis absensi: "in" untuk masuk, "out" untuk pulang.'),
 });
 export type QuoteInput = z.infer<typeof QuoteInputSchema>;
 
@@ -36,17 +39,29 @@ const quotePrompt = ai.definePrompt(
     name: 'quotePrompt',
     input: { schema: QuoteInputSchema },
     output: { schema: QuoteOutputSchema },
-    prompt: `Anda adalah seorang ahli motivasi yang bijaksana dan terkadang humoris. Tugas Anda adalah membuat sebuah kutipan yang sangat relevan untuk audiens target.
+    prompt: `Anda adalah seorang ahli motivasi yang bijaksana dan terkadang humoris. Tugas Anda adalah membuat sebuah kutipan yang sangat relevan untuk audiens target berdasarkan waktu absensi mereka.
 
 Audiens: {{category}}
+Jenis Absensi: {{attendanceType}}
 
-Buatlah satu kutipan orisinal dalam Bahasa Indonesia yang singkat (1-2 kalimat), berkesan, dan benar-benar cocok untuk audiens tersebut. Hindari kutipan yang terlalu umum atau klise.
-Selain itu, buat juga satu nama penulis fiktif yang terdengar bijaksana atau relevan dengan kutipan dan audiens.
+# Tugas:
+1.  Buatlah satu kutipan orisinal dalam Bahasa Indonesia yang singkat (1-2 kalimat) dan berkesan.
+2.  Kutipan harus benar-benar cocok untuk audiens dan jenis absensi:
+    - Jika jenis absensi adalah "in" (masuk), buatlah kutipan yang penuh semangat, motivasi untuk memulai hari, atau inspirasi pagi.
+    - Jika jenis absensi adalah "out" (pulang), buatlah kutipan yang reflektif, tentang istirahat, pencapaian hari ini, atau motivasi untuk esok hari.
+3.  Hindari kutipan yang terlalu umum atau klise.
+4.  Selain itu, buat juga satu nama penulis fiktif yang terdengar bijaksana atau relevan dengan kutipan dan audiens.
 
-Contoh output:
+Contoh output untuk absensi "in":
 {
-  "quote": "Mengajar adalah menyentuh kehidupan selamanya.",
-  "author": "Pendidik Tanpa Nama"
+  "quote": "Pagi ini, mari kita tanam benih ilmu dengan senyuman.",
+  "author": "Pendidik Penuh Semangat"
+}
+
+Contoh output untuk absensi "out":
+{
+  "quote": "Pelajaran hari ini telah usai, biarkan ia menjadi bekal untuk esok.",
+  "author": "Sang Pengajar Senja"
 }
 
 Jangan gunakan tanda kutip di awal dan akhir properti JSON atau isinya.`

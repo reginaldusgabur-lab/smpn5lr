@@ -5,6 +5,7 @@ import { Loader2, Sparkles } from 'lucide-react';
 
 interface QuoteOfTheDayProps {
   category: string | null | undefined;
+  attendanceType: 'in' | 'out' | null;
 }
 
 interface Quote {
@@ -12,20 +13,23 @@ interface Quote {
   author: string;
 }
 
-const QuoteOfTheDay = ({ category }: QuoteOfTheDayProps) => {
+const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!attendanceType) return;
+
     const fetchQuote = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`/api/quote?category=${category || 'default'}`);
+        const response = await fetch(`/api/quote?category=${category || 'default'}&attendanceType=${attendanceType}`);
         
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Server tidak memberikan respon error yang valid.' }));
-          throw new Error(errorData.error || 'Gagal mengambil kutipan.');
+          const errorText = await response.text();
+          console.error("API Error Response:", errorText);
+          throw new Error('Gagal mengambil kutipan dari server.');
         }
 
         const data = await response.json();
@@ -44,7 +48,7 @@ const QuoteOfTheDay = ({ category }: QuoteOfTheDayProps) => {
 
     fetchQuote();
 
-  }, [category]);
+  }, [category, attendanceType]);
 
   return (
     <div className="mt-6 pt-4 border-t border-current/20">
