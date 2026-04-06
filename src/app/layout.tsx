@@ -3,15 +3,15 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
 import { ThemeProvider } from "@/components/theme-provider";
+import PwaInstaller from '@/components/pwa-installer';
 
 export const metadata: Metadata = {
   title: 'E-SPENLI',
   description: 'Aplikasi Absensi Digital untuk SMPN 5 Langke Rembong',
-  manifest: '/manifest.webmanifest',
+  manifest: '/manifest.webmanifest?v=2',
   applicationName: 'E-SPENLI',
   appleWebApp: {
     capable: true,
-    // PERBAIKAN: Mengizinkan konten untuk dirender di bawah status bar di iOS saat ditambahkan ke home screen
     statusBarStyle: 'black-translucent',
     title: 'E-SPENLI',
   },
@@ -27,9 +27,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  // PERBAIKAN: Memperluas aplikasi ke seluruh layar, termasuk area status bar.
   viewportFit: 'cover',
-  // PERBAIKAN: Memastikan warna status bar menyatu dengan latar belakang aplikasi dalam mode terang/gelap.
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
     { media: '(prefers-color-scheme: dark)', color: '#000000' }
@@ -59,6 +57,7 @@ export default function RootLayout({
             {children}
           </FirebaseClientProvider>
           <Toaster />
+          <PwaInstaller />
         </ThemeProvider>
       </body>
     </html>
