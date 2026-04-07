@@ -1,4 +1,3 @@
-
 // This configuration is used for the Firebase client-side SDK.
 // It is safe to expose these values to the public.
 
