@@ -2,7 +2,7 @@
 
 import { notFound } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
-import { firestore } from '@/firebase/server'; // Using server-side firestore instance
+import { adminDb as firestore } from '@/lib/firebase';
 import { fetchUserMonthlyReportData } from '@/lib/attendance';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import ReportClientShell from './ReportClientShell';
