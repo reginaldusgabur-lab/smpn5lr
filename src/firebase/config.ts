@@ -1,8 +1,13 @@
+
+// This configuration is used for the Firebase client-side SDK.
+// It is safe to expose these values to the public.
+
 export const firebaseConfig = {
-  projectId: "studio-6483313657-7894b",
-  appId: "1:462342727336:web:0015c6d5959ce8c3a1049d",
-  apiKey: "AIzaSyBHrvQGJi5bJ5Sb7gtXny11xtnooVShwuw",
-  authDomain: "studio-6483313657-7894b.firebaseapp.com",
-  messagingSenderId: "462342727336",
-  measurementId: "",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
