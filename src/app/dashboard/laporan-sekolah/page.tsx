@@ -142,11 +142,100 @@ export default function SchoolReportPage() {
     const filteredReports = useMemo(() => reportData.filter(report => (roleFilter === 'all' || report.role === roleFilter) && report.name.toLowerCase().includes(searchTerm.toLowerCase())), [reportData, roleFilter, searchTerm]);
 
     const handleDownloadExcel = () => {
-        // ... (main excel download logic remains the same)
+        if (!filteredReports.length) return;
+        const kopSurat = [
+            ['PEMERINTAH KABUPATEN MANGGARAI'],
+            ['DINAS PENDIDIKAN PEMUDA DAN OLAHRAGA'],
+            ['SMP NEGERI 5 LANGKE REMBONG'],
+            ['Alamat: Mando, Kelurahan compang carep, Kecamatan Langke Rembong'],
+            [],
+            ['LAPORAN KEHADIRAN BULAN'],
+            [`Periode: ${monthName}`],
+            []
+        ];
+        const tableHeaders = ['No', 'Nama', 'NIP', 'Status Kepegawaian', 'Hadir', 'Izin', 'Sakit', 'Alpa', 'Persentase'];
+        const tableBody = filteredReports.map(item => [
+            item.no,
+            item.name,
+            item.nip,
+            item.position,
+            item.totalHadir,
+            item.totalIzin,
+            item.totalSakit,
+            item.totalAlpa,
+            item.persentase
+        ]);
+
+        const signature = [
+            [], [],
+            [null, null, null, null, null, null, null, `Mando, ${format(new Date(), 'd MMMM yyyy', { locale: id })}`],
+            [null, null, null, null, null, null, null, 'Mengetahui,'],
+            [null, null, null, null, null, null, null, 'Kepala Sekolah'],
+            [], [],
+            [null, null, null, null, null, null, null, principal ? principal.name : '(...................................)'],
+            [null, null, null, null, null, null, null, principal?.nip ? `NIP. ${principal.nip}` : '']
+        ];
+        
+        const finalData = [...kopSurat, tableHeaders, ...tableBody, ...signature];
+        const worksheet = XLSX.utils.aoa_to_sheet(finalData);
+        
+        worksheet['!cols'] = [
+            { wch: 4 }, { wch: 30 }, { wch: 20 }, { wch: 20 }, 
+            { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 12 }
+        ];
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Ringkasan Kehadiran");
+        XLSX.writeFile(workbook, `Laporan Kehadiran Bulan ${monthName}.xlsx`);
     };
 
     const handleDownloadPdf = () => {
-        // ... (main pdf download logic remains the same)
+        if (!filteredReports.length) return;
+        const doc = new jsPDF();
+        let startY = addReportHeader(doc);
+        
+        const pageWidth = doc.internal.pageSize.getWidth();
+        doc.setFont('times', 'bold');
+        doc.setFontSize(12);
+        doc.text('LAPORAN KEHADIRAN BULAN', pageWidth / 2, startY, { align: 'center' });
+        startY += 6;
+        doc.setFont('times', 'normal');
+        doc.text(`Periode: ${monthName}`, pageWidth / 2, startY, { align: 'center' });
+        startY += 12;
+
+        autoTable(doc, {
+            startY,
+            head: [['No', 'Nama', 'NIP', 'Hadir', 'Izin', 'Sakit', 'Alpa', 'Persentase']],
+            body: filteredReports.map(item => [
+                item.no,
+                item.name,
+                item.nip,
+                item.totalHadir,
+                item.totalIzin,
+                item.totalSakit,
+                item.totalAlpa,
+                item.persentase,
+            ]),
+            theme: 'grid',
+            styles: { fontSize: 8, font: 'times', cellPadding: 2 },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+            columnStyles: {
+                0: { cellWidth: 8 }, 
+                1: { cellWidth: 'auto' },
+                2: { cellWidth: 35 },
+                3: { cellWidth: 12, halign: 'center' },
+                4: { cellWidth: 12, halign: 'center' },
+                5: { cellWidth: 12, halign: 'center' },
+                6: { cellWidth: 12, halign: 'center' },
+                7: { cellWidth: 22, halign: 'center' },
+            },
+            didDrawPage: (data) => {
+                const finalY = data.cursor.y;
+                addSignatureBlock(doc, finalY + 10, principal);
+            }
+        });
+        
+        doc.save(`Laporan Kehadiran Bulan ${monthName}.pdf`);
     };
 
     const handleDownloadUserPdf = async (targetUser: ReportRowData) => {
@@ -159,10 +248,10 @@ export default function SchoolReportPage() {
             
             doc.setFont('times', 'bold');
             doc.setFontSize(12);
-            doc.text('LAPORAN KEHADIRAN', pageWidth / 2, startY, { align: 'center' });
+            doc.text('LAPORAN KEHADIRAN BULAN', pageWidth / 2, startY, { align: 'center' });
             startY += 6;
             doc.setFont('times', 'normal');
-            doc.text(`Periode : Bulan ${monthName}`, pageWidth / 2, startY, { align: 'center' });
+            doc.text(`Periode: ${monthName}`, pageWidth / 2, startY, { align: 'center' });
             startY += 12;
             doc.setFontSize(10);
             doc.text('Nama', 14, startY);
@@ -191,7 +280,7 @@ export default function SchoolReportPage() {
                     addSignatureBlock(doc, data.cursor.y, principal);
                 }
             });
-            doc.save(`Laporan Detail ${targetUser.name} ${monthName}.pdf`);
+            doc.save(`Laporan Kehadiran ${targetUser.name} - ${monthName}.pdf`);
         } catch (e) { console.error("Failed to generate user PDF:", e); }
     };
     
@@ -199,7 +288,7 @@ export default function SchoolReportPage() {
         if (!firestore || !schoolConfigData) return;
         try {
             const detailedData = await fetchUserMonthlyReportData(firestore, targetUser.uid, currentMonth, schoolConfigData);
-            const kopSurat = [['PEMERINTAH KABUPATEN MANGGARAI'], ['DINAS PENDIDIKAN PEMUDA DAN OLAHRAGA'], ['SMP NEGERI 5 LANGKE REMBONG'], ['Alamat: Mando, Kelurahan compang carep, Kecamatan Langke Rembong'], [], ['LAPORAN KEHADIRAN'], [`Periode: Bulan ${monthName}`], []];
+            const kopSurat = [['PEMERINTAH KABUPATEN MANGGARAI'], ['DINAS PENDIDIKAN PEMUDA DAN OLAHRAGA'], ['SMP NEGERI 5 LANGKE REMBONG'], ['Alamat: Mando, Kelurahan compang carep, Kecamatan Langke Rembong'], [], ['LAPORAN KEHADIRAN BULAN'], [`Periode: ${monthName}`], []];
             const userInfo = [['Nama', `: ${targetUser.name}`], ['NIP', `: ${targetUser.nip || '-'}`], ['Status Kepegawaian', `: ${targetUser.position || '-'}`], []];
             const tableHeaders = ['No', 'Tanggal', 'Jam Masuk', 'Jam Pulang', 'Status', 'Keterangan'];
             
@@ -217,7 +306,7 @@ export default function SchoolReportPage() {
             const worksheet = XLSX.utils.aoa_to_sheet(finalData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Detail Kehadiran");
-            XLSX.writeFile(workbook, `Laporan Detail ${targetUser.name} ${monthName}.xlsx`);
+            XLSX.writeFile(workbook, `Laporan Kehadiran ${targetUser.name} - ${monthName}.xlsx`);
         } catch (e) { console.error("Failed to generate user Excel:", e); }
     };
 
@@ -251,8 +340,8 @@ export default function SchoolReportPage() {
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild><Button><Download className="mr-2 h-4 w-4" />Unduh & Sinkron</Button></DropdownMenuTrigger>
                                     <DropdownMenuContent>
-                                        <DropdownMenuItem onClick={() => handleDownloadExcel()}><FileSpreadsheet className="mr-2 h-4 w-4"/>Unduh Excel</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleDownloadPdf()}><FileText className="mr-2 h-4 w-4"/>Unduh PDF</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={handleDownloadExcel}><FileSpreadsheet className="mr-2 h-4 w-4"/>Unduh Excel</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={handleDownloadPdf}><FileText className="mr-2 h-4 w-4"/>Unduh PDF</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             )}

@@ -91,20 +91,11 @@ export default function LoginPage() {
     }
     
     try {
-        const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+        await signInWithEmailAndPassword(auth, values.email, values.password);
 
-        if (values.email !== 'admin@sekolah.sch.id' && !userCredential.user.emailVerified) {
-          toast({
-              variant: "destructive",
-              title: "Email Belum Diverifikasi",
-              description: "Silakan periksa email Anda dan klik link verifikasi sebelum login.",
-              duration: 7000
-          });
-          if(auth.currentUser) await auth.signOut();
-          setIsLoginLoading(false);
-          return;
-        }
-        // Let the useEffect handle the redirect
+        // Pemeriksaan verifikasi email telah dihapus
+        
+        // Biarkan useEffect menangani pengalihan
         // router.push('/dashboard');
     } catch (error: any) {
         let errorMessage = "Email atau password yang Anda masukkan salah. Silakan periksa kembali.";

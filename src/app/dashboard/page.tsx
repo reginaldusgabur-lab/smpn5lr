@@ -3,13 +3,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Users,  UserCheck,  UserX,  BookUser,  Loader2,  School, LogIn, LogOut, TrendingUp
+  Users,  UserCheck,  UserX,  BookUser,  Loader2,  School, LogIn, LogOut, TrendingUp, AlertCircle
 } from 'lucide-react';
 import {
   Card,  CardContent,  CardDescription,  CardHeader,  CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useFirestore, useUser, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import {
   collection,  query,  where,  Timestamp,  getDocs, getCountFromServer, collectionGroup, orderBy, limit, doc
@@ -19,14 +20,9 @@ import { id } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
 import { useRouter } from 'next/navigation';
 import { getFromCache, setInCache } from '@/lib/cache';
-import { calculateAttendanceStats } from '@/lib/attendance'; // <-- IMPORT THE SOURCE OF TRUTH
+import { calculateAttendanceStats } from '@/lib/attendance';
 
 import TodaysActivityTable from '@/components/dashboard/RecentAttendanceTable';
-
-
-// ====================================================================
-// A. GLOBAL & UTILITY COMPONENTS
-// ====================================================================
 
 const roleDescriptions: { [key: string]: string } = {
   admin: 'Anda dapat mengelola pengguna, konfigurasi, dan memantau semua aktivitas.',
@@ -62,13 +58,10 @@ const StatCard = ({ title, value, icon: Icon, description, isLoading, className,
     </Card>
 );
 
-// ====================================================================
-// B. PRESENTATIONAL & REUSABLE DASHBOARD CARDS
-// ====================================================================
-
 const PersonalAttendanceCardUI = ({ attendanceData, schoolConfigData, isLoading }: { attendanceData: any, schoolConfigData: any, isLoading: boolean }) => {
     const router = useRouter();
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [showCheckOutReminder, setShowCheckOutReminder] = useState(false);
 
     useEffect(() => { 
         const timerId = setInterval(() => setCurrentTime(new Date()), 1000); 
@@ -79,24 +72,77 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfigData, isLoading 
     const checkInTime = attendanceRecord?.checkInTime ? format(attendanceRecord.checkInTime.toDate(), 'HH:mm') : '--:--';
     const checkOutTime = attendanceRecord?.checkOutTime ? format(attendanceRecord.checkOutTime.toDate(), 'HH:mm') : '--:--';
 
+    useEffect(() => {
+        if (isLoading || !schoolConfigData || !attendanceRecord || (attendanceRecord && attendanceRecord.checkOutTime)) {
+            setShowCheckOutReminder(false);
+            return;
+        }
+
+        const { checkOutEndTime } = schoolConfigData;
+        const hasCheckedIn = attendanceRecord && attendanceRecord.checkInTime;
+
+        if (hasCheckedIn && checkOutEndTime) {
+            const now = currentTime;
+            const checkOutEnd = setMinutes(setHours(startOfDay(now), parseInt(checkOutEndTime.split(':')[0])), parseInt(checkOutEndTime.split(':')[1]));
+
+            if (now > checkOutEnd) {
+                setShowCheckOutReminder(true);
+            } else {
+                setShowCheckOutReminder(false);
+            }
+        }
+    }, [attendanceRecord, schoolConfigData, currentTime, isLoading]);
+
     const buttonStatus = useMemo(() => {
         if (isLoading || !schoolConfigData) {
             return { text: 'Memuat...', disabled: true };
         }
 
-        const { checkInEndTime, checkOutStartTime } = schoolConfigData;
+        const { checkInStartTime, checkInEndTime, checkOutStartTime, checkOutEndTime } = schoolConfigData;
         const now = currentTime;
 
-        const checkOutDeadline = checkOutStartTime ? setMinutes(setHours(startOfDay(now), parseInt(checkOutStartTime.split(':')[0])), parseInt(checkOutStartTime.split(':')[1])) : null;
-        const checkInDeadline = checkInEndTime ? setMinutes(setHours(startOfDay(now), parseInt(checkInEndTime.split(':')[0])), parseInt(checkInEndTime.split(':')[1])) : null;
+        const timeToDate = (timeStr: string | null) => {
+            if (!timeStr) return null;
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return setMinutes(setHours(startOfDay(now), hours), minutes);
+        };
 
-        if (attendanceRecord && attendanceRecord.checkOutTime) return { text: 'Absensi Selesai', disabled: true };
-        if (attendanceRecord && !attendanceRecord.checkOutTime) return { text: 'Absen Pulang', disabled: false };
-        if (!attendanceRecord) {
-            if (checkOutDeadline && now > checkOutDeadline) return { text: 'Absensi Selesai', disabled: true };
-            if (checkInDeadline && now > checkInDeadline) return { text: 'Waktu Absen Masuk Habis', disabled: true };
+        const checkInStart = timeToDate(checkInStartTime);
+        const checkInEnd = timeToDate(checkInEndTime);
+        const checkOutStart = timeToDate(checkOutStartTime);
+        const checkOutEnd = timeToDate(checkOutEndTime);
+
+        const hasCheckedIn = attendanceRecord && attendanceRecord.checkInTime;
+        const hasCheckedOut = attendanceRecord && attendanceRecord.checkOutTime;
+
+        if (checkOutEnd && now > checkOutEnd) {
+            return { text: 'Absensi Selesai', disabled: true };
+        }
+
+        if (hasCheckedOut) {
+            return { text: 'Absensi Selesai', disabled: true };
+        }
+
+        if (checkOutStart && now >= checkOutStart) {
+            return { text: 'Absen Pulang', disabled: false };
+        }
+
+        if (hasCheckedIn) {
+            return { text: 'Absen Masuk Selesai', disabled: true };
+        }
+        
+        if (checkInEnd && now > checkInEnd) {
+            return { text: 'Waktu Absen Masuk Habis', disabled: true };
+        }
+        
+        if (checkInStart && now >= checkInStart) {
             return { text: 'Absen Masuk', disabled: false };
         }
+
+        if (checkInStart && now < checkInStart) {
+            return { text: 'Belum Waktunya Absen', disabled: true };
+        }
+
         return { text: 'Status Tidak Diketahui', disabled: true };
     }, [isLoading, attendanceRecord, schoolConfigData, currentTime]);
 
@@ -104,6 +150,15 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfigData, isLoading 
         <Card className="h-full flex flex-col">
             <CardHeader><CardTitle>Kehadiran Anda Hari Ini</CardTitle><CardDescription>Status kehadiran dan jam absensi Anda.</CardDescription></CardHeader>
             <CardContent className="flex flex-col flex-grow items-center justify-center space-y-6 pb-8">
+                {showCheckOutReminder && (
+                    <Alert variant="destructive" className="mb-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Pengingat Absen Pulang</AlertTitle>
+                        <AlertDescription>
+                            Waktu kerja telah berakhir. Jangan lupa untuk melakukan absensi pulang.
+                        </AlertDescription>
+                    </Alert>
+                )}
                 <div className="text-center">
                     <p className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">{format(currentTime, 'HH:mm:ss')}</p>
                     <p className="text-lg text-muted-foreground">{format(currentTime, 'eeee, d MMMM yyyy', { locale: id })}</p>
@@ -159,10 +214,6 @@ const MonthlyAttendanceChartUI = ({ summaryData, isLoading }: { summaryData: any
 };
 
 
-// ====================================================================
-// C. DATA-FETCHING HOOK (REWRITTEN TO USE CENTRALIZED LOGIC)
-// ====================================================================
-
 function useMonthlyAttendanceSummary(user: any) {
     const firestore = useFirestore();
     const cacheKey = useMemo(() => user ? `monthlySummary_v3_${user.uid}` : null, [user]);
@@ -178,7 +229,6 @@ function useMonthlyAttendanceSummary(user: any) {
                 const now = new Date();
                 const dateRange = { start: startOfMonth(now), end: endOfMonth(now) };
                 
-                // Call the single source of truth
                 const stats = await calculateAttendanceStats(firestore, user.uid, dateRange);
 
                 const newSummary = {
@@ -186,31 +236,28 @@ function useMonthlyAttendanceSummary(user: any) {
                     izinCount: stats.totalIzin,
                     sakitCount: stats.totalSakit,
                     alpaCount: stats.totalAlpa,
-                    percentage: stats.persentase.replace('%', '') // Remove % for the chart component
+                    percentage: stats.persentase.replace('%', '')
                 };
 
                 setSummary(newSummary);
-                setInCache(cacheKey, newSummary, 900); // Cache for 15 minutes
+                setInCache(cacheKey, newSummary, 900);
             } catch (error) {
                 console.error("Failed to calculate monthly summary from centralized function:", error);
-                setSummary({}); // Set empty object on error to prevent broken chart
+                setSummary({});
             } finally {
                 setIsLoading(false);
             }
         };
         
-        // Fetch data if it's not in the cache
         if (summary === null) {
            fetchStats();
         }
 
     }, [user, firestore, cacheKey, summary]);
 
-    return { summary: summary || {}, isLoading }; // Return empty object if summary is null to prevent errors
+    return { summary: summary || {}, isLoading };
 }
 
-
-// REWRITTEN HOOK to avoid collectionGroup queries.
 function useStaffDashboardStats_FreePlan(firestore: any, user: any) {
   const [stats, setStats] = useState({ totalStaff: 0, hadir: 0, izin: 0, sakit: 0 });
   const [isLoading, setIsLoading] = useState(true);
@@ -241,7 +288,6 @@ function useStaffDashboardStats_FreePlan(firestore: any, user: any) {
         const todayEnd = endOfDay(new Date());
 
         const promises = staffSnap.docs.map(async (userDoc) => {
-          // Check attendance for today
           const attendanceQuery = query(
             collection(firestore, 'users', userDoc.id, 'attendanceRecords'),
             where('checkInTime', '>=', todayStart),
@@ -253,7 +299,6 @@ function useStaffDashboardStats_FreePlan(firestore: any, user: any) {
             hadirCount++;
           }
 
-          // Check approved leave for today
           const leaveQuery = query(
             collection(firestore, 'users', userDoc.id, 'leaveRequests'),
             where('status', '==', 'approved')
@@ -287,11 +332,6 @@ function useStaffDashboardStats_FreePlan(firestore: any, user: any) {
   return { stats: {...stats, alpa: alpaCount}, isLoading };
 }
 
-
-// ====================================================================
-// D. ROLE-BASED DASHBOARD COMPONENTS (SMART)
-// ====================================================================
-
 const HeadmasterDashboard = ({ user, router }: any) => {
     const firestore = useFirestore();
 
@@ -306,7 +346,6 @@ const HeadmasterDashboard = ({ user, router }: any) => {
     if (isStatsLoading) {
         return (
             <>
-                {/* Placeholder skeleton for the entire dashboard while loading */}
                 {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-[120px] w-full" />)}
                 <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
                     <Skeleton className="h-[200px] w-full" />
@@ -368,7 +407,6 @@ const StaffDashboard = ({ user }: any) => {
 
     return (
         <>
-            {/* FIX: Explicitly define column spans to prevent chart collapsing */}
             <div className="md:col-span-2 lg:col-span-2 xl:col-span-2">
                 <PersonalAttendanceCardUI attendanceData={todaysAttendance} schoolConfigData={schoolConfig} isLoading={isPersonalLoading} />
             </div>
@@ -378,10 +416,6 @@ const StaffDashboard = ({ user }: any) => {
         </> 
     );
 };
-
-// ====================================================================
-// E. MAIN PAGE COMPONENT (ROUTER)
-// ====================================================================
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
