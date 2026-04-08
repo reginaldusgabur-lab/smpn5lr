@@ -22,20 +22,19 @@ import { collection, query, where, getDocs, onSnapshot, documentId, collectionGr
 import { startOfDay, endOfDay, format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 import { AlertCircle, Loader2, TimerOff, WifiOff } from 'lucide-react';
-import { useAttendanceWindow } from '@/hooks/use-attendance-window'; // Tetap digunakan untuk status sesi
+import { useAttendanceWindow } from '@/hooks/use-attendance-window';
 
-// Interface untuk data yang sudah diformat dan siap ditampilkan
 interface Activity {
-  no: number;
+  no: number; 
   name: string;
   nip: string;
   checkInTime: string;
   checkOutTime: string;
+  rawCheckInTime: Date;
   status: 'hadir' | 'proses';
   keterangan: string;
 }
 
-// Interface untuk data mentah pengguna dari Firestore
 interface UserData {
   [key: string]: {
     name: string;
@@ -43,13 +42,12 @@ interface UserData {
   };
 }
 
-// Komponen utama
 const RecentAttendanceTable = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const firestore = useFirestore();
-  const { status, config } = useAttendanceWindow(); // Hook ini tetap digunakan untuk konteks waktu
+  const { status } = useAttendanceWindow();
 
   useEffect(() => {
     if (!firestore) {
@@ -63,7 +61,6 @@ const RecentAttendanceTable = () => {
     const todayStart = startOfDay(new Date());
     const todayEnd = endOfDay(new Date());
 
-    // Query yang diperbaiki: Menggunakan collectionGroup untuk mengambil semua catatan kehadiran hari ini
     const attendanceQuery = query(
       collectionGroup(firestore, 'attendanceRecords'),
       where('checkInTime', '>=', todayStart),
@@ -80,7 +77,6 @@ const RecentAttendanceTable = () => {
       const userIds = new Set<string>();
       const attendanceRecords: { [key: string]: any } = {};
       
-      // Ambil semua userId dari path dokumen kehadiran
       attendanceSnap.forEach(doc => {
         const userId = doc.ref.parent.parent?.id;
         if (userId) {
@@ -95,7 +91,6 @@ const RecentAttendanceTable = () => {
         return;
       }
       
-      // Ambil detail pengguna yang sesuai
       const usersQuery = query(
         collection(firestore, 'users'),
         where(documentId(), 'in', Array.from(userIds))
@@ -106,31 +101,36 @@ const RecentAttendanceTable = () => {
         usersData[doc.id] = { name: doc.data().name, nip: doc.data().nip || '-' };
       });
 
-      // Gabungkan data pengguna dengan data kehadiran mereka
-      const finalActivities: Activity[] = Object.entries(attendanceRecords).map(([userId, attendance], index) => {
+      const unsortedActivities: Omit<Activity, 'no'>[] = Object.entries(attendanceRecords).map(([userId, attendance]) => {
         const userDetail = usersData[userId];
-        const checkInTime = attendance.checkInTime ? format(attendance.checkInTime.toDate(), 'HH:mm:ss') : '--:--';
+        const checkInDate = attendance.checkInTime.toDate();
+        const checkInTime = format(checkInDate, 'HH:mm:ss');
         const checkOutTime = attendance.checkOutTime ? format(attendance.checkOutTime.toDate(), 'HH:mm:ss') : '--:--';
-
-        let status: Activity['status'] = (checkInTime !== '--:--' && checkOutTime !== '--:--') ? 'hadir' : 'proses';
-        let keterangan = status === 'hadir' ? 'Kehadiran Penuh' : 'Belum Absen Pulang';
+        const status: Activity['status'] = checkOutTime !== '--:--' ? 'hadir' : 'proses';
 
         return {
-          no: index + 1,
           name: userDetail?.name || 'Nama Tidak Ditemukan',
           nip: userDetail?.nip || '-',
+          rawCheckInTime: checkInDate,
           checkInTime,
           checkOutTime,
           status,
-          keterangan,
+          keterangan: status === 'hadir' ? 'Kehadiran Penuh' : 'Belum Absen Pulang',
         };
       });
 
-      setActivities(finalActivities.sort((a, b) => a.name.localeCompare(b.name)));
+      const sortedActivities = unsortedActivities.sort((a, b) => a.rawCheckInTime.getTime() - b.rawCheckInTime.getTime());
+
+      const finalActivities = sortedActivities.map((activity, index) => ({
+        ...activity,
+        no: index + 1,
+      }));
+
+      setActivities(finalActivities);
       setIsLoading(false);
     }, (err) => {
-      console.error("Error saat memuat data kehadiran real-time:", err);
-      setError(err.code === 'permission-denied' ? "Izin ditolak. Periksa Aturan Keamanan Firestore.": "Terjadi kesalahan saat mengambil data.");
+      console.error("Error loading real-time attendance:", err);
+      setError(err.code === 'permission-denied' ? "Permission denied. Check Firestore Security Rules." : "An error occurred while fetching data.");
       setIsLoading(false);
     });
 
@@ -143,7 +143,6 @@ const RecentAttendanceTable = () => {
     return <Badge variant={variant}>{text}</Badge>;
   };
 
-  // Logika EmptyState yang diperbarui: Menghormati status sesi jika tidak ada aktivitas
   const EmptyState = () => {
     if (isLoading) {
         return <div className="flex flex-col items-center justify-center h-40 text-muted-foreground"><Loader2 className="h-8 w-8 animate-spin mb-3" /><span>Memuat data kehadiran...</span></div>;
@@ -152,7 +151,6 @@ const RecentAttendanceTable = () => {
         return <div className="flex flex-col items-center justify-center h-40 text-destructive"><AlertCircle className="h-8 w-8 mb-3" /><span>{error}</span></div>;
     }
 
-    // Jika tidak ada error dan tidak ada aktivitas, tampilkan pesan berdasarkan status sesi
     switch (status) {
       case 'CLOSED':
       case 'SESSION_INACTIVE':
@@ -184,9 +182,9 @@ const RecentAttendanceTable = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {activities.map((activity) => (
-                <TableRow key={activity.no}>
-                  <TableCell>{activity.no}</TableCell>
+              {activities.map((activity, index) => (
+                <TableRow key={index}>
+                  <TableCell className="font-medium">{activity.no}</TableCell>
                   <TableCell>
                     <div className="font-medium">{activity.name}</div>
                     <div className="text-sm text-muted-foreground">NIP: {activity.nip}</div>

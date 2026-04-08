@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Users,  UserCheck,  UserX,  BookUser,  Loader2,  School, LogIn, LogOut, TrendingUp, AlertCircle
+  Users,  UserCheck,  UserX,  BookUser,  Loader2,  School, LogIn, LogOut, TrendingUp, AlertCircle, Info
 } from 'lucide-react';
 import {
   Card,  CardContent,  CardDescription,  CardHeader,  CardTitle,
@@ -21,8 +21,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useRouter } from 'next/navigation';
 import { getFromCache, setInCache } from '@/lib/cache';
 import { calculateAttendanceStats } from '@/lib/attendance';
+import { useAttendanceWindow } from '@/hooks/use-attendance-window';
 
 import TodaysActivityTable from '@/components/dashboard/RecentAttendanceTable';
+import AbsentUsersTable from '@/components/dashboard/AbsentUsersTable';
 
 const roleDescriptions: { [key: string]: string } = {
   admin: 'Anda dapat mengelola pengguna, konfigurasi, dan memantau semua aktivitas.',
@@ -61,10 +63,10 @@ const StatCard = ({ title, value, icon: Icon, description, isLoading, className,
 const PersonalAttendanceCardUI = ({ attendanceData, schoolConfigData, isLoading }: { attendanceData: any, schoolConfigData: any, isLoading: boolean }) => {
     const router = useRouter();
     const [currentTime, setCurrentTime] = useState(new Date());
-    const [showCheckOutReminder, setShowCheckOutReminder] = useState(false);
+    const { status: attendanceWindowStatus } = useAttendanceWindow();
 
     useEffect(() => { 
-        const timerId = setInterval(() => setCurrentTime(new Date()), 1000); 
+        const timerId = setInterval(() => setCurrentTime(new Date()), 1000); // Reverted: Update every second for real-time feel
         return () => clearInterval(timerId); 
     }, []);
 
@@ -72,26 +74,73 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfigData, isLoading 
     const checkInTime = attendanceRecord?.checkInTime ? format(attendanceRecord.checkInTime.toDate(), 'HH:mm') : '--:--';
     const checkOutTime = attendanceRecord?.checkOutTime ? format(attendanceRecord.checkOutTime.toDate(), 'HH:mm') : '--:--';
 
-    useEffect(() => {
-        if (isLoading || !schoolConfigData || !attendanceRecord || (attendanceRecord && attendanceRecord.checkOutTime)) {
-            setShowCheckOutReminder(false);
-            return;
+    const reminder = useMemo(() => {
+        const hasCheckedIn = !!attendanceRecord?.checkInTime;
+        const hasCheckedOut = !!attendanceRecord?.checkOutTime;
+
+        if (isLoading || hasCheckedOut) {
+            return null; 
         }
 
-        const { checkOutEndTime } = schoolConfigData;
-        const hasCheckedIn = attendanceRecord && attendanceRecord.checkInTime;
+        if (!hasCheckedIn) {
+            if (attendanceWindowStatus === 'CHECK_IN_OPEN') {
+                return {
+                    variant: 'default',
+                    title: 'Saatnya Absen Masuk',
+                    description: 'Sesi absensi masuk sedang berlangsung. Segera lakukan absensi Anda.'
+                };
+            }
+            
+            const checkInEndStr = schoolConfigData?.checkInEndTime;
+            const checkOutStartStr = schoolConfigData?.checkOutStartTime;
+            if (checkInEndStr && attendanceWindowStatus === 'CLOSED') {
+                const now = new Date();
+                const [endH, endM] = checkInEndStr.split(':').map(Number);
+                const checkInEnd = setHours(startOfDay(now), endH, endM);
+                
+                let checkOutStart = setHours(startOfDay(now), 23, 59); // Default to end of day
+                if (checkOutStartStr) {
+                    const [startH, startM] = checkOutStartStr.split(':').map(Number);
+                    checkOutStart = setHours(startOfDay(now), startH, startM);
+                }
 
-        if (hasCheckedIn && checkOutEndTime) {
-            const now = currentTime;
-            const checkOutEnd = setMinutes(setHours(startOfDay(now), parseInt(checkOutEndTime.split(':')[0])), parseInt(checkOutEndTime.split(':')[1]));
-
-            if (now > checkOutEnd) {
-                setShowCheckOutReminder(true);
-            } else {
-                setShowCheckOutReminder(false);
+                if (now > checkInEnd && now < checkOutStart) {
+                    return {
+                        variant: 'destructive',
+                        title: 'Anda Melewatkan Sesi Absen Masuk',
+                        description: 'Anda tidak melakukan absensi masuk hari ini. Hari ini akan dianggap Alpa jika tidak ada keterangan lain.'
+                    };
+                }
             }
         }
-    }, [attendanceRecord, schoolConfigData, currentTime, isLoading]);
+
+        if (hasCheckedIn) {
+            if (attendanceWindowStatus === 'CHECK_OUT_OPEN') {
+                return {
+                    variant: 'default',
+                    title: 'Saatnya Absen Pulang',
+                    description: 'Waktu kerja akan berakhir. Jangan lupa untuk melakukan absensi pulang.'
+                };
+            }
+            
+            const checkOutEndStr = schoolConfigData?.checkOutEndTime;
+            if (checkOutEndStr && attendanceWindowStatus === 'CLOSED') {
+                const now = new Date();
+                const [endH, endM] = checkOutEndStr.split(':').map(Number);
+                const checkOutEnd = setHours(startOfDay(now), endH, endM);
+                 if (now > checkOutEnd) {
+                     return {
+                        variant: 'destructive',
+                        title: 'Anda Melewatkan Sesi Absen Pulang',
+                        description: 'Anda tidak melakukan absensi pulang. Kehadiran Anda hari ini tercatat tidak lengkap.'
+                    };
+                 }
+            }
+        }
+
+        return null;
+
+    }, [attendanceRecord, isLoading, attendanceWindowStatus, schoolConfigData]);
 
     const buttonStatus = useMemo(() => {
         if (isLoading || !schoolConfigData) {
@@ -128,11 +177,11 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfigData, isLoading 
         }
 
         if (hasCheckedIn) {
-            return { text: 'Absen Masuk Selesai', disabled: true };
+            return { text: 'Sudah Absen Masuk', disabled: true };
         }
         
         if (checkInEnd && now > checkInEnd) {
-            return { text: 'Waktu Absen Masuk Habis', disabled: true };
+            return { text: 'Absen Masuk Ditutup', disabled: true };
         }
         
         if (checkInStart && now >= checkInStart) {
@@ -150,13 +199,11 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfigData, isLoading 
         <Card className="h-full flex flex-col">
             <CardHeader><CardTitle>Kehadiran Anda Hari Ini</CardTitle><CardDescription>Status kehadiran dan jam absensi Anda.</CardDescription></CardHeader>
             <CardContent className="flex flex-col flex-grow items-center justify-center space-y-6 pb-8">
-                {showCheckOutReminder && (
-                    <Alert variant="destructive" className="mb-4">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Pengingat Absen Pulang</AlertTitle>
-                        <AlertDescription>
-                            Waktu kerja telah berakhir. Jangan lupa untuk melakukan absensi pulang.
-                        </AlertDescription>
+                {reminder && (
+                    <Alert variant={reminder.variant as "default" | "destructive" | null | undefined} className="mb-4">
+                        {reminder.variant === 'destructive' ? <AlertCircle className="h-4 w-4" /> : <Info className="h-4 w-4" />}
+                        <AlertTitle>{reminder.title}</AlertTitle>
+                        <AlertDescription>{reminder.description}</AlertDescription>
                     </Alert>
                 )}
                 <div className="text-center">
@@ -240,7 +287,7 @@ function useMonthlyAttendanceSummary(user: any) {
                 };
 
                 setSummary(newSummary);
-                setInCache(cacheKey, newSummary, 900);
+                setInCache(cacheKey, newSummary, 900); // Cache for 15 minutes
             } catch (error) {
                 console.error("Failed to calculate monthly summary from centralized function:", error);
                 setSummary({});
@@ -258,11 +305,11 @@ function useMonthlyAttendanceSummary(user: any) {
     return { summary: summary || {}, isLoading };
 }
 
+// CRITICAL OPTIMIZATION: Caching layer for expensive staff stats
 function useStaffDashboardStats_FreePlan(firestore: any, user: any) {
-  const [stats, setStats] = useState({ totalStaff: 0, hadir: 0, izin: 0, sakit: 0 });
-  const [isLoading, setIsLoading] = useState(true);
-
-  const alpaCount = useMemo(() => Math.max(0, stats.totalStaff - stats.hadir - stats.izin - stats.sakit), [stats]);
+  const cacheKey = 'staffDashboardStats_v1';
+  const [stats, setStats] = useState<any>(() => getFromCache(cacheKey) || null);
+  const [isLoading, setIsLoading] = useState(stats === null);
 
   useEffect(() => {
     if (!firestore || !user) return;
@@ -273,51 +320,40 @@ function useStaffDashboardStats_FreePlan(firestore: any, user: any) {
         const staffQuery = query(collection(firestore, 'users'), where('role', 'in', ['guru', 'pegawai', 'kepala_sekolah']));
         const staffSnap = await getDocs(staffQuery);
         const totalStaff = staffSnap.size;
-        
+
         if (totalStaff === 0) {
-          setStats({ totalStaff: 0, hadir: 0, izin: 0, sakit: 0 });
+          const zeroStats = { totalStaff: 0, hadir: 0, izin: 0, sakit: 0, alpa: 0 };
+          setStats(zeroStats);
+          setInCache(cacheKey, zeroStats, 600); // Cache for 10 minutes
           setIsLoading(false);
           return;
         }
 
-        let hadirCount = 0;
-        let izinCount = 0;
-        let sakitCount = 0;
-
         const todayStart = startOfDay(new Date());
         const todayEnd = endOfDay(new Date());
 
-        const promises = staffSnap.docs.map(async (userDoc) => {
-          const attendanceQuery = query(
-            collection(firestore, 'users', userDoc.id, 'attendanceRecords'),
-            where('checkInTime', '>=', todayStart),
-            where('checkInTime', '<=', todayEnd),
-            limit(1)
-          );
-          const attendanceSnap = await getDocs(attendanceQuery);
-          if (!attendanceSnap.empty) {
-            hadirCount++;
-          }
+        const attendanceQuery = query(collectionGroup(firestore, 'attendanceRecords'), where('checkInTime', '>=', todayStart), where('checkInTime', '<=', todayEnd));
+        const attendanceSnap = await getDocs(attendanceQuery);
+        const hadirCount = attendanceSnap.size;
 
-          const leaveQuery = query(
-            collection(firestore, 'users', userDoc.id, 'leaveRequests'),
-            where('status', '==', 'approved')
-          );
-          const leaveSnap = await getDocs(leaveQuery);
-          leaveSnap.forEach(leaveDoc => {
-            const leaveData = leaveDoc.data();
-            if (leaveData.startDate && leaveData.endDate) {
-                 if (isWithinInterval(todayStart, { start: leaveData.startDate.toDate(), end: leaveData.endDate.toDate() })) {
-                    if (leaveData.type === 'Izin') izinCount++;
-                    else if (leaveData.type === 'Sakit') sakitCount++;
-                }
+        const leaveQuery = query(collectionGroup(firestore, 'leaveRequests'), where('status', '==', 'approved'));
+        const leaveSnap = await getDocs(leaveQuery);
+        const onLeaveUserIds = new Set();
+        leaveSnap.forEach(doc => {
+            const leave = doc.data();
+            if (leave.startDate && leave.endDate && isWithinInterval(new Date(), { start: leave.startDate.toDate(), end: leave.endDate.toDate() })) {
+                const userId = doc.ref.parent.parent?.id;
+                if(userId) onLeaveUserIds.add(userId);
             }
-          });
         });
+        const izinSakitCount = onLeaveUserIds.size;
 
-        await Promise.all(promises);
+        const alpaCount = Math.max(0, totalStaff - hadirCount - izinSakitCount);
 
-        setStats({ totalStaff, hadir: hadirCount, izin: izinCount, sakit: sakitCount });
+        const newStats = { totalStaff, hadir: hadirCount, izin: izinSakitCount, sakit: 0, alpa: alpaCount };
+        setStats(newStats);
+        setInCache(cacheKey, newStats, 600); // Cache for 10 minutes
+
       } catch (error) {
         console.error("Error fetching dashboard stats for free plan:", error);
       } finally {
@@ -325,12 +361,15 @@ function useStaffDashboardStats_FreePlan(firestore: any, user: any) {
       }
     };
 
-    fetchStats();
+    if (stats === null) {
+        fetchStats();
+    }
 
-  }, [firestore, user]);
+  }, [firestore, user, stats]);
 
-  return { stats: {...stats, alpa: alpaCount}, isLoading };
+  return { stats: stats || {}, isLoading };
 }
+
 
 const HeadmasterDashboard = ({ user, router }: any) => {
     const firestore = useFirestore();
@@ -348,7 +387,7 @@ const HeadmasterDashboard = ({ user, router }: any) => {
             <>
                 {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-[120px] w-full" />)}
                 <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
-                    <Skeleton className="h-[200px] w-full" />
+                    <Skeleton className="h-[400px] w-full" />
                 </div>
             </>
         );
@@ -370,8 +409,11 @@ const HeadmasterDashboard = ({ user, router }: any) => {
             <StatCard title="Total Alpa Hari Ini" value={stats.alpa} icon={UserX} />
             <StatCard title="Total Guru & Pegawai" value={stats.totalStaff} icon={Users} />
             
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 overflow-x-auto">
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
                <TodaysActivityTable />
+            </div>
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
+               <AbsentUsersTable />
             </div>
         </>
     );
@@ -387,8 +429,12 @@ const AdminDashboard = ({ user, router }: any) => {
             <StatCard title="Total Izin/Sakit Hari Ini" value={stats.izin + stats.sakit} icon={BookUser} isLoading={isStatsLoading} />
             <StatCard title="Total Alpa Hari Ini" value={stats.alpa} icon={UserX} isLoading={isStatsLoading} />
             <StatCard title="Total Guru & Pegawai" value={stats.totalStaff} icon={Users} isLoading={isStatsLoading} />
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 overflow-x-auto">
+            
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
                  <TodaysActivityTable />
+            </div>
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
+               <AbsentUsersTable />
             </div>
         </> 
     );
@@ -451,7 +497,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex-1 pt-4 pb-24 md:p-8">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:gap-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:col-span-4 md:gap-6">
             
             <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
                 <WelcomeCard user={user} />

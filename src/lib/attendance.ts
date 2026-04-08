@@ -5,7 +5,7 @@ import { eachDayOfInterval, isWithinInterval, startOfMonth, endOfMonth, startOfD
 import type { Firestore } from 'firebase/firestore';
 import { id } from 'date-fns/locale';
 
-// --- EXISTING FUNCTION ---
+// --- FUNCTION WITH ORIGINAL STABLE LOGIC ---
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
     const schoolConfigRef = doc(firestore, 'schoolConfig', 'default');
@@ -44,8 +44,16 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
 
     const pastEffectiveWorkingDays = effectiveWorkingDays.filter(day => isBefore(day, today));
     
-    const presentDates = new Set(attendanceData.map(att => format(att.checkInTime.toDate(), 'yyyy-MM-dd')));
-    const hadirCount = presentDates.size;
+    const hadirScore = attendanceData.reduce((total, att) => {
+        if (att.checkInTime && att.checkOutTime) {
+            return total + 1;
+        } else if (att.checkInTime) {
+            return total + 0.5;
+        }
+        return total;
+    }, 0);
+
+    const anyAttendanceDates = new Set(attendanceData.map(att => format(att.checkInTime.toDate(), 'yyyy-MM-dd')));
 
     let izinCount = 0;
     let sakitCount = 0;
@@ -65,15 +73,17 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
 
     const alpaCount = pastEffectiveWorkingDays.filter(day => {
         const dayStr = format(day, 'yyyy-MM-dd');
-        return !presentDates.has(dayStr) && !leaveDates.has(dayStr);
+        return !anyAttendanceDates.has(dayStr) && !leaveDates.has(dayStr);
     }).length;
     
     const totalWorkingDaysForPercentage = effectiveWorkingDays.length;
-    const percentageRaw = totalWorkingDaysForPercentage > 0 ? (hadirCount / totalWorkingDaysForPercentage) * 100 : 0;
+    
+    const percentageRaw = totalWorkingDaysForPercentage > 0 ? (hadirScore / totalWorkingDaysForPercentage) * 100 : 0;
+    
     const finalPercentage = Math.min(percentageRaw, 100);
 
     return {
-        totalHadir: hadirCount,
+        totalHadir: hadirScore, 
         totalIzin: izinCount,
         totalSakit: sakitCount,
         totalAlpa: alpaCount,
@@ -81,7 +91,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
     };
 }
 
-// --- FINAL, SIMPLIFIED, AND CORRECTED FUNCTION ---
+// --- Bagian sisa dari file tidak berubah ---
 export async function fetchUserMonthlyReportData(firestore: Firestore, userId: string, currentMonth: Date, schoolConfig: any) {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
@@ -134,7 +144,6 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
             const checkOutTime = attendanceRecord.checkOutTime?.toDate();
             let description;
 
-            // If it is a manual entry by admin, the description is always "Absen Terekam"
             if (attendanceRecord.manualEntry) {
                 description = 'Absen Terekam';
             } else { 
@@ -142,10 +151,9 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                     if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
                         const [endH, endM] = schoolConfig.checkInEndTime.split(':').map(Number);
                         const checkInDeadline = new Date(checkInTime); checkInDeadline.setHours(endH, endM, 0, 0);
-                        // SIMPLIFIED LOGIC: "Tepat Waktu" is now "Absen Terekam"
                         description = isBefore(checkInTime, checkInDeadline) ? 'Absen Terekam' : 'Terlambat';
                     } else {
-                        description = 'Absen Terekam'; // Default if no time validation
+                        description = 'Absen Terekam';
                     }
                 } else {
                     description = isBefore(day, today) ? 'Tidak Absen Pulang' : 'Belum Absen Pulang';

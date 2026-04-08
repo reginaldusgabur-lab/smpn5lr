@@ -88,9 +88,10 @@ export default function UserReportDetailPage() {
         doc.setLineWidth(0.5).line(margin, finalY, pageWidth - margin, finalY);
         finalY += 8;
 
+        // --- PERUBAHAN YANG DIINGINKAN --- 
         doc.setFont('times', 'bold').setFontSize(12).text('LAPORAN KEHADIRAN', centerX, finalY, { align: 'center' });
         finalY += 5;
-        doc.setFont('times', 'normal').text(`Periode : Bulan ${format(currentMonth, 'MMMM yyyy', { locale: id })}`, centerX, finalY, { align: 'center' });
+        doc.setFont('times', 'normal').text(`Periode: ${format(currentMonth, 'MMMM yyyy', { locale: id })}`, centerX, finalY, { align: 'center' });
         finalY += 12;
         
         doc.text('Nama', margin, finalY);
