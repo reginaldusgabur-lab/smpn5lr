@@ -108,7 +108,7 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfigData, isLoading 
                     return {
                         variant: 'destructive',
                         title: 'Anda Melewatkan Sesi Absen Masuk',
-                        description: 'Anda tidak melakukan absensi masuk hari ini. Hari ini akan dianggap Alpa jika tidak ada keterangan lain.'
+                        description: 'Anda tidak melakukan absensi masuk hari ini. Presentasi kehadiran anda akan berkurang.'
                     };
                 }
             }

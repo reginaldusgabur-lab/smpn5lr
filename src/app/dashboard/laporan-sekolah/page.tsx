@@ -23,8 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import EditAttendanceModal from '@/components/modals/EditAttendanceModal';
 import * as XLSX from 'xlsx';
-import { jsPDF } from "jspdf";
-import autoTable from 'jspdf-autotable';
+import type { jsPDF } from "jspdf";
 import { calculateAttendanceStats, fetchUserMonthlyReportData } from '@/lib/attendance';
 
 interface ReportRowData {
@@ -206,8 +205,10 @@ export default function SchoolReportPage() {
         XLSX.writeFile(workbook, `Laporan Kehadiran Bulan ${monthName}.xlsx`);
     };
 
-    const handleDownloadPdf = () => {
+    const handleDownloadPdf = async () => {
         if (!filteredReports.length) return;
+        const { jsPDF } = await import('jspdf');
+        const autoTable = (await import('jspdf-autotable')).default;
         const doc = new jsPDF();
         
         let startY = addReportHeader(doc);
@@ -237,7 +238,7 @@ export default function SchoolReportPage() {
             },
         });
 
-        const finalY = (doc as any).autoTable.previous.finalY;
+        const finalY = (doc as any).lastAutoTable.finalY;
         addSignatureBlock(doc, finalY + 10, principal);
         
         addFooter(doc);
@@ -247,6 +248,8 @@ export default function SchoolReportPage() {
 
     const handleDownloadUserPdf = async (targetUser: ReportRowData) => {
         if (!firestore || !schoolConfigData) return;
+        const { jsPDF } = await import('jspdf');
+        const autoTable = (await import('jspdf-autotable')).default;
         const doc = new jsPDF();
         
         try {
@@ -280,7 +283,7 @@ export default function SchoolReportPage() {
                 headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold', fontSize: 9.5, font: 'times' },
             });
 
-            const finalY = (doc as any).autoTable.previous.finalY;
+            const finalY = (doc as any).lastAutoTable.finalY;
             addSignatureBlock(doc, finalY + 10, principal);
 
             addFooter(doc);

@@ -302,29 +302,32 @@ export default function KonfigurasiAbsenPage() {
   }, [schoolConfigData, user, schoolConfigRef, isConfigLoading]);
 
   useEffect(() => {
-    if (qrCodeValue) {
-      setIsQrLoading(true);
-      QRCode.toDataURL(qrCodeValue, {
-          width: 300,
-          margin: 2,
-          errorCorrectionLevel: 'H'
-      }, (err, url) => {
-          if (err) {
-              console.error('QR Code generation failed:', err);
-              toast({
-                  variant: 'destructive',
-                  title: 'Gagal Membuat QR Code',
-                  description: 'Terjadi kesalahan saat menyiapkan QR Code.',
-              });
-              setIsQrLoading(false);
-              return;
-          }
+    const generateQrCode = async () => {
+      if (qrCodeValue) {
+        setIsQrLoading(true);
+        try {
+          const url = await QRCode.toDataURL(qrCodeValue, {
+            width: 300,
+            margin: 2,
+            errorCorrectionLevel: 'H'
+          });
           setQrCodeDataUrl(url);
+        } catch (err) {
+          console.error('QR Code generation failed:', err);
+          toast({
+            variant: 'destructive',
+            title: 'Gagal Membuat QR Code',
+            description: 'Terjadi kesalahan saat menyiapkan QR Code.',
+          });
+        } finally {
           setIsQrLoading(false);
-      });
-    } else {
+        }
+      } else {
         setIsQrLoading(!isConfigLoading);
-    }
+      }
+    };
+
+    generateQrCode();
   }, [qrCodeValue, toast, isConfigLoading]);
 
 
@@ -344,7 +347,6 @@ export default function KonfigurasiAbsenPage() {
       downloadLink.download = 'absensi-qrcode.png';
       document.body.appendChild(downloadLink);
       downloadLink.click();
-      document.body.removeChild(downloadLink);
     } else { // pdf
       const { jsPDF } = await import('jspdf');
       const pdfDoc = new jsPDF();
