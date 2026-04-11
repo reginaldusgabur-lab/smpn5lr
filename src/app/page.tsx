@@ -54,6 +54,7 @@ export default function LoginPage() {
   const [isResetLoading, setIsResetLoading] = useState(false);
   const [showLoginPass, setShowLoginPass] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false); // Hydration fix state
 
   const { toast } = useToast();
   const router = useRouter();
@@ -62,11 +63,15 @@ export default function LoginPage() {
   const appLogo = PlaceHolderImages.find(p => p.id === 'app-logo');
 
   useEffect(() => {
-    // Redirect if user is already logged in
-    if (!isUserLoading && user) {
+    setIsMounted(true); // Component has mounted on client
+  }, []);
+
+  useEffect(() => {
+    // Redirect only on the client-side after mounting and auth state is confirmed
+    if (isMounted && !isUserLoading && user) {
       router.replace('/dashboard');
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, isMounted]);
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -92,11 +97,7 @@ export default function LoginPage() {
     
     try {
         await signInWithEmailAndPassword(auth, values.email, values.password);
-
-        // Pemeriksaan verifikasi email telah dihapus
-        
-        // Biarkan useEffect menangani pengalihan
-        // router.push('/dashboard');
+        // Let the useEffect handle the redirection after state update
     } catch (error: any) {
         let errorMessage = "Email atau password yang Anda masukkan salah. Silakan periksa kembali.";
         if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
@@ -147,8 +148,8 @@ export default function LoginPage() {
     }
   };
 
-  // Show a loading screen while checking auth status
-  if (isUserLoading || user) {
+  // Prevent mismatch: show a loader until the component is mounted on the client
+  if (!isMounted || isUserLoading || (isMounted && user)) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -156,6 +157,7 @@ export default function LoginPage() {
     );
   }
   
+  // Only render the form on the client when we know the user is not logged in.
   return (
     <div className="flex flex-col min-h-screen items-center justify-center p-4 bg-background text-foreground">
         <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
