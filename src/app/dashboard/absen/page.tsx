@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useRouter } from 'next/navigation'; // 1. Impor useRouter
+import { useRouter } from 'next/navigation';
 import { Html5Qrcode, Html5QrcodeCameraScanConfig } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,7 +28,7 @@ const getCurrentPosition = (options?: PositionOptions): Promise<GeolocationPosit
   new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, options));
 
 // --- Types ---
-type FeedbackStatus = 'idle' | 'processing' | 'locating' | 'success_in' | 'success_out' | 'error_radius' | 'error_time' | 'error_already_in' | 'error_not_checked_in' | 'error_already_out' | 'error_generic' | 'error_location' | 'info_holiday' | 'info_checked_out' | 'info_no_camera';
+type FeedbackStatus = 'idle' | 'processing' | 'locating' | 'success_in' | 'success_out' | 'error_radius' | 'error_time' | 'error_already_in' | 'error_already_out' | 'error_generic' | 'error_location' | 'info_holiday' | 'info_checked_out' | 'info_no_camera';
 
 // --- Main Component ---
 export default function AbsenPage() {
@@ -37,7 +37,7 @@ export default function AbsenPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const router = useRouter(); // 2. Dapatkan objek router
+  const router = useRouter();
   
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isScannerReady, setIsScannerReady] = useState(false);
@@ -52,11 +52,11 @@ export default function AbsenPage() {
   const monthlyConfigId = useMemo(() => format(new Date(), 'yyyy-MM'), []);
   const monthlyConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'monthlyConfigs', monthlyConfigId) : null, [firestore, monthlyConfigId]);
   const { data: monthlyConfig, isLoading: isMonthlyConfigLoading } = useDoc(user, monthlyConfigRef);
+  
   const todaysAttendanceQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
-    return query(collection(firestore, 'users', user.uid, 'attendanceRecords'), where('checkInTime', '>=', Timestamp.fromDate(todayStart)), where('checkInTime', '<', Timestamp.fromDate(todayEnd)));
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    return query(collection(firestore, 'users', user.uid, 'attendanceRecords'), where('date', '==', todayStr));
   }, [user, firestore]);
   const { data: todaysAttendance, isLoading: isAttendanceLoading } = useCollection(user, todaysAttendanceQuery);
   const todaysRecord = useMemo(() => todaysAttendance?.[0], [todaysAttendance]);
@@ -72,21 +72,21 @@ export default function AbsenPage() {
     const offDays: number[] = schoolConfig.offDays ?? [0, 6];
     return offDays.includes(today.getDay());
   }, [schoolConfig, monthlyConfig]);
-  const hasCheckedOut = useMemo(() => !!todaysRecord?.checkOutTime, [todaysRecord]);
+  const hasCompletedAttendance = useMemo(() => !!(todaysRecord?.checkInTime && todaysRecord?.checkOutTime), [todaysRecord]);
 
   const effectiveStatus: FeedbackStatus = useMemo(() => {
       if (status !== 'idle') return status;
       if (isDataLoading) return 'idle';
-      if (hasCheckedOut) return 'info_checked_out';
+      if (hasCompletedAttendance) return 'info_checked_out';
       if (isHoliday) return 'info_holiday';
       if (hasCameraPermission === false) return 'info_no_camera';
       return 'idle';
-  }, [status, isDataLoading, hasCheckedOut, isHoliday, hasCameraPermission]);
+  }, [status, isDataLoading, hasCompletedAttendance, isHoliday, hasCameraPermission]);
 
-  const showScanner = !isDataLoading && hasCameraPermission && !isHoliday && !hasCheckedOut;
+  const showScanner = !isDataLoading && hasCameraPermission && !isHoliday && !hasCompletedAttendance;
   const showLoader = isDataLoading || isCameraInitializing || (showScanner && !isScannerReady);
 
-  // --- Core Functions ---
+  // --- Core Functions (BUG FIXED) ---
   const handleAttendance = useCallback(async () => {
     setLocationError(null);
     if (!user || !firestore || !schoolConfig) {
@@ -94,6 +94,7 @@ export default function AbsenPage() {
         return toast({ title: 'Gagal', description: 'Data pengguna atau konfigurasi tidak siap.', variant: 'destructive' });
     }
     setStatus('processing');
+    
     let isCheckInTime = false, isCheckOutTime = false;
     if (schoolConfig.useTimeValidation) {
         const now = new Date(), currentTime = now.getHours() * 60 + now.getMinutes();
@@ -107,9 +108,7 @@ export default function AbsenPage() {
     } else {
         if (todaysRecord && !todaysRecord.checkOutTime) isCheckOutTime = true; else isCheckInTime = true;
     }
-    if (isCheckInTime && todaysRecord) return setStatus('error_already_in');
-    if (isCheckOutTime && !todaysRecord) return setStatus('error_not_checked_in');
-    if (isCheckOutTime && todaysRecord?.checkOutTime) return setStatus('error_already_out');
+
     try {
         let latitude: number | null = null, longitude: number | null = null;
         if (schoolConfig.useLocationValidation) {
@@ -126,25 +125,41 @@ export default function AbsenPage() {
                 setLocationError(specificError); return setStatus('error_location');
             }
         }
+
         setStatus('processing');
         const now = new Date();
+        const todayStr = format(now, 'yyyy-MM-dd');
+
         if (isCheckInTime) {
-            await addDoc(collection(firestore, 'users', user.uid, 'attendanceRecords'), { userId: user.uid, checkInTime: now, checkInLatitude: latitude, checkInLongitude: longitude, checkOutTime: null });
-            setStatus('success_in');
+            if (todaysRecord) {
+                if (todaysRecord.checkInTime) return setStatus('error_already_in');
+                const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', todaysRecord.id);
+                // FIXED: Ensure 'date' field is included on update
+                await updateDoc(recordRef, { date: todayStr, checkInTime: now, checkInLatitude: latitude, checkInLongitude: longitude });
+                setStatus('success_in');
+            } else {
+                await addDoc(collection(firestore, 'users', user.uid, 'attendanceRecords'), { userId: user.uid, date: todayStr, checkInTime: now, checkInLatitude: latitude, checkInLongitude: longitude, checkOutTime: null });
+                setStatus('success_in');
+            }
         } else if (isCheckOutTime) {
-            const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', todaysRecord!.id);
-            await updateDoc(recordRef, { checkOutTime: now, checkOutLatitude: latitude, checkOutLongitude: longitude });
-            setStatus('success_out');
+            if (todaysRecord) {
+                if (todaysRecord.checkOutTime) return setStatus('error_already_out');
+                const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', todaysRecord.id);
+                // FIXED: Ensure 'date' field is included on update
+                await updateDoc(recordRef, { date: todayStr, checkOutTime: now, checkOutLatitude: latitude, checkOutLongitude: longitude });
+                setStatus('success_out');
+            } else {
+                await addDoc(collection(firestore, 'users', user.uid, 'attendanceRecords'), { userId: user.uid, date: todayStr, checkInTime: null, checkOutTime: now, checkOutLatitude: latitude, checkOutLongitude: longitude });
+                setStatus('success_out');
+            }
         }
     } catch (error) { setStatus('error_generic'); }
-  }, [user, firestore, schoolConfig, todaysRecord]);
+  }, [user, firestore, schoolConfig, todaysRecord, toast]);
   
   const statusRef = useRef(status); statusRef.current = status;
   const handleAttendanceRef = useRef(handleAttendance); handleAttendanceRef.current = handleAttendance;
 
-  // 3. Buat fungsi navigasi
   const handleCloseRedirect = useCallback(() => {
-    // Arahkan ke halaman beranda (dashboard utama)
     router.push('/dashboard'); 
   }, [router]);
 
@@ -173,15 +188,8 @@ export default function AbsenPage() {
         if (qrCode.getState() !== 2) { // 2: SCANNING
             setIsScannerReady(false);
             const config: Html5QrcodeCameraScanConfig = { fps: 10 };
-            qrCode.start(
-                { facingMode: 'environment' },
-                config,
-                onScanSuccess,
-                undefined
-            )
-            .then(() => {
-                if (html5QrCodeRef.current) setIsScannerReady(true);
-            })
+            qrCode.start({ facingMode: 'environment' }, config, onScanSuccess, undefined)
+            .then(() => { if (html5QrCodeRef.current) setIsScannerReady(true); })
             .catch(err => console.error('Gagal memulai QR scanner', err));
         }
     } 
@@ -193,78 +201,49 @@ export default function AbsenPage() {
     };
   }, [showScanner, status, onScanSuccess]);
 
-  // 4. Tentukan fungsi onClose berdasarkan status
   const handleOnClose = useMemo(() => {
-    const isSuccessOrFinished = [
-      'success_in',
-      'success_out',
-      'info_checked_out',
-      'info_holiday'
-    ].includes(effectiveStatus);
-
-    if (isSuccessOrFinished) {
-      return handleCloseRedirect;
-    } else {
-      return () => setStatus('idle');
-    }
+    const isSuccessOrFinished = ['success_in', 'success_out', 'info_checked_out', 'info_holiday'].includes(effectiveStatus);
+    return isSuccessOrFinished ? handleCloseRedirect : () => setStatus('idle');
   }, [effectiveStatus, handleCloseRedirect]);
 
   return (
     <PageWrapper>
       <div className="relative w-full bg-background" style={{ height: 'calc(100vh - 68px)' }}>
-        {/* Video feed will be the background */}
         {(showScanner || isCameraInitializing) && (
           <div className="absolute inset-0 z-0">
             <div id={readerId} className="w-full h-full" />
             <style>{`
-                #${readerId} > video {
-                    width: 100% !important;
-                    height: 100% !important;
-                    object-fit: cover !important;
-                    opacity: ${isScannerReady ? 1 : 0};
-                    transition: opacity 0.5s ease-in-out;
-                }
-                #${readerId}__scan_region, #${readerId}__dashboard_section_csr {
-                  display: none !important;
-                }
+                #${readerId} > video { width: 100% !important; height: 100% !important; object-fit: cover !important; opacity: ${isScannerReady ? 1 : 0}; transition: opacity 0.5s ease-in-out; }
+                #${readerId}__scan_region, #${readerId}__dashboard_section_csr { display: none !important; }
             `}</style>
           </div>
         )}
 
-        {/* UI Overlay */}
         <div className="relative z-10 flex flex-col items-center justify-between p-4 py-8 text-center w-full h-full pointer-events-none">
           <div className="w-full pointer-events-auto">
             <h1 className={cn("text-3xl font-bold tracking-tight", isScannerReady ? 'text-white' : 'text-foreground', 'dark:text-white')} style={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>Pindai QR Code</h1>
             <p className={cn("mt-2", isScannerReady ? 'text-white/80' : 'text-muted-foreground', 'dark:text-white/80')} style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>Arahkan kamera ke QR Code yang ditampilkan.</p>
           </div>
 
-          {/* Scanner Frame and Loader */}
           <div className="relative w-full max-w-[280px] sm:max-w-xs aspect-square">
-            {(!isHoliday && !hasCheckedOut) && (
+            {(!isHoliday && !hasCompletedAttendance) && (
               <>
                 <div className={cn("absolute top-0 left-0 w-1/4 h-1/4 border-t-4 border-l-4 rounded-tl-xl", isScannerReady ? 'border-white' : 'border-foreground', 'dark:border-white')} />
                 <div className={cn("absolute top-0 right-0 w-1/4 h-1/4 border-t-4 border-r-4 rounded-tr-xl", isScannerReady ? 'border-white' : 'border-foreground', 'dark:border-white')} />
                 <div className={cn("absolute bottom-0 left-0 w-1/4 h-1/4 border-b-4 border-l-4 rounded-bl-xl", isScannerReady ? 'border-white' : 'border-foreground', 'dark:border-white')} />
                 <div className={cn("absolute bottom-0 right-0 w-1/4 h-1/4 border-b-4 border-r-4 rounded-br-xl", isScannerReady ? 'border-white' : 'border-foreground', 'dark:border-white')} />
-
                 {showLoader ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground dark:text-white/80">
                     <Loader2 className="h-10 w-10 animate-spin text-foreground dark:text-white" />
-                    <p className="mt-4 text-sm font-medium">
-                      {isDataLoading ? 'Memuat data...' : 'Menyiapkan kamera...'}
-                    </p>
+                    <p className="mt-4 text-sm font-medium">{isDataLoading ? 'Memuat data...' : 'Menyiapkan kamera...'}</p>
                   </div>
-                ) : (
-                  isScannerReady && <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full h-1 bg-red-500/70 shadow-[0_0_15px_3px_theme(colors.red.500)] animate-scan-line" />
-                )}
+                ) : ( isScannerReady && <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full h-1 bg-red-500/70 shadow-[0_0_15px_3px_theme(colors.red.500)] animate-scan-line" /> )}
               </>
             )}
           </div>
-          
           <div className="w-full max-w-md h-10 pointer-events-auto" />
         </div>
 
-        {/* Status Feedback Overlay, sekarang menggunakan handleOnClose */}
         {effectiveStatus !== 'idle' && <StatusFeedbackOverlay status={effectiveStatus} locationError={locationError} onClose={handleOnClose} userData={userData} />}
       </div>
     </PageWrapper>
@@ -282,7 +261,6 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData }: { s
             case 'error_radius': return { icon: <MapPin className="h-16 w-16 text-destructive" />, title: 'Gagal: Di Luar Radius', desc: 'Anda harus berada di dalam area sekolah untuk absensi.', cardClass: 'bg-destructive/10 border-destructive' };
             case 'error_time': return { icon: <Clock className="h-16 w-16 text-destructive" />, title: 'Gagal: Di Luar Jam Absen', desc: 'Waktu absensi belum dibuka atau sudah ditutup.', cardClass: 'bg-destructive/10 border-destructive' };
             case 'error_already_in': return { icon: <X className="h-16 w-16 text-destructive" />, title: 'Gagal: Sudah Absen Masuk', desc: 'Anda sudah melakukan absensi masuk hari ini.', cardClass: 'bg-destructive/10 border-destructive' };
-            case 'error_not_checked_in': return { icon: <X className="h-16 w-16 text-destructive" />, title: 'Gagal: Belum Absen Masuk', desc: 'Anda harus absen masuk terlebih dahulu.', cardClass: 'bg-destructive/10 border-destructive' };
             case 'error_already_out': return { icon: <X className="h-16 w-16 text-destructive" />, title: 'Gagal: Sudah Absen Pulang', desc: 'Anda sudah melakukan absensi pulang hari ini.', cardClass: 'bg-destructive/10 border-destructive' };
             case 'error_location': return { icon: <MapPin className="h-16 w-16 text-destructive" />, title: 'Gagal: Lokasi Error', desc: locationError || 'Pastikan GPS aktif dan berikan izin akses.', cardClass: 'bg-destructive/10 border-destructive' };
             case 'info_holiday': return { icon: <CalendarOff className="h-16 w-16 text-blue-500" />, title: 'Hari Libur', desc: 'Sistem absensi tidak aktif hari ini.', cardClass: 'bg-blue-50 dark:bg-blue-950/50 border-blue-800' };
@@ -292,10 +270,7 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData }: { s
         }
     }, [status, locationError]);
 
-    const showQuote = useMemo(() => 
-        (status === 'success_in' || status === 'success_out') && userData?.role !== 'admin',
-    [status, userData]);
-
+    const showQuote = useMemo(() => (status === 'success_in' || status === 'success_out') && userData?.role !== 'admin', [status, userData]);
     const attendanceType = useMemo(() => {
         if (status === 'success_in') return 'in';
         if (status === 'success_out') return 'out';

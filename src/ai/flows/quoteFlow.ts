@@ -13,7 +13,7 @@ import { z } from 'zod';
 const QuoteInputSchema = z.object({
   category: z
     .string()
-    .describe('Audiens target untuk kutipan, contoh: "pendidik", "pelajar SMP".'),
+    .describe('Peran audiens target, contoh: "guru", "kepala sekolah", "pegawai".'),
   attendanceType: z
     .enum(['in', 'out'])
     .describe('Jenis absensi: "in" untuk masuk, "out" untuk pulang.'),
@@ -39,32 +39,32 @@ const quotePrompt = ai.definePrompt(
     name: 'quotePrompt',
     input: { schema: QuoteInputSchema },
     output: { schema: QuoteOutputSchema },
-    prompt: `Anda adalah seorang ahli motivasi yang bijaksana dan terkadang humoris. Tugas Anda adalah membuat sebuah kutipan yang sangat relevan untuk audiens target berdasarkan waktu absensi mereka.
+    prompt: `Anda adalah seorang penulis kreatif yang ahli membuat kutipan singkat untuk para pendidik.
 
 Audiens: {{category}}
 Jenis Absensi: {{attendanceType}}
 
-# Tugas:
-1.  Buatlah satu kutipan orisinal dalam Bahasa Indonesia yang singkat (1-2 kalimat) dan berkesan.
-2.  Kutipan harus benar-benar cocok untuk audiens dan jenis absensi:
-    - Jika jenis absensi adalah "in" (masuk), buatlah kutipan yang penuh semangat, motivasi untuk memulai hari, atau inspirasi pagi.
-    - Jika jenis absensi adalah "out" (pulang), buatlah kutipan yang reflektif, tentang istirahat, pencapaian hari ini, atau motivasi untuk esok hari.
-3.  Hindari kutipan yang terlalu umum atau klise.
-4.  Selain itu, buat juga satu nama penulis fiktif yang terdengar bijaksana atau relevan dengan kutipan dan audiens.
+# Tugas Utama:
+1.  Buatlah **satu kutipan orisinal dalam Bahasa Indonesia yang terdiri dari TEPAT SATU KALIMAT**.
+2.  Secara acak, pilih salah satu dari tiga gaya bahasa berikut untuk kutipan tersebut:
+    *   **Lucu & Asik:** Ringan, jenaka, dan membuat tersenyum.
+    *   **Penyemangat:** Memberikan motivasi dan energi positif.
+    *   **Reflektif:** Penuh makna dan mengajak merenung sejenak.
+3.  Sesuaikan kutipan dengan audiens ({{category}}) dan jenis absensi ({{attendanceType}}):
+    *   Absensi **'in'**: Fokus pada semangat memulai hari, energi pagi, atau humor ringan seputar sekolah.
+    *   Absensi **'out'**: Fokus pada istirahat, pencapaian, atau humor tentang akhir hari mengajar.
+4.  Buat juga **satu nama penulis fiktif** yang unik dan cocok dengan gaya kutipan yang Anda buat.
 
-Contoh output untuk absensi "in":
-{
-  "quote": "Pagi ini, mari kita tanam benih ilmu dengan senyuman.",
-  "author": "Pendidik Penuh Semangat"
-}
+# Contoh Variasi Gaya (untuk Guru, Absen 'in'):
+- **Lucu/Asik**: {"quote": "Level kesabaran hari ini: Diisi ulang dan siap untuk pertanyaan 'Pak, ini halaman berapa?'", "author": "Guru Level Pro"}
+- **Penyemangat**: {"quote": "Selamat pagi, mari ukir jejak ilmu di papan tulis dan di hati setiap siswa.", "author": "Pendidik Penuh Inspirasi"}
+- **Reflektif**: {"quote": "Setiap bel masuk adalah pengingat bahwa kita punya kesempatan baru untuk mencerahkan masa depan.", "author": "Sang Pencetak Generasi"}
 
-Contoh output untuk absensi "out":
-{
-  "quote": "Pelajaran hari ini telah usai, biarkan ia menjadi bekal untuk esok.",
-  "author": "Sang Pengajar Senja"
-}
+# Contoh untuk Kepala Sekolah (Absen 'out'):
+- **Lucu/Asik**: {"quote": "Misi hari ini selesai, sekolah aman terkendali, saatnya ganti status jadi 'penikmat kopi sore'.", "author": "Kapten Sekolah"}
 
-Jangan gunakan tanda kutip di awal dan akhir properti JSON atau isinya.`
+Pastikan output Anda selalu dalam format JSON yang valid tanpa tambahan karakter atau penjelasan.
+`,
   },
 );
 
@@ -74,7 +74,7 @@ const quoteFlow = ai.defineFlow(
     inputSchema: QuoteInputSchema,
     outputSchema: QuoteOutputSchema,
   },
-  async (input) => {    
+  async (input) => {
     const { output } = await quotePrompt(input);
     return output!;
   }

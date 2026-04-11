@@ -260,7 +260,7 @@ export default function LaporanPage() {
                 <TableBody>
                     {monthlyReportData && monthlyReportData.length > 0 ? (
                     monthlyReportData.map((record, index) => (
-                        <TableRow key={record.id}>
+                        <TableRow key={`${record.id}-${index}`}>
                             <TableCell className="text-center">{index + 1}</TableCell>
                             <TableCell className="font-medium whitespace-nowrap">{record.dateString}</TableCell>
                             <TableCell className="text-center">{record.checkIn}</TableCell>

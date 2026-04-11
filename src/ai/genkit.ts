@@ -1,9 +1,10 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/google-genai';
 
-// Genkit automatically looks for the GEMINI_API_KEY environment variable.
-// This configuration relies on that default behavior.
+// The Genkit plugin will automatically look for the GEMINI_API_KEY
+// environment variable. We will set this in our Vercel project settings.
+
 export const ai = genkit({
-  plugins: [googleAI()],
-  model: 'googleai/gemini-2.5-flash',
+  plugins: [googleAI()], // No need to pass the key here directly
+  model: 'googleai/gemini-1.5-flash',
 });

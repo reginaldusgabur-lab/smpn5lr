@@ -236,7 +236,7 @@ export default function LoginPage() {
             </CardContent>
             <CardFooter className="flex-col items-center justify-center text-sm pt-4">
                <p className="text-center text-sm text-muted-foreground">
-                  Belum punya akun? <Link href="/register" className="font-medium text-primary hover:underline">Daftar di sini</Link>.
+                 Untuk pembuatan akun, silakan hubungi admin.
               </p>
             </CardFooter>
           </Card>

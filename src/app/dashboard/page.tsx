@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Users,  UserCheck,  UserX,  BookUser,  Loader2,  School, LogIn, LogOut, TrendingUp, AlertCircle, Info
+  Users,  UserCheck,  UserX,  BookUser,  Loader2,  School, LogIn, LogOut, TrendingUp, AlertCircle, Info, MailWarning
 } from 'lucide-react';
 import {
   Card,  CardContent,  CardDescription,  CardHeader,  CardTitle,
@@ -20,7 +20,7 @@ import { id } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts';
 import { useRouter } from 'next/navigation';
 import { getFromCache, setInCache } from '@/lib/cache';
-import { calculateAttendanceStats } from '@/lib/attendance';
+import { calculateAttendanceStats, getDailyStaffAttendanceStats } from '@/lib/attendance'; // Import the new centralized function
 import { useAttendanceWindow } from '@/hooks/use-attendance-window';
 
 import TodaysActivityTable from '@/components/dashboard/RecentAttendanceTable';
@@ -305,9 +305,9 @@ function useMonthlyAttendanceSummary(user: any) {
     return { summary: summary || {}, isLoading };
 }
 
-// CRITICAL OPTIMIZATION: Caching layer for expensive staff stats
-function useStaffDashboardStats_FreePlan(firestore: any, user: any) {
-  const cacheKey = 'staffDashboardStats_v1';
+// --- NEW RELIABLE STATS HOOK ---
+function useStaffDashboardStats(firestore: any, user: any) {
+  const cacheKey = 'staffDashboardStats_v2'; // New cache key
   const [stats, setStats] = useState<any>(() => getFromCache(cacheKey) || null);
   const [isLoading, setIsLoading] = useState(stats === null);
 
@@ -315,66 +315,35 @@ function useStaffDashboardStats_FreePlan(firestore: any, user: any) {
     if (!firestore || !user) return;
 
     const fetchStats = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        const staffQuery = query(collection(firestore, 'users'), where('role', 'in', ['guru', 'pegawai', 'kepala_sekolah']));
-        const staffSnap = await getDocs(staffQuery);
-        const totalStaff = staffSnap.size;
-
-        if (totalStaff === 0) {
-          const zeroStats = { totalStaff: 0, hadir: 0, izin: 0, sakit: 0, alpa: 0 };
-          setStats(zeroStats);
-          setInCache(cacheKey, zeroStats, 600); // Cache for 10 minutes
-          setIsLoading(false);
-          return;
-        }
-
-        const todayStart = startOfDay(new Date());
-        const todayEnd = endOfDay(new Date());
-
-        const attendanceQuery = query(collectionGroup(firestore, 'attendanceRecords'), where('checkInTime', '>=', todayStart), where('checkInTime', '<=', todayEnd));
-        const attendanceSnap = await getDocs(attendanceQuery);
-        const hadirCount = attendanceSnap.size;
-
-        const leaveQuery = query(collectionGroup(firestore, 'leaveRequests'), where('status', '==', 'approved'));
-        const leaveSnap = await getDocs(leaveQuery);
-        const onLeaveUserIds = new Set();
-        leaveSnap.forEach(doc => {
-            const leave = doc.data();
-            if (leave.startDate && leave.endDate && isWithinInterval(new Date(), { start: leave.startDate.toDate(), end: leave.endDate.toDate() })) {
-                const userId = doc.ref.parent.parent?.id;
-                if(userId) onLeaveUserIds.add(userId);
-            }
-        });
-        const izinSakitCount = onLeaveUserIds.size;
-
-        const alpaCount = Math.max(0, totalStaff - hadirCount - izinSakitCount);
-
-        const newStats = { totalStaff, hadir: hadirCount, izin: izinSakitCount, sakit: 0, alpa: alpaCount };
-        setStats(newStats);
-        setInCache(cacheKey, newStats, 600); // Cache for 10 minutes
-
+        // Use the new, reliable, centralized function from attendance.ts
+        const dailyStats = await getDailyStaffAttendanceStats(firestore);
+        setStats(dailyStats);
+        setInCache(cacheKey, dailyStats, 300); // Cache for 5 minutes
       } catch (error) {
-        console.error("Error fetching dashboard stats for free plan:", error);
+        console.error("Error fetching dashboard stats from centralized function:", error);
+        // Set empty stats on error to prevent breaking the UI
+        setStats({ totalStaff: 0, hadir: 0, izin: 0, sakit: 0, alpa: 0, pending: 0 });
       } finally {
         setIsLoading(false);
       }
     };
 
     if (stats === null) {
-        fetchStats();
+      fetchStats();
     }
+    // No dependency on `stats` to prevent re-fetching from cache
+  }, [firestore, user]); // Removed `stats` from dependency array
 
-  }, [firestore, user, stats]);
-
-  return { stats: stats || {}, isLoading };
+  return { stats: stats || { totalStaff: 0, hadir: 0, izin: 0, sakit: 0, alpa: 0, pending: 0 }, isLoading };
 }
 
 
 const HeadmasterDashboard = ({ user, router }: any) => {
     const firestore = useFirestore();
 
-    const { stats, isLoading: isStatsLoading } = useStaffDashboardStats_FreePlan(firestore, user);
+    const { stats, isLoading: isStatsLoading } = useStaffDashboardStats(firestore, user);
     const { summary: personalSummary, isLoading: isPersonalSummaryLoading } = useMonthlyAttendanceSummary(user);
     
     const todaysAttendanceQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users', user.uid, 'attendanceRecords'), where('checkInTime', '>=', startOfDay(new Date())), limit(1)) : null, [firestore, user]);
@@ -398,16 +367,24 @@ const HeadmasterDashboard = ({ user, router }: any) => {
             <PersonalAttendanceCardUI attendanceData={todaysAttendance} schoolConfigData={schoolConfig} isLoading={isAttendanceLoading || isSchoolConfigLoading} />
             <MonthlyAttendanceChartUI summaryData={personalSummary} isLoading={isPersonalSummaryLoading} />
             
-            <StatCard title="Total Hadir Hari Ini" value={stats.hadir} icon={UserCheck} />
+            <StatCard title="Total Hadir Hari Ini" value={stats.hadir} icon={UserCheck} isLoading={isStatsLoading} />
             <StatCard 
                 title="Total Izin/Sakit Hari Ini" 
                 value={stats.izin + stats.sakit} 
                 icon={BookUser} 
+                description={`${stats.izin} Izin, ${stats.sakit} Sakit`}
+                isLoading={isStatsLoading}
+            />
+            <StatCard 
+                title="Menunggu Persetujuan"
+                value={stats.pending}
+                icon={MailWarning}
+                description="Pengajuan izin/sakit"
+                isLoading={isStatsLoading}
                 className="cursor-pointer hover:bg-muted transition-colors"
                 onClick={() => router.push('/dashboard/izin-kepala-sekolah')}
             />
-            <StatCard title="Total Alpa Hari Ini" value={stats.alpa} icon={UserX} />
-            <StatCard title="Total Guru & Pegawai" value={stats.totalStaff} icon={Users} />
+            <StatCard title="Total Alpa Hari Ini" value={stats.alpa} icon={UserX} isLoading={isStatsLoading} />
             
             <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
                <TodaysActivityTable />
@@ -421,14 +398,14 @@ const HeadmasterDashboard = ({ user, router }: any) => {
 
 const AdminDashboard = ({ user, router }: any) => {
     const firestore = useFirestore();
-    const { stats, isLoading: isStatsLoading } = useStaffDashboardStats_FreePlan(firestore, user);
+    const { stats, isLoading: isStatsLoading } = useStaffDashboardStats(firestore, user);
 
     return (
         <>
             <StatCard title="Total Hadir Hari Ini" value={stats.hadir} icon={UserCheck} isLoading={isStatsLoading} />
-            <StatCard title="Total Izin/Sakit Hari Ini" value={stats.izin + stats.sakit} icon={BookUser} isLoading={isStatsLoading} />
+            <StatCard title="Total Izin/Sakit Hari Ini" value={stats.izin + stats.sakit} icon={BookUser} description={`${stats.izin} Izin, ${stats.sakit} Sakit`} isLoading={isStatsLoading} />
+            <StatCard title="Menunggu Persetujuan" value={stats.pending} icon={MailWarning} isLoading={isStatsLoading} />
             <StatCard title="Total Alpa Hari Ini" value={stats.alpa} icon={UserX} isLoading={isStatsLoading} />
-            <StatCard title="Total Guru & Pegawai" value={stats.totalStaff} icon={Users} isLoading={isStatsLoading} />
             
             <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
                  <TodaysActivityTable />

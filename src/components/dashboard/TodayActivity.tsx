@@ -21,7 +21,7 @@ import { useFirestore } from '@/firebase';
 import { collection, query, where, getDocs, collectionGroup, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { id as indonesiaLocale } from 'date-fns/locale';
-import { Loader2, WifiOff, AlertCircle } from 'lucide-react';
+import { Loader2, WifiOff } from 'lucide-react';
 
 interface Activity {
   no: number;
@@ -29,12 +29,11 @@ interface Activity {
   nip: string;
   checkInTime: string;
   checkOutTime: string;
-  rawCheckInTime: Date | null;
   status: 'Hadir' | 'Pulang';
   keterangan: string;
 }
 
-const RecentAttendanceTable = () => {
+const TodayActivity = () => {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,14 +55,14 @@ const RecentAttendanceTable = () => {
 
         const attendanceQuery = query(
           collectionGroup(firestore, 'attendanceRecords'),
-          where('checkInTime', '>=', Timestamp.fromDate(startOfToday)),
-          where('checkInTime', '<', Timestamp.fromDate(endOfToday))
+          where('checkIn', '>=', Timestamp.fromDate(startOfToday)),
+          where('checkIn', '<', Timestamp.fromDate(endOfToday))
         );
 
         const attendanceSnap = await getDocs(attendanceQuery);
-        const activitiesData: Omit<Activity, 'no'>[] = [];
+        const activitiesData: Activity[] = [];
 
-        for (const attendanceDoc of attendanceSnap.docs) {
+        for (const [index, attendanceDoc] of attendanceSnap.docs.entries()) {
           const attendanceData = attendanceDoc.data();
           const userId = attendanceDoc.ref.parent.parent?.id;
 
@@ -73,39 +72,25 @@ const RecentAttendanceTable = () => {
 
             if (userSnap.exists()) {
               const userData = userSnap.data();
-              const checkInDate = attendanceData.checkInTime ? attendanceData.checkInTime.toDate() : null;
-              
               activitiesData.push({
+                no: index + 1,
                 name: userData.name || '-',
                 nip: userData.nip || '-',
-                rawCheckInTime: checkInDate,
-                checkInTime: checkInDate ? format(checkInDate, 'HH:mm:ss') : '-',
-                checkOutTime: attendanceData.checkOutTime ? format(attendanceData.checkOutTime.toDate(), 'HH:mm:ss') : '-',
-                status: attendanceData.checkOutTime ? 'Pulang' : 'Hadir',
-                keterangan: attendanceData.checkOutTime ? 'Kehadiran Penuh' : 'Masih di tempat',
+                checkInTime: attendanceData.checkIn ? format(attendanceData.checkIn.toDate(), 'HH:mm:ss') : '-',
+                checkOutTime: attendanceData.checkOut ? format(attendanceData.checkOut.toDate(), 'HH:mm:ss') : '-',
+                status: attendanceData.checkOut ? 'Pulang' : 'Hadir',
+                keterangan: attendanceData.checkOut ? 'Kehadiran Penuh' : 'Masih di tempat',
               });
             }
           }
         }
 
-        const sortedActivities = activitiesData.sort((a, b) => {
-            if (a.rawCheckInTime && b.rawCheckInTime) {
-                return a.rawCheckInTime.getTime() - b.rawCheckInTime.getTime();
-            }
-            return 0;
-        });
-
-        const finalActivities = sortedActivities.map((activity, index) => ({
-            ...activity,
-            no: index + 1,
-        }));
-
-        setActivities(finalActivities);
+        setActivities(activitiesData.sort((a,b) => a.name.localeCompare(b.name)));
 
       } catch (e: any) {
         console.error("Error fetching today's activity:", e);
         if (e.code === 'failed-precondition') {
-            setError("Database memerlukan indeks. Silakan buat indeks komposit dari link di log error konsol.");
+            setError("Database memerlukan indeks. Silakan buat dari link di log error konsol.");
         } else {
             setError("Gagal memuat aktivitas hari ini.");
         }
@@ -118,14 +103,6 @@ const RecentAttendanceTable = () => {
   }, [firestore]);
 
   const todayFormatted = format(new Date(), "d MMMM yyyy", { locale: indonesiaLocale });
-
-  const EmptyState = () => (
-    <div className="flex flex-col items-center justify-center h-40 text-muted-foreground text-center px-4">
-        <WifiOff className="w-12 h-12 mb-4" />
-        <h3 className="text-xl font-semibold">Belum Ada Aktivitas</h3>
-        <p>Belum ada staf yang melakukan absensi masuk hari ini.</p>
-    </div>
-  );
 
   return (
     <Card>
@@ -141,8 +118,6 @@ const RecentAttendanceTable = () => {
           </div>
         ) : error ? (
              <div className="flex flex-col items-center justify-center h-40 text-destructive text-center px-4">
-                <AlertCircle className="w-8 h-8 mb-3" />
-                <span className='font-medium'>Terjadi Kesalahan</span>
                 <span>{error}</span>
             </div>
         ) : activities.length > 0 ? (
@@ -151,8 +126,7 @@ const RecentAttendanceTable = () => {
               <TableRow>
                 <TableHead className="w-[50px]">No</TableHead>
                 <TableHead>Nama</TableHead>
-                <TableHead>Jam Masuk</TableHead>
-                <TableHead>Jam Pulang</TableHead>
+                <TableHead>Jam Masuk / Pulang</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Keterangan</TableHead>
               </TableRow>
@@ -165,8 +139,7 @@ const RecentAttendanceTable = () => {
                      <div className="font-medium">{activity.name}</div>
                     <div className="text-sm text-muted-foreground">NIP: {activity.nip}</div>
                   </TableCell>
-                  <TableCell>{activity.checkInTime}</TableCell>
-                  <TableCell>{activity.checkOutTime}</TableCell>
+                  <TableCell>{activity.checkInTime} / {activity.checkOutTime}</TableCell>
                    <TableCell>
                     <Badge variant={activity.status === 'Hadir' ? 'default' : 'secondary'}>
                         {activity.status}
@@ -178,11 +151,15 @@ const RecentAttendanceTable = () => {
             </TableBody>
           </Table>
         ) : (
-          <EmptyState />
+           <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+             <WifiOff className="w-16 h-16 mb-4" />
+            <h3 className="text-xl font-semibold">Menunggu Aktivitas</h3>
+            <p>Belum ada absensi yang tercatat pada sesi ini.</p>
+          </div>
         )}
       </CardContent>
     </Card>
   );
 };
 
-export default RecentAttendanceTable;
+export default TodayActivity;

@@ -111,6 +111,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     };
   }, [firebaseApp, firestore, auth, userAuthState]);
 
+  // Prevent rendering children until the initial user authentication check is complete.
+  if (userAuthState.isUserLoading) {
+    return null;
+  }
+
   return (
     <FirebaseContext.Provider value={contextValue}>
       <FirebaseErrorListener />

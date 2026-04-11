@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -13,20 +13,10 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-
-const formSchema = z.object({
-  name: z.string().min(2, { message: 'Nama harus memiliki setidaknya 2 karakter.' }),
-  email: z.string().email({ message: 'Email tidak valid.' }),
-  role: z.enum(['admin', 'kepala_sekolah', 'guru', 'pegawai', 'siswa']),
-  position: z.string().optional(),
-  password: z.string().optional(),
-}).refine(data => !!data.password || !!data.id, { 
-    message: "Kata sandi diperlukan untuk pengguna baru.",
-    path: ["password"],
-});
 
 interface UserFormSheetProps {
   isOpen: boolean;
@@ -38,6 +28,41 @@ interface UserFormSheetProps {
 export default function UserFormSheet({ isOpen, setIsOpen, editingUser, refreshUsers }: UserFormSheetProps) {
   const firestore = useFirestore();
   const auth = getAuth();
+  const { toast } = useToast();
+
+  const guruPositions = ["PNS", "PPPK", "PPPK Paruh Waktu (PW)", "Honorer"];
+  const pegawaiPositions = ["Honorer", "PPPK", "PW", "PNS"];
+
+  const formSchema = useMemo(() => z.object({
+    name: z.string().min(2, { message: 'Nama harus memiliki setidaknya 2 karakter.' }),
+    email: z.string().email({ message: 'Email tidak valid.' }),
+    role: z.enum(['admin', 'kepala_sekolah', 'guru', 'pegawai', 'siswa']),
+    position: z.string().optional(),
+    password: z.string().optional(),
+  }).superRefine((data, ctx) => {
+    if (!editingUser && (!data.password || data.password.length < 6)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Kata sandi diperlukan (minimal 6 karakter).",
+        path: ["password"],
+      });
+    }
+    if (data.role === 'guru' && data.position && !guruPositions.includes(data.position)) {
+         ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Status tidak valid untuk Guru.",
+            path: ["position"],
+        });
+    }
+    if (data.role === 'pegawai' && data.position && !pegawaiPositions.includes(data.position)) {
+         ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Status tidak valid untuk Pegawai.",
+            path: ["position"],
+        });
+    }
+  }), [editingUser]);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -49,7 +74,8 @@ export default function UserFormSheet({ isOpen, setIsOpen, editingUser, refreshU
     },
   });
 
-  const { reset, formState: { isSubmitting } } = form;
+  const { reset, watch, setValue, formState: { isSubmitting } } = form;
+  const watchedRole = watch('role');
 
   useEffect(() => {
     if (editingUser) {
@@ -68,18 +94,23 @@ export default function UserFormSheet({ isOpen, setIsOpen, editingUser, refreshU
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!firestore) return;
     try {
-        const userData = {
+        const userData: { [key: string]: any } = {
             name: values.name,
             email: values.email,
             role: values.role,
-            position: values.position,
         };
+        
+        if (['guru', 'pegawai'].includes(values.role)) {
+            userData.position = values.position;
+        } else {
+            userData.position = ''; 
+        }
 
       if (editingUser) {
         const userDoc = doc(firestore, 'users', editingUser.id);
         await updateDoc(userDoc, userData);
       } else {
-        if (!values.password) {
+        if (!values.password) { 
             throw new Error("Password is required for a new user.");
         }
         const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
@@ -91,11 +122,21 @@ export default function UserFormSheet({ isOpen, setIsOpen, editingUser, refreshU
       
       refreshUsers();
       setIsOpen(false);
-      alert(`Pengguna berhasil ${editingUser ? 'diperbarui' : 'dibuat'}!`);
+      
+      toast({
+        title: `Pengguna Berhasil ${editingUser ? 'Diperbarui' : 'Dibuat'}`,
+        description: `Data untuk ${values.name} telah disimpan.`,
+      });
 
     } catch (error: any) {
         console.error('Error saving user:', error);
-        alert(`Gagal menyimpan: ${error.message}`);
+        toast({
+            variant: 'destructive',
+            title: 'Gagal Menyimpan Pengguna',
+            description: error.code === 'auth/email-already-in-use' 
+              ? 'Email ini sudah digunakan oleh akun lain.'
+              : error.message || 'Terjadi kesalahan yang tidak diketahui.',
+        });
     }
   };
 
@@ -151,7 +192,7 @@ export default function UserFormSheet({ isOpen, setIsOpen, editingUser, refreshU
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Peran (Role)</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={(value) => { field.onChange(value); setValue('position', ''); }} defaultValue={field.value}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Pilih peran" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     <SelectItem value="guru">Guru</SelectItem>
@@ -165,27 +206,29 @@ export default function UserFormSheet({ isOpen, setIsOpen, editingUser, refreshU
                         </FormItem>
                     )}
                  />
-                <FormField
-                    control={form.control}
-                    name="position"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Status Kepegawaian</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    <SelectItem value="-">-</SelectItem>
-                                    <SelectItem value="PNS">PNS</SelectItem>
-                                    <SelectItem value="PPPK">PPPK</SelectItem>
-                                    <SelectItem value="Honorer">Honorer</FormLabel></SelectItem>
-                                    <SelectItem value="PPPK PW">PPPK PW</SelectItem>
-                                    <SelectItem value="PW">PW</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                {(watchedRole === 'guru' || watchedRole === 'pegawai') && (
+                  <FormField
+                      control={form.control}
+                      name="position"
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>Status Kepegawaian</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value} defaultValue="">
+                                  <FormControl><SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                      {watchedRole === 'guru' && guruPositions.map(pos => (
+                                          <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                                      ))}
+                                      {watchedRole === 'pegawai' && pegawaiPositions.map(pos => (
+                                          <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                                      ))}
+                                  </SelectContent>
+                              </Select>
+                              <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+                )}
                 <SheetFooter className="pt-4">
                     <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Batal</Button>
                     <Button type="submit" disabled={isSubmitting}>

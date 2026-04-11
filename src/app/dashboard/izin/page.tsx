@@ -36,7 +36,7 @@ const leaveRequestSchema = z.object({
   leaveDate: z.enum(['today', 'tomorrow'], {
     required_error: 'Tanggal pengajuan wajib dipilih.',
   }),
-  type: z.enum(['Sakit', 'Izin', 'Dinas'], {
+  type: z.enum(['Sakit', 'Izin', 'Dinas', 'Pulang Cepat'], {
     required_error: 'Jenis pengajuan wajib dipilih.',
   }),
   reason: z.string().min(10, { message: 'Alasan harus diisi minimal 10 karakter.' }),
@@ -69,6 +69,8 @@ export default function IzinPage() {
     const { data: schoolConfig, isLoading: isSchoolConfigLoading } = useDoc(user, schoolConfigRef);
 
     const selectedDateValue = form.watch('leaveDate');
+    const selectedLeaveType = form.watch('type');
+
     const targetDate = useMemo(() => {
         const now = new Date();
         return selectedDateValue === 'tomorrow' ? addDays(now, 1) : now;
@@ -86,6 +88,9 @@ export default function IzinPage() {
         );
     }, [user, firestore, targetDateStart, targetDateEnd]);
     const { data: targetDateAttendance, isLoading: isAttendanceLoading } = useCollection(user, attendanceQuery);
+    
+    const hasCheckedIn = useMemo(() => !!(targetDateAttendance && targetDateAttendance[0]?.checkInTime), [targetDateAttendance]);
+    const hasCheckedOut = useMemo(() => !!(targetDateAttendance && targetDateAttendance[0]?.checkOutTime), [targetDateAttendance]);
 
     const leaveQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -103,22 +108,72 @@ export default function IzinPage() {
         const checkOutStart = setMinutes(setHours(startOfDay(currentTime), hours), minutes);
         return currentTime > checkOutStart;
     }, [currentTime, schoolConfig]);
+    
+    // --- FIX: Logic changed to disable options instead of hiding them ---
+    const availableLeaveTypes = useMemo(() => {
+        const isToday = selectedDateValue === 'today';
+        return [
+            {
+                value: 'Pulang Cepat',
+                label: 'Izin Pulang Cepat',
+                disabled: !isToday || !hasCheckedIn || hasCheckedOut
+            },
+            {
+                value: 'Sakit',
+                label: 'Sakit',
+                disabled: hasCheckedIn || (isToday && isPastCheckoutTime)
+            },
+            {
+                value: 'Izin',
+                label: 'Izin',
+                disabled: hasCheckedIn || (isToday && isPastCheckoutTime)
+            },
+            {
+                value: 'Dinas',
+                label: 'Perjalanan Dinas',
+                disabled: hasCheckedIn
+            },
+        ];
+    }, [selectedDateValue, hasCheckedIn, hasCheckedOut, isPastCheckoutTime]);
+
+    // Reset leave type if it becomes disabled
+    useEffect(() => {
+        const selectedType = form.getValues('type');
+        if (selectedType) {
+            const typeIsDisabled = availableLeaveTypes.find(t => t.value === selectedType)?.disabled;
+            if (typeIsDisabled) {
+                form.resetField('type', { keepError: false });
+            }
+        }
+    }, [availableLeaveTypes, form]);
 
     async function onSubmit(values: z.infer<typeof leaveRequestSchema>) {
         if (!user || !firestore) return;
         
-        if (values.leaveDate === 'today' && isPastCheckoutTime) {
+        if (values.type === 'Pulang Cepat') {
+            if (!hasCheckedIn) {
+                toast({ variant: 'destructive', title: 'Gagal Mengirim Pengajuan', description: 'Anda harus absen masuk terlebih dahulu untuk mengajukan izin pulang cepat.' });
+                return;
+            }
+            if (hasCheckedOut) {
+                toast({ variant: 'destructive', title: 'Gagal Mengirim Pengajuan', description: 'Anda sudah absen pulang. Tidak dapat mengajukan izin pulang cepat.' });
+                return;
+            }
+        } else {
+            if (hasCheckedIn) {
+                toast({ variant: 'destructive', title: 'Gagal Mengirim Pengajuan', description: `Anda sudah melakukan absensi hari ini. Tidak dapat mengajukan izin sakit/dinas.` });
+                return;
+            }
+        }
+
+        if (values.leaveDate === 'today' && isPastCheckoutTime && values.type !== 'Pulang Cepat') {
             toast({ variant: 'destructive', title: 'Waktu Pengajuan Habis', description: 'Anda tidak dapat mengajukan izin untuk hari ini setelah jam kerja berakhir.' });
             return;
         }
 
-        if (targetDateAttendance && targetDateAttendance.length > 0) {
-            toast({ variant: 'destructive', title: 'Gagal Mengirim Pengajuan', description: `Anda sudah melakukan absensi pada ${format(targetDate, 'd MMMM yyyy', { locale: id })}. Tidak dapat mengajukan izin.` });
-            return;
-        }
-
         if (targetDateLeave && targetDateLeave.length > 0) {
-            toast({ variant: 'destructive', title: 'Gagal Mengirim Pengajuan', description: `Anda sudah pernah mengajukan izin untuk ${format(targetDate, 'd MMMM yyyy', { locale: id })}.` });
+            const existingLeaveType = targetDateLeave[0].type;
+            toast({ variant: 'destructive', title: 'Gagal Mengirim Pengajuan', description: `Anda sudah pernah mengajukan '${existingLeaveType}' untuk ${format(targetDate, 'd MMMM yyyy', { locale: id })}.` });
             return;
         }
 
@@ -139,7 +194,7 @@ export default function IzinPage() {
         
         addDoc(leaveCollectionRef, dataToSave)
             .then(() => {
-                toast({ title: 'Pengajuan Terkirim', description: 'Pengajuan izin/sakit Anda telah berhasil dikirim.' });
+                toast({ title: 'Pengajuan Terkirim', description: 'Pengajuan Anda telah berhasil dikirim dan menunggu persetujuan.' });
                 router.push('/dashboard/laporan');
             })
             .catch((error) => {
@@ -157,31 +212,48 @@ export default function IzinPage() {
     const todayFormatted = format(new Date(), 'eeee, d MMMM yyyy', { locale: id });
     const tomorrowFormatted = format(addDays(new Date(), 1), 'eeee, d MMMM yyyy', { locale: id });
 
+    const getSubmitButtonText = () => {
+      if (isChecking) return 'Memeriksa data...';
+      if (selectedLeaveType === 'Pulang Cepat') return 'Ajukan Izin Pulang Cepat';
+      return 'Kirim Pengajuan Ketidakhadiran';
+    }
+
     return (
         <PageWrapper>
             <Card className="w-full">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)}>
                         <CardHeader>
-                            <CardTitle>Formulir Pengajuan Izin/Sakit</CardTitle>
-                            <CardDescription>Isi formulir di bawah ini untuk mengajukan ketidakhadiran. Anda hanya dapat mengajukan untuk hari ini atau besok.</CardDescription>
+                            <CardTitle>Formulir Pengajuan Izin</CardTitle>
+                            <CardDescription>Isi formulir untuk mengajukan ketidakhadiran atau izin pulang cepat. Pengajuan akan ditinjau oleh Kepala Sekolah.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            {isTodayAndPastCheckout && (
+                             {isTodayAndPastCheckout && !hasCheckedIn && (
                                 <Alert variant="destructive">
                                     <Info className="h-4 w-4" />
                                     <AlertTitle>Waktu Pengajuan Izin Hari Ini Telah Berakhir</AlertTitle>
                                     <AlertDescription>
-                                        Anda tidak dapat memilih "Hari Ini" karena telah melewati jam pulang kerja. Silakan pilih "Besok" untuk melanjutkan.
+                                        Anda tidak dapat lagi mengajukan Izin/Sakit/Dinas untuk hari ini karena telah melewati jam kerja. Silakan pilih "Besok".
                                     </AlertDescription>
                                 </Alert>
                             )}
+                            
+                            {!hasCheckedIn && selectedDateValue === 'today' && (
+                                <Alert variant="default">
+                                    <Info className="h-4 w-4" />
+                                    <AlertTitle>Info: Izin Pulang Cepat</AlertTitle>
+                                    <AlertDescription>
+                                        Opsi "Izin Pulang Cepat" akan aktif setelah Anda melakukan absensi masuk hari ini.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+
                             <FormField
                                 control={form.control}
                                 name="leaveDate"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Pilih Tanggal Izin</FormLabel>
+                                        <FormLabel>Pilih Tanggal Pengajuan</FormLabel>
                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                             <FormControl>
                                                 <SelectTrigger>
@@ -203,16 +275,19 @@ export default function IzinPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Jenis Pengajuan</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Pilih jenis pengajuan" />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                <SelectItem value="Sakit">Sakit</SelectItem>
-                                                <SelectItem value="Izin">Izin</SelectItem>
-                                                <SelectItem value="Dinas">Perjalanan Dinas</SelectItem>
+                                                {/* --- FIX: Render items with disabled prop --- */}
+                                                {availableLeaveTypes.map(type => (
+                                                    <SelectItem key={type.value} value={type.value} disabled={type.disabled}>
+                                                        {type.label}
+                                                    </SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />
@@ -226,7 +301,7 @@ export default function IzinPage() {
                                     <FormItem>
                                         <FormLabel>Alasan</FormLabel>
                                         <FormControl>
-                                            <Textarea placeholder="Jelaskan alasan Anda tidak dapat hadir..." {...field} />
+                                            <Textarea placeholder="Jelaskan alasan Anda..." {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -239,7 +314,7 @@ export default function IzinPage() {
                                     <FormItem>
                                         <FormLabel>Link Bukti (Opsional)</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="https://... (contoh: link Google Drive surat dokter)" {...field} />
+                                            <Input placeholder="https://... (contoh: link surat dokter)" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -247,9 +322,9 @@ export default function IzinPage() {
                             />
                         </CardContent>
                         <CardFooter className="border-t pt-6">
-                            <Button type="submit" disabled={isSubmitting || isChecking || isTodayAndPastCheckout}>
+                            <Button type="submit" disabled={isSubmitting || isChecking}>
                                {(isSubmitting || isChecking) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                               {isChecking ? 'Memeriksa data...' : 'Kirim Pengajuan'}
+                               {getSubmitButtonText()}
                             </Button>
                         </CardFooter>
                     </form>

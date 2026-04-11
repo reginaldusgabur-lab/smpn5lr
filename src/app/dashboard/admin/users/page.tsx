@@ -101,6 +101,7 @@ type UserData = {
     nisn?: string | null;
     position?: string | null;
     sequenceNumber?: number | null;
+    skNumber?: string | null; 
 };
 
 type TableProps = {
@@ -119,16 +120,26 @@ const roleConfig: { [key in Role]: { label: string; placeholder: string; icon: R
   admin: { label: 'Email', placeholder: 'admin.baru@sekolah.sch.id', icon: <ShieldCheck className="h-5 w-5" />, title: 'Admin' }
 };
 
+const guruPositions = ["PNS", "PPPK", "PPPK Paruh Waktu (PW)", "Honorer"];
+const pegawaiPositions = ["Honorer", "PPPK", "PW", "PNS"];
+
+const sequenceNumberValidation = (data: { role: string; sequenceNumber?: string }) => {
+    if ((data.role === 'guru' || data.role === 'kepala_sekolah') && data.sequenceNumber) {
+        // Allow only numeric input for sequenceNumber
+        return /^\d+$/.test(data.sequenceNumber);
+    }
+    return true;
+};
+
 const addUserSchema = z
   .object({
     name: z.string().min(1, { message: 'Nama lengkap wajib diisi' }),
     email: z.string().email({ message: 'Alamat email tidak valid.' }),
-    role: z.enum(['guru', 'pegawai', 'kepala_sekolah', 'admin'], {
-      required_error: 'Peran wajib dipilih',
-    }),
+    role: z.enum(['guru', 'pegawai', 'kepala_sekolah', 'admin'], { required_error: 'Peran wajib dipilih' }),
     identifier: z.string().optional(),
     position: z.string().optional(),
     sequenceNumber: z.string().optional(),
+    skNumber: z.string().optional(),
     password: z.string().min(6, { message: 'Password minimal harus 6 karakter.' }),
     confirmPassword: z.string(),
   })
@@ -136,38 +147,24 @@ const addUserSchema = z
     message: 'Konfirmasi password tidak cocok',
     path: ['confirmPassword'],
   })
-  .refine((data) => {
-    if (data.role === 'guru' || data.role === 'kepala_sekolah') {
-        if (!data.sequenceNumber) return false;
-        return /^\d+$/.test(data.sequenceNumber);
-    }
-    return true;
-  }, {
-    message: 'No. urut wajib diisi dengan angka.',
+  .refine(sequenceNumberValidation, {
+    message: 'No. urut harus berupa angka.',
     path: ['sequenceNumber'],
   });
 
 const editUserSchema = z
   .object({
     name: z.string().min(1, { message: 'Nama lengkap wajib diisi' }),
-    role: z.enum(['guru', 'pegawai', 'kepala_sekolah', 'admin'], {
-      required_error: 'Peran wajib dipilih',
-    }),
+    role: z.enum(['guru', 'pegawai', 'kepala_sekolah', 'admin'], { required_error: 'Peran wajib dipilih' }),
     identifier: z.string().optional(),
     position: z.string().optional(),
     sequenceNumber: z.string().optional(),
+    skNumber: z.string().optional(),
   })
-  .refine((data) => {
-    if (data.role === 'guru' || data.role === 'kepala_sekolah') {
-        if (!data.sequenceNumber) return false;
-        return /^\d+$/.test(data.sequenceNumber);
-    }
-    return true;
-  }, {
-    message: 'No. urut wajib diisi dengan angka.',
+  .refine(sequenceNumberValidation, {
+    message: 'No. urut harus berupa angka.',
     path: ['sequenceNumber'],
   });
-
 
 // --- UI Components ---
 const TableSkeleton = ({ cols }: { cols: number }) => (
@@ -199,7 +196,7 @@ const UserTable = ({ data, canManage, onEdit, onToggleStatus, onDelete }: TableP
             <Table className="min-w-[1024px]">
                 <TableHeader>
                     <TableRow>
-                        <TableHead className="w-[80px] text-center whitespace-nowrap">No. Urut</TableHead>
+                        <TableHead className="w-[120px] text-center whitespace-nowrap">Nomor Urut</TableHead>
                         <TableHead>Nama</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Peran</TableHead>
@@ -213,7 +210,7 @@ const UserTable = ({ data, canManage, onEdit, onToggleStatus, onDelete }: TableP
                     {data.length > 0 ? (
                         data.map((user) => (
                             <TableRow key={user.id}>
-                                <TableCell className="text-center font-medium">{user.sequenceNumber ?? '-'}</TableCell>
+                                <TableCell className="text-center font-medium">{(user.role === 'pegawai' ? user.skNumber : user.sequenceNumber) ?? '-'}</TableCell>
                                 <TableCell className="font-medium whitespace-nowrap">{user.name}</TableCell>
                                 <TableCell>{user.email || '-'}</TableCell>
                                 <TableCell><Badge variant="secondary">{roleConfig[user.role]?.title || user.role}</Badge></TableCell>
@@ -338,17 +335,27 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
         }
 
         main.sort((a, b) => {
-            const seqA = a.sequenceNumber;
-            const seqB = b.sequenceNumber;
-            const hasSeqA = seqA != null;
-            const hasSeqB = seqB != null;
+            const getSortValue = (user: UserData): string | number | null => {
+                if (user.role === 'pegawai') return user.skNumber;
+                if (user.role === 'guru' || user.role === 'kepala_sekolah') return user.sequenceNumber;
+                return null;
+            };
 
-            if (hasSeqA && !hasSeqB) return -1;
-            if (!hasSeqA && hasSeqB) return 1;
-            if (hasSeqA && hasSeqB) {
-                if (seqA < seqB) return -1;
-                if (seqA > seqB) return 1;
+            const valA = getSortValue(a);
+            const valB = getSortValue(b);
+
+            const hasValA = valA != null && valA !== '';
+            const hasValB = valB != null && valB !== '';
+
+            if (hasValA && !hasValB) return -1;
+            if (!hasValA && hasValB) return 1;
+            if (hasValA && hasValB) {
+                const strA = String(valA);
+                const strB = String(valB);
+                // Natural sort for numbers inside strings
+                return strA.localeCompare(strB, undefined, { numeric: true });
             }
+
             return a.name.localeCompare(b.name);
         });
 
@@ -378,12 +385,12 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
 
     const addForm = useForm<z.infer<typeof addUserSchema>>({
         resolver: zodResolver(addUserSchema),
-        defaultValues: { role: 'guru', name: '', email: '', identifier: '', position: '', sequenceNumber: '', password: '', confirmPassword: '' },
+        defaultValues: { role: 'guru', name: '', email: '', identifier: '', position: '', sequenceNumber: '', skNumber: '', password: '', confirmPassword: '' },
     });
 
     const editForm = useForm<z.infer<typeof editUserSchema>>({
         resolver: zodResolver(editUserSchema),
-        defaultValues: { role: 'guru', name: '', identifier: '', position: '', sequenceNumber: '' }
+        defaultValues: { role: 'guru', name: '', identifier: '', position: '', sequenceNumber: '', skNumber: '' }
     });
 
     const selectedRoleForAdd = addForm.watch('role');
@@ -395,6 +402,15 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
             (u.role === 'guru' || u.role === 'kepala_sekolah') &&
             u.id !== currentUserId &&
             String(u.sequenceNumber) === sequenceNumber
+        );
+    }
+
+    const isSkNumberTaken = (skNumber: string, currentUserId: string | null = null) => {
+        if (!usersData || !skNumber) return false;
+        return usersData.some(u => 
+            u.role === 'pegawai' && 
+            u.id !== currentUserId && 
+            u.skNumber === skNumber
         );
     }
 
@@ -410,7 +426,12 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
         }
 
         if ((values.role === 'guru' || values.role === 'kepala_sekolah') && values.sequenceNumber && isSequenceNumberTaken(values.sequenceNumber)) {
-            toast({ variant: 'destructive', title: 'Nomor Urut Terpakai', description: 'Nomor Urut SK ini sudah digunakan oleh pengguna lain.' });
+            toast({ variant: 'destructive', title: 'Nomor Urut Terpakai', description: 'Nomor Urut ini sudah digunakan oleh pengguna lain.' });
+            return;
+        }
+
+        if (values.role === 'pegawai' && values.skNumber && isSkNumberTaken(values.skNumber)) {
+            toast({ variant: 'destructive', title: 'Nomor SK Terpakai', description: 'Nomor SK ini sudah digunakan oleh pegawai lain.' });
             return;
         }
 
@@ -436,6 +457,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                 nip: null,
                 position: null,
                 sequenceNumber: null,
+                skNumber: null,
             };
             
             if (values.role === 'guru' || values.role === 'kepala_sekolah') {
@@ -445,6 +467,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
             } else if (values.role === 'pegawai') {
                 userDoc.nip = values.identifier?.trim() || null;
                 userDoc.position = values.position || null;
+                userDoc.skNumber = values.skNumber?.trim() || null;
             }
 
             await setDocumentNonBlocking(doc(firestore, "users", newUser.uid), userDoc, {});
@@ -473,6 +496,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
             identifier: user.nip || '',
             position: user.position || '',
             sequenceNumber: user.sequenceNumber?.toString() || '',
+            skNumber: user.skNumber || '',
         });
         setIsEditUserDialogOpen(true);
     };
@@ -486,7 +510,12 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
         }
         
         if ((values.role === 'guru' || values.role === 'kepala_sekolah') && values.sequenceNumber && isSequenceNumberTaken(values.sequenceNumber, selectedUser.id)) {
-            toast({ variant: 'destructive', title: 'Nomor Urut Terpakai', description: 'Nomor Urut SK ini sudah digunakan oleh pengguna lain.' });
+            toast({ variant: 'destructive', title: 'Nomor Urut Terpakai', description: 'Nomor Urut ini sudah digunakan oleh pengguna lain.' });
+            return;
+        }
+
+        if (values.role === 'pegawai' && values.skNumber && isSkNumberTaken(values.skNumber, selectedUser.id)) {
+            toast({ variant: 'destructive', title: 'Nomor SK Terpakai', description: 'Nomor SK ini sudah digunakan oleh pegawai lain.' });
             return;
         }
 
@@ -497,6 +526,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
         dataToUpdate.nip = null;
         dataToUpdate.position = null;
         dataToUpdate.sequenceNumber = null;
+        dataToUpdate.skNumber = null;
 
         if (values.role === 'guru' || values.role === 'kepala_sekolah') {
             dataToUpdate.nip = values.identifier?.trim() || null;
@@ -505,6 +535,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
         } else if (values.role === 'pegawai') {
             dataToUpdate.nip = values.identifier?.trim() || null;
             dataToUpdate.position = values.position || null;
+            dataToUpdate.skNumber = values.skNumber?.trim() || null;
         }
 
         try {
@@ -587,7 +618,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                                     <Form {...addForm}>
                                         <form onSubmit={addForm.handleSubmit(handleCreateUser)}>
                                             <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto pr-4">
-                                                <FormField control={addForm.control} name="role" render={({ field }) => (<FormItem><FormLabel>Peran Pengguna</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                                <FormField control={addForm.control} name="role" render={({ field }) => (<FormItem><FormLabel>Peran Pengguna</FormLabel><FormControl><RadioGroup onValueChange={(value) => { field.onChange(value); addForm.setValue('position', ''); }} value={field.value} className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                                     {Object.entries(roleConfig).map(([role, config]) => {
                                                         const isHeadmasterRole = role === 'kepala_sekolah';
                                                         const isDisabled = isHeadmasterRole && headmasterExists;
@@ -598,10 +629,34 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                                                 </RadioGroup></FormControl></FormItem>)} />
                                                 <FormField control={addForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nama Lengkap</FormLabel><FormControl><Input placeholder="Nama lengkap dengan gelar..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                                 <FormField control={addForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="email.aktif@contoh.com" {...field} /></FormControl><FormDescription className="text-xs">Pengguna akan menerima email verifikasi.</FormDescription><FormMessage /></FormItem>)}/>
-                                                {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah') && <FormField control={addForm.control} name="sequenceNumber" render={({ field }) => (<FormItem><FormLabel>Nomor Urut SK</FormLabel><FormControl><Input type="number" placeholder="Nomor untuk pengurutan daftar" {...field} /></FormControl><FormDescription className="text-xs">Sesuai nomor urut pada SK.</FormDescription><FormMessage /></FormItem>)}/>}                                                
+                                                {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah') && <FormField control={addForm.control} name="sequenceNumber" render={({ field }) => (<FormItem><FormLabel>Nomor Urut</FormLabel><FormControl><Input placeholder="Nomor untuk pengurutan daftar" {...field} /></FormControl><FormDescription className="text-xs">Sesuai nomor urut pada SK.</FormDescription><FormMessage /></FormItem>)}/>}                                                
+                                                {selectedRoleForAdd === 'pegawai' && <FormField control={addForm.control} name="skNumber" render={({ field }) => (<FormItem><FormLabel>Nomor Urut (dari SK)</FormLabel><FormControl><Input placeholder="Masukkan nomor urut dari SK" {...field} /></FormControl><FormMessage /></FormItem>)}/>}
                                                 {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah' || selectedRoleForAdd === 'pegawai') && <FormField control={addForm.control} name="identifier" render={({ field }) => (<FormItem><FormLabel>{roleConfig[selectedRoleForAdd as Role]?.label} <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><Input placeholder={roleConfig[selectedRoleForAdd as Role]?.placeholder} {...field} /></FormControl><FormMessage /></FormItem>)}/>}
-                                                {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah') && <FormField control={addForm.control} name="position" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex items-center space-x-4"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PNS" /></FormControl><FormLabel className="font-normal">PNS</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>}
-                                                {selectedRoleForAdd === 'pegawai' && <FormField control={addForm.control} name="position" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-wrap items-center gap-x-4 gap-y-2"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="Honorer" /></FormControl><FormLabel className="font-normal">Honorer</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PW" /></FormControl><FormLabel className="font-normal">PW</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>}
+                                                
+                                                {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah' || selectedRoleForAdd === 'pegawai') && (
+                                                    <FormField
+                                                        control={addForm.control}
+                                                        name="position"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel>
+                                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                                    <FormControl><SelectTrigger><SelectValue placeholder="Pilih status..." /></SelectTrigger></FormControl>
+                                                                    <SelectContent>
+                                                                        {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah') && guruPositions.map(pos => (
+                                                                            <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                                                                        ))}
+                                                                        {selectedRoleForAdd === 'pegawai' && pegawaiPositions.map(pos => (
+                                                                            <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                )}
+
                                                 <FormField control={addForm.control} name="password" render={({ field }) => (<FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Minimal 6 karakter" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                                 <FormField control={addForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>Konfirmasi Password</FormLabel><FormControl><Input type="password" placeholder="Ulangi password di atas" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                             </div>
@@ -640,7 +695,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                         </div>
                     </div>
                     <div className="mt-4">
-                        {isUsersLoading ? <TableSkeleton cols={8} /> : <UserTable data={filteredUserData} canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />}
+                        {isUsersLoading ? <TableSkeleton cols={canManage ? 8 : 7} /> : <UserTable data={filteredUserData} canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />}
                     </div>
                 </CardContent>
             </Card>
@@ -659,7 +714,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                             </div>
                         </div>
                         <div className="mt-4">
-                            {isUsersLoading ? <TableSkeleton cols={5} /> : <AdminTable data={filteredAdminData} canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />}
+                            {isUsersLoading ? <TableSkeleton cols={canManage ? 5 : 4} /> : <AdminTable data={filteredAdminData} canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />}
                         </div>
                     </CardContent>
                 </Card>
@@ -673,7 +728,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                             <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto pr-4">
                                 <div className="space-y-2"><Label htmlFor="edit-email">Email</Label><Input id="edit-email" value={selectedUser?.email || ''} readOnly disabled /></div>
                                 <FormField control={editForm.control} name="role" render={({ field }) => (<FormItem><FormLabel>Peran Pengguna</FormLabel><FormControl>
-                                    <RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-2 sm:grid-cols-4 gap-2" disabled={selectedUser?.email === 'admin@sekolah.sch.id'}>
+                                    <RadioGroup onValueChange={(value) => { field.onChange(value); editForm.setValue('position', ''); }} value={field.value} className="grid grid-cols-2 sm:grid-cols-4 gap-2" disabled={selectedUser?.email === 'admin@sekolah.sch.id'}>
                                     {Object.entries(roleConfig).map(([role, config]) => {
                                         const isHeadmasterRole = role === 'kepala_sekolah';
                                         const isDisabled = isHeadmasterRole && headmasterExists && selectedUser?.role !== 'kepala_sekolah';
@@ -683,10 +738,34 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                                     })}
                                     </RadioGroup></FormControl>{selectedUser?.email === 'admin@sekolah.sch.id' && <FormDescription className="text-xs">Peran admin utama tidak dapat diubah.</FormDescription>}</FormItem>)}/>
                                 <FormField control={editForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nama Lengkap (dengan gelar)</FormLabel><FormControl><Input placeholder="Contoh: Budi Santoso, S.Pd" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                {(selectedRoleForEdit === 'guru' || selectedRoleForEdit === 'kepala_sekolah') && <FormField control={editForm.control} name="sequenceNumber" render={({ field }) => (<FormItem><FormLabel>Nomor Urut SK</FormLabel><FormControl><Input type="number" placeholder="Nomor untuk pengurutan daftar" {...field} /></FormControl><FormDescription className="text-xs">Sesuai nomor urut pada SK.</FormDescription><FormMessage /></FormItem>)}/>}
+                                {(selectedRoleForEdit === 'guru' || selectedRoleForEdit === 'kepala_sekolah') && <FormField control={editForm.control} name="sequenceNumber" render={({ field }) => (<FormItem><FormLabel>Nomor Urut</FormLabel><FormControl><Input placeholder="Nomor untuk pengurutan daftar" {...field} /></FormControl><FormDescription className="text-xs">Sesuai nomor urut pada SK.</FormDescription><FormMessage /></FormItem>)}/>}
+                                {selectedRoleForEdit === 'pegawai' && <FormField control={editForm.control} name="skNumber" render={({ field }) => (<FormItem><FormLabel>Nomor Urut (dari SK)</FormLabel><FormControl><Input placeholder="Masukkan nomor urut dari SK" {...field} /></FormControl><FormMessage /></FormItem>)}/>}
                                 {(selectedRoleForEdit === 'guru' || selectedRoleForEdit === 'kepala_sekolah' || selectedRoleForEdit === 'pegawai') && <FormField control={editForm.control} name="identifier" render={({ field }) => (<FormItem><FormLabel>{roleConfig[selectedRoleForEdit as Role]?.label || "Identifier"}<span className="text-muted-foreground ml-1">(Opsional)</span></FormLabel><FormControl><Input placeholder={roleConfig[selectedRoleForEdit as Role]?.placeholder} {...field} /></FormControl><FormMessage /></FormItem>)}/>}
-                                {(selectedRoleForEdit === 'guru' || selectedRoleForEdit === 'kepala_sekolah') && <FormField control={editForm.control} name="position" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex items-center space-x-4"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PNS" /></FormControl><FormLabel className="font-normal">PNS</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>}
-                                {selectedRoleForEdit === 'pegawai' && <FormField control={editForm.control} name="position" render={({ field }) => (<FormItem className="space-y-3"><FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-wrap items-center gap-x-4 gap-y-2"><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="Honorer" /></FormControl><FormLabel className="font-normal">Honorer</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PPPK" /></FormControl><FormLabel className="font-normal">PPPK</FormLabel></FormItem><FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="PW" /></FormControl><FormLabel className="font-normal">PW</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)}/>}
+                                
+                                {(selectedRoleForEdit === 'guru' || selectedRoleForEdit === 'kepala_sekolah' || selectedRoleForEdit === 'pegawai') && (
+                                     <FormField
+                                        control={editForm.control}
+                                        name="position"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                                                    <FormControl><SelectTrigger><SelectValue placeholder="Pilih status..." /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        {(selectedRoleForEdit === 'guru' || selectedRoleForEdit === 'kepala_sekolah') && guruPositions.map(pos => (
+                                                            <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                                                        ))}
+                                                        {selectedRoleForEdit === 'pegawai' && pegawaiPositions.map(pos => (
+                                                            <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
+
                             </div>
                             <DialogFooter><Button type="submit" className="w-full" disabled={isSaving}>{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}<span>Simpan Perubahan</span></Button></DialogFooter>
                         </form>

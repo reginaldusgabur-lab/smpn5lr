@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+'use client';
+
+import { useState, useEffect, useMemo } from 'react';
 import { useFirestore } from '@/firebase';
-import { doc, getDoc, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, writeBatch, Timestamp } from 'firebase/firestore';
 import { fetchUserMonthlyReportData } from '@/lib/attendance';
 import { 
     Dialog, 
@@ -15,39 +17,74 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { format, parseISO, isValid } from 'date-fns';
+import { id } from 'date-fns/locale';
+
+const getRandomTime = (baseDate: Date, startTimeStr: string, endTimeStr: string): Date => {
+    const [startH, startM] = startTimeStr.split(':').map(Number);
+    const [endH, endM] = endTimeStr.split(':').map(Number);
+    const startDate = new Date(baseDate.getTime());
+    startDate.setHours(startH, startM, 0, 0);
+    const endDate = new Date(baseDate.getTime());
+    endDate.setHours(endH, endM, 0, 0);
+    if (endDate < startDate) {
+        endDate.setDate(endDate.getDate() + 1);
+    }
+    const randomTimestamp = startDate.getTime() + Math.random() * (endDate.getTime() - startDate.getTime());
+    const randomDate = new Date(randomTimestamp);
+    randomDate.setSeconds(Math.floor(Math.random() * 60));
+    return randomDate;
+};
+
+// Helper to convert various date types to a JS Date object
+const toDate = (dateInput: any): Date | null => {
+    if (!dateInput) return null;
+    if (dateInput instanceof Date) return dateInput;
+    if (typeof dateInput === 'string') {
+        const parsed = parseISO(dateInput);
+        if (isValid(parsed)) return parsed;
+    }
+    if (typeof dateInput.toDate === 'function') { // Firebase Timestamp
+        return dateInput.toDate();
+    }
+    return null;
+};
 
 export default function EditAttendanceModal({ user, month, isOpen, onClose, currentUser }) {
     const firestore = useFirestore();
-    const [absentDays, setAbsentDays] = useState<any[]>([]);
+    const [problematicDays, setProblematicDays] = useState<any[]>([]);
     const [selectedDays, setSelectedDays] = useState<{ [key: string]: boolean }>({});
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [schoolConfig, setSchoolConfig] = useState<any>(null);
 
     useEffect(() => {
         if (!isOpen || !firestore || !user) return;
-
-        const getAbsentDays = async () => {
+        const getProblematicDays = async () => {
             setIsLoading(true);
             setError(null);
             try {
                 const schoolConfigRef = doc(firestore, 'schoolConfig', 'default');
                 const schoolConfigSnap = await getDoc(schoolConfigRef);
-                const schoolConfig = schoolConfigSnap.data() || {};
-
-                const reportData = await fetchUserMonthlyReportData(firestore, user.uid, month, schoolConfig);
-                const alpaDays = reportData.filter(d => d.status === 'Alpa' && d.description === 'Tidak Ada Keterangan');
-                setAbsentDays(alpaDays);
+                const config = schoolConfigSnap.data() || {};
+                setSchoolConfig(config);
+                const reportData = await fetchUserMonthlyReportData(firestore, user.uid, month, config);
+                const problems = reportData.filter(d => 
+                    (d.status === 'Alpa' && d.description === 'Tidak Ada Keterangan') || 
+                    (d.description === 'Tidak Absen Pulang')
+                );
+                setProblematicDays(problems);
                 setSelectedDays({});
             } catch (err) {
-                console.error("Error fetching absent days:", err);
-                setError('Gagal memuat data hari alpa. Silakan coba lagi.');
+                console.error("Error fetching problematic days:", err);
+                setError('Gagal memuat data kehadiran. Silakan coba lagi.');
             } finally {
                 setIsLoading(false);
             }
         };
-
-        getAbsentDays();
+        getProblematicDays();
     }, [isOpen, firestore, user, month]);
 
     const handleSelectDay = (dayId: string) => {
@@ -56,14 +93,13 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
 
     const handleSaveChanges = async () => {
         const selectedIds = Object.keys(selectedDays).filter(id => selectedDays[id]);
-        if (selectedIds.length === 0) {
-            setError("Tidak ada tanggal yang dipilih.");
-            return;
-        }
+        if (selectedIds.length === 0) return setError("Tidak ada tanggal yang dipilih.");
+        if (!currentUser?.uid) return setError("Gagal mengidentifikasi admin. Silakan muat ulang halaman.");
+        if (!schoolConfig) return setError("Konfigurasi sekolah tidak termuat. Tidak dapat memproses.");
 
-        if (!currentUser || !currentUser.uid) {
-            setError("Gagal mengidentifikasi admin (ID pengguna tidak ditemukan). Silakan muat ulang halaman dan coba lagi.");
-            return;
+        const { checkInEndTime, checkOutStartTime, checkOutEndTime } = schoolConfig;
+        if (!checkInEndTime || !checkOutStartTime || !checkOutEndTime) {
+            return setError("Konfigurasi jam masuk/pulang tidak lengkap. Harap periksa pengaturan sekolah.");
         }
 
         setIsSaving(true);
@@ -71,85 +107,102 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
 
         try {
             const batch = writeBatch(firestore);
-            const daysToUpdate = absentDays.filter(day => selectedDays[day.id]);
+            const daysToUpdate = problematicDays.filter(day => selectedDays[day.id]);
 
-            daysToUpdate.forEach(day => {
-                const [year, month, d] = day.id.split('-').map(Number);
+            for (const day of daysToUpdate) {
+                const recordDate = parseISO(day.date);
+                if (day.status === 'Alpa') {
+                    const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', day.id);
+                    const checkInTime = getRandomTime(recordDate, '07:15', checkInEndTime);
+                    let checkOutTime = getRandomTime(recordDate, checkOutStartTime, checkOutEndTime);
+                    if (checkOutTime.getTime() <= checkInTime.getTime()) {
+                        checkOutTime = new Date(checkInTime.getTime() + (6 * 60 * 60 * 1000));
+                    }
+                    batch.set(recordRef, { userId: user.uid, date: day.id, checkInTime: Timestamp.fromDate(checkInTime), checkOutTime: Timestamp.fromDate(checkOutTime), checkInLatitude: null, checkInLongitude: null, checkOutLatitude: null, checkOutLongitude: null, updatedBy: currentUser.uid, updatedAt: Timestamp.now(), reasonForUpdate: 'Input oleh Admin (Alpa)', manualEntry: true });
+                } 
+                else if (day.description === 'Tidak Absen Pulang') {
+                    const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', day.id);
+                    
+                    // --- ROOT CAUSE FIX: Correctly convert Timestamp to Date before comparison ---
+                    const originalCheckInTime = toDate(day.checkInTime);
 
-                // Set a default time, e.g., 07:00 for check-in and 13:00 for check-out
-                const checkInTime = new Date(year, month - 1, d, 7, 0, 0);
-                const checkOutTime = new Date(year, month - 1, d, 13, 0, 0);
+                    if (!originalCheckInTime || !isValid(originalCheckInTime)) {
+                        console.warn(`Skipping update for day ${day.id} due to invalid original check-in time.`);
+                        continue; // Skip this update if the original date is invalid
+                    }
 
-                const newRecordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', day.id);
-                batch.set(newRecordRef, {
-                    checkInTime,
-                    checkOutTime,
-                    checkInLocation: { latitude: 0, longitude: 0 },
-                    checkOutLocation: { latitude: 0, longitude: 0 },
-                    status: 'Hadir', // This is implicit but good to be clear
-                    updatedBy: currentUser.uid, 
-                    updatedAt: new Date(), 
-                    reasonForUpdate: 'Input oleh Admin',
-                    manualEntry: true // <-- THE NEW FLAG IS ADDED HERE
-                });
-            });
+                    let checkOutTime = getRandomTime(recordDate, checkOutStartTime, checkOutEndTime);
+                    
+                    if (checkOutTime.getTime() <= originalCheckInTime.getTime()) {
+                         checkOutTime = new Date(originalCheckInTime.getTime() + (4 * 60 * 60 * 1000));
+                    }
+                    
+                    batch.update(recordRef, { checkOutTime: Timestamp.fromDate(checkOutTime), updatedBy: currentUser.uid, updatedAt: Timestamp.now(), reasonForUpdate: 'Input oleh Admin (Absen Pulang)', manualEntry: true });
+                }
+            }
 
             await batch.commit();
-            onClose(); 
+            onClose(); // Close the modal, which triggers the parent page to refetch.
+
         } catch (err) {
             console.error("Error saving attendance:", err);
             setError("Gagal menyimpan perubahan. Silakan coba lagi.");
         } finally {
-            setIsSaving(false);
+            setIsSaving(false); // Ensure saving state is always reset
         }
     };
 
+    const hasSelection = useMemo(() => Object.values(selectedDays).some(Boolean), [selectedDays]);
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent>
+            <DialogContent className="max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Ubah Kehadiran (Alpa)</DialogTitle>
+                    <DialogTitle>Perbaiki Kehadiran</DialogTitle>
                     {error && (
                         <Alert variant="destructive" className="mt-4">
-                            <AlertTitle>Error</AlertTitle>
+                            <AlertTitle>Terjadi Kesalahan</AlertTitle>
                             <AlertDescription>{error}</AlertDescription>
                         </Alert>
                     )}
                 </DialogHeader>
 
                 {isLoading ? (
-                    <div className="py-4">
-                        <Skeleton className="h-4 w-full mb-2" />
-                        <Skeleton className="h-4 w-full mb-2" />
-                        <Skeleton className="h-4 w-3/4" />
+                    <div className="py-4 space-y-2">
+                        <Skeleton className="h-8 w-full" />
+                        <Skeleton className="h-8 w-full" />
+                        <Skeleton className="h-8 w-3/4" />
                     </div>
-                ) : absentDays.length > 0 ? (
-                    <div className="flex flex-col gap-2 py-4">
-                        <DialogDescription>
-                           Pilih tanggal alpa yang ingin diubah menjadi "Hadir":
+                ) : problematicDays.length > 0 ? (
+                    <div className="py-4">
+                        <DialogDescription className="mb-4">
+                           Pilih data untuk diperbaiki. Waktu yang kosong akan diisi secara acak sesuai rentang jam kerja yang berlaku.
                         </DialogDescription>
-                        {absentDays.map(day => (
-                            <div key={day.id} className="flex items-center gap-2 pt-2">
-                                <Checkbox 
-                                    id={day.id} 
-                                    checked={!!selectedDays[day.id]}
-                                    onCheckedChange={() => handleSelectDay(day.id)}
-                                />
-                                <label htmlFor={day.id} className="cursor-pointer">
-                                    {day.dateString} 
-                                </label>
-                            </div>
-                        ))}
+                        <div className="max-h-[300px] overflow-y-auto -mr-2 pr-2 space-y-1">
+                            {problematicDays.map(day => (
+                                <div 
+                                    key={day.id} 
+                                    className="flex items-center gap-3 p-2 rounded-md transition-colors hover:bg-muted/50 cursor-pointer"
+                                    onClick={() => handleSelectDay(day.id)}
+                                >
+                                    <Checkbox id={day.id} checked={!!selectedDays[day.id]} className="w-5 h-5 shrink-0" />
+                                    <label htmlFor={day.id} className="text-sm font-medium cursor-pointer grow">
+                                        {format(parseISO(day.date), 'eeee, dd MMMM yyyy', { locale: id })}
+                                    </label>
+                                    <Badge variant={day.status === 'Alpa' ? "destructive" : "secondary"} className="whitespace-nowrap">
+                                        {day.status === 'Alpa' ? 'Alpa' : 'Tidak Absen Pulang'}
+                                    </Badge>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 ) : (
-                    <p className="py-4">Tidak ada data alpa yang bisa diubah pada periode ini.</p>
+                    <p className="py-8 text-center text-sm text-muted-foreground">Tidak ada data yang perlu diperbaiki pada periode ini.</p>
                 )}
                 
-                <DialogFooter>
-                    <DialogClose asChild>
-                        <Button variant="ghost" disabled={isSaving}>Batal</Button>
-                    </DialogClose>
-                    <Button onClick={handleSaveChanges} disabled={isLoading || isSaving || absentDays.length === 0}>
+                <DialogFooter className="pt-4">
+                    <DialogClose asChild><Button variant="ghost" disabled={isSaving}>Batal</Button></DialogClose>
+                    <Button onClick={handleSaveChanges} disabled={isLoading || isSaving || problematicDays.length === 0 || !hasSelection}>
                         {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
                     </Button>
                 </DialogFooter>

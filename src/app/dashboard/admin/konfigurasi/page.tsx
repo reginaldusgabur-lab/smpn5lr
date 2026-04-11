@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -239,7 +238,6 @@ export default function KonfigurasiAbsenPage() {
 
   // Form State
   const [holidayMode, setHolidayMode] = useState(false);
-  
   const [offDays, setOffDays] = useState<number[]>([]);
 
   const [useLocationValidation, setUseLocationValidation] = useState(true);
@@ -249,6 +247,7 @@ export default function KonfigurasiAbsenPage() {
   const [radius, setRadius] = useState(100);
   const [checkInStart, setCheckInStart] = useState('06:00');
   const [checkInEnd, setCheckInEnd] = useState('08:00');
+  const [lateTolerance, setLateTolerance] = useState(15);
   const [checkOutStart, setCheckOutStart] = useState('14:00');
   const [checkOutEnd, setCheckOutEnd] = useState('16:00');
   const [qrCodeValue, setQrCodeValue] = useState('');
@@ -278,7 +277,7 @@ export default function KonfigurasiAbsenPage() {
   useEffect(() => {
     if (schoolConfigData) {
       setHolidayMode(schoolConfigData.isAttendanceActive === false);
-      setOffDays(schoolConfigData.offDays ?? [0, 6]); // Default to Sunday, Saturday off
+      setOffDays(schoolConfigData.offDays ?? [0, 6]);
 
       setUseLocationValidation(schoolConfigData.useLocationValidation ?? true);
       setUseTimeValidation(schoolConfigData.useTimeValidation ?? true);
@@ -287,13 +286,13 @@ export default function KonfigurasiAbsenPage() {
       setRadius(schoolConfigData.radius ?? 100);
       setCheckInStart(schoolConfigData.checkInStartTime ?? '06:00');
       setCheckInEnd(schoolConfigData.checkInEndTime ?? '08:00');
+      setLateTolerance(schoolConfigData.lateTolerance ?? 15);
       setCheckOutStart(schoolConfigData.checkOutStartTime ?? '14:00');
       setCheckOutEnd(schoolConfigData.checkOutEndTime ?? '16:00');
 
       if (schoolConfigData.qrCodeValue) {
         setQrCodeValue(schoolConfigData.qrCodeValue);
       } else if (user && schoolConfigRef && !isConfigLoading) {
-        // If no QR code exists on load, generate and save one.
         const newQrValue = Math.random().toString(36).substring(2, 15);
         setQrCodeValue(newQrValue);
         updateDocumentNonBlocking(schoolConfigRef, { qrCodeValue: newQrValue });
@@ -428,6 +427,7 @@ export default function KonfigurasiAbsenPage() {
       radius: Number(radius),
       checkInStartTime: checkInStart,
       checkInEndTime: checkInEnd,
+      lateTolerance: Number(lateTolerance),
       checkOutStartTime: checkOutStart,
       checkOutEndTime: checkOutEnd,
     }, { merge: true });
@@ -590,7 +590,14 @@ export default function KonfigurasiAbsenPage() {
                               <Input id="checkin-end" type="time" value={checkInEnd} onChange={e => setCheckInEnd(e.target.value)} disabled={holidayMode} />
                           </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2 pt-4">
+                          <Label htmlFor="late-tolerance">Toleransi Keterlambatan (Menit)</Label>
+                          <Input id="late-tolerance" type="number" value={lateTolerance} onChange={e => setLateTolerance(Number(e.target.value))} placeholder="Contoh: 15" disabled={holidayMode} />
+                          <p className="text-sm text-muted-foreground">
+                              Batas waktu setelah "Jam Selesai Masuk". Absen dalam rentang ini akan ditandai 'Terlambat'.
+                          </p>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
                           <div className="space-y-2">
                               <Label htmlFor="checkout-start">Jam Mulai Pulang</Label>
                               <Input id="checkout-start" type="time" value={checkOutStart} onChange={e => setCheckOutStart(e.target.value)} disabled={holidayMode} />

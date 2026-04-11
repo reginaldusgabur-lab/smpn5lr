@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, getDocs, query, where, doc } from 'firebase/firestore';
-import { format, isValid, parseISO } from 'date-fns';
+import { format, isValid, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Download, AlertCircle, FileText, FileSpreadsheet, RefreshCw, Loader2, Edit, Eye } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -121,37 +121,70 @@ export default function SchoolReportPage() {
     const { data: schoolConfigData, loading: isConfigLoading } = useDoc(user, schoolConfigRef);
 
     useEffect(() => {
-        if (isUserLoading || !user || !firestore) return;
+        if (isUserLoading || !user || !firestore || isConfigLoading || !schoolConfigData) return;
+        
         let isMounted = true;
         const loadData = async () => {
-            setIsReportLoading(true); setError(null);
+            setIsReportLoading(true);
+            setError(null);
             try {
-                const dateRange = { start: new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1), end: new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0) };
                 const usersQuery = query(collection(firestore, 'users'), where('role', 'in', ['guru', 'pegawai', 'kepala_sekolah']));
                 const usersSnapshot = await getDocs(usersQuery);
-                if (usersSnapshot.empty) { if (isMounted) setReportData([]); return; }
-                const reportPromises = usersSnapshot.docs.map(userDoc => {
+                
+                if (usersSnapshot.empty) {
+                    if (isMounted) setReportData([]);
+                    return;
+                }
+
+                const reportPromises = usersSnapshot.docs.map(async (userDoc) => {
                     const userData = userDoc.data();
-                    return calculateAttendanceStats(firestore, userDoc.id, dateRange).then(stats => ({ uid: userDoc.id, name: userData.name || '', nip: userData.nip || '-', position: userData.position || '-', role: userData.role || '', sequenceNumber: userData.sequenceNumber || null, ...stats }));
+                    const dateRange = { start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) };
+                    const stats = await calculateAttendanceStats(firestore, userDoc.id, dateRange);
+                    
+                    return {
+                        uid: userDoc.id,
+                        name: userData.name || '',
+                        nip: userData.nip || '-',
+                        position: userData.position || '-',
+                        role: userData.role || '',
+                        sequenceNumber: userData.sequenceNumber || null,
+                        totalHadir: stats.totalHadir,
+                        totalIzin: stats.totalIzin,
+                        totalSakit: stats.totalSakit,
+                        totalAlpa: stats.totalAlpa,
+                        persentase: stats.persentase,
+                    };
                 });
+
                 const results = await Promise.allSettled(reportPromises);
-                const successfulResults = results.filter((res): res is PromiseFulfilledResult<any> => res.status === 'fulfilled').map(res => res.value);
+                const successfulResults = results
+                    .filter((res): res is PromiseFulfilledResult<any> => res.status === 'fulfilled')
+                    .map(res => res.value);
+                
                 successfulResults.sort((a, b) => {
-                    const seqA = a.sequenceNumber; const seqB = b.sequenceNumber;
+                    const seqA = a.sequenceNumber;
+                    const seqB = b.sequenceNumber;
                     if (seqA != null && seqB != null) return seqA < seqB ? -1 : 1;
-                    if (seqA != null) return -1; if (seqB != null) return 1;
+                    if (seqA != null) return -1;
+                    if (seqB != null) return 1;
                     return a.name.localeCompare(b.name);
                 });
-                if (isMounted) setReportData(successfulResults.map((report, index) => ({ ...report, no: index + 1 })));
+
+                if (isMounted) {
+                    setReportData(successfulResults.map((report, index) => ({ ...report, no: index + 1 })));
+                }
             } catch (err) {
+                console.error("Gagal memuat data laporan sekolah:", err);
                 if (isMounted) setError("Gagal mengambil data laporan.");
             } finally {
                 if (isMounted) setIsReportLoading(false);
             }
         };
+        
         loadData();
+        
         return () => { isMounted = false; };
-    }, [user, isUserLoading, firestore, currentMonth, refetchIndex]);
+    }, [user, isUserLoading, firestore, currentMonth, refetchIndex, schoolConfigData, isConfigLoading]);
     
     const monthName = format(currentMonth, 'MMMM yyyy', { locale: id });
     const principal = useMemo(() => reportData.find(u => u.role === 'kepala_sekolah'), [reportData]);
@@ -226,7 +259,11 @@ export default function SchoolReportPage() {
             head: [['No', 'Nama', 'NIP', 'Status', 'Hadir', 'Izin', 'Sakit', 'Alpa', 'Persen']],
             body: filteredReports.map(item => [
                 item.no, item.name, item.nip, item.position,
-                Math.ceil(item.totalHadir), item.totalIzin, item.totalSakit, item.totalAlpa, item.persentase,
+                Math.ceil(item.totalHadir),
+                item.totalIzin,
+                item.totalSakit,
+                item.totalAlpa, 
+                item.persentase,
             ]),
             theme: 'grid',
             styles: { fontSize: 9.3, font: 'times', cellPadding: 2 }, 
@@ -253,7 +290,7 @@ export default function SchoolReportPage() {
         const doc = new jsPDF();
         
         try {
-            const detailedData = await fetchUserMonthlyReportData(firestore, targetUser.uid, currentMonth, schoolConfigData);
+            const reportDetails = await fetchUserMonthlyReportData(firestore, targetUser.uid, currentMonth, schoolConfigData);
             
             let startY = addReportHeader(doc);
             const pageWidth = doc.internal.pageSize.getWidth();
@@ -273,7 +310,7 @@ export default function SchoolReportPage() {
             autoTable(doc, {
                 startY,
                 head: [['No', 'Tanggal', 'Jam Masuk', 'Jam Pulang', 'Status', 'Keterangan']],
-                body: detailedData.map((d, i) => [
+                body: reportDetails.map((d, i) => [
                     i + 1, safeFormat(d.date, 'E, dd/MM/yy', { locale: id }),
                     safeFormat(d.checkInTime, 'HH:mm'), safeFormat(d.checkOutTime, 'HH:mm'),
                     d.status, d.description || '-'
@@ -295,12 +332,12 @@ export default function SchoolReportPage() {
     const handleDownloadUserExcel = async (targetUser: ReportRowData) => {
         if (!firestore || !schoolConfigData) return;
         try {
-            const detailedData = await fetchUserMonthlyReportData(firestore, targetUser.uid, currentMonth, schoolConfigData);
+            const reportDetails = await fetchUserMonthlyReportData(firestore, targetUser.uid, currentMonth, schoolConfigData);
             const kopSurat = [['PEMERINTAH KABUPATEN MANGGARAI'], ['DINAS PENDIDIKAN PEMUDA DAN OLAHRAGA'], ['SMP NEGERI 5 LANGKE REMBONG'], ['Alamat: Mando, Kelurahan compang carep, Kecamatan Langke Rembong'], [], ['LAPORAN KEHADIRAN'], [`Periode: ${monthName}`], []];
             const userInfo = [['Nama', `: ${targetUser.name}`], ['NIP', `: ${targetUser.nip || '-'}`], ['Status Kepegawaian', `: ${targetUser.position || '-'}`], []];
             const tableHeaders = ['No', 'Tanggal', 'Jam Masuk', 'Jam Pulang', 'Status', 'Keterangan'];
             
-            const tableBody = detailedData.map((d, i) => [
+            const tableBody = reportDetails.map((d, i) => [
                 i + 1,
                 safeFormat(d.date, 'E, dd/MM/yy', { locale: id }),
                 safeFormat(d.checkInTime, 'HH:mm'),
@@ -337,9 +374,14 @@ export default function SchoolReportPage() {
                 <CardContent>
                     <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" onClick={() => changeMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+                            {/* --- FIX: Disable button if the year is 2026 and month is January --- */}
+                            <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={currentMonth.getFullYear() === 2026 && currentMonth.getMonth() === 0}>
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
                             <span className="w-36 text-center font-semibold">{monthName}</span>
-                            <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()}><ChevronRight className="h-4 w-4" /></Button>
+                            <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()}>
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
                         </div>
                         <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
                             <Select value={roleFilter} onValueChange={setRoleFilter}><SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter berdasarkan peran" /></SelectTrigger><SelectContent><SelectItem value="all">Semua Peran</SelectItem><SelectItem value="guru">Guru</SelectItem><SelectItem value="pegawai">Pegawai</SelectItem><SelectItem value="kepala_sekolah">Kepala Sekolah</SelectItem></SelectContent></Select>
