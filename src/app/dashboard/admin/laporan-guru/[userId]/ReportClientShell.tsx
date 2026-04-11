@@ -2,15 +2,38 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { format, startOfMonth, parseISO, isValid } from 'date-fns';
+import { format, startOfMonth, parseISO, isValid, endOfMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Download, ChevronLeft, ChevronRight, CheckCircle2, XCircle, FileWarning, CalendarClock } from 'lucide-react';
+
+// --- Type Definitions for TypeScript ---
+interface ReportDetail {
+  id: string;
+  date: string; // ISO string from server
+  checkInTime: string | null; // ISO string from server
+  checkOutTime: string | null; // ISO string from server
+  status: string;
+  description: string;
+}
+
+interface UserData {
+  name?: string;
+  // Add other user properties if needed
+}
+
+interface ClientShellProps {
+  userId: string;
+  initialUserData: UserData;
+  initialReportData: ReportDetail[];
+  initialMonth: string; // ISO string from server
+  initialSchoolConfig: any; // Use 'any' for now if structure is complex or varies
+}
 
 // This component handles all user interaction on the client-side.
 export default function ReportClientShell({ 
@@ -18,29 +41,24 @@ export default function ReportClientShell({
     initialUserData,
     initialReportData,
     initialMonth,
-    initialSchoolConfig
-}) {
+}: ClientShellProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    const [userData] = useState(initialUserData);
-    const [schoolConfigData] = useState(initialSchoolConfig);
-    
-    // *** BUG FIX & DATA UNPACKING ***
-    // Unpack the reportData object passed from the server
-    const [reportDetails] = useState(initialReportData.reportDetails || []);
-    const [reportSummary] = useState(initialReportData.summary || {});
+    const [userData] = useState<UserData>(initialUserData);
+    const [reportDetails] = useState<ReportDetail[]>(initialReportData || []);
 
-    const currentMonth = new Date(initialMonth);
+    // Ensure currentMonth is a valid Date object, defaulting to now if initial is invalid
+    const parsedInitialMonth = parseISO(initialMonth);
+    const [currentMonth, setCurrentMonth] = useState(isValid(parsedInitialMonth) ? parsedInitialMonth : new Date());
 
-    // *** RE-IMPLEMENTED: Calculation logic for summary and chart, ensuring synchronization ***
+    // Calculation logic for summary and chart
     const summaryStats = useMemo(() => {
-        const hadir = reportDetails.filter(d => d.status === 'Hadir' || d.status === 'Terlambat').length;
-        const sakit = reportDetails.filter(d => d.status === 'Sakit').length;
-        const izin = reportDetails.filter(d => d.status === 'Izin').length;
-        // Alpa is calculated from details, which we know only includes past days
-        const alpa = reportDetails.filter(d => d.status === 'Alpa').length;
+        const hadir = reportDetails.filter((d: ReportDetail) => d.status === 'Hadir' || d.status === 'Terlambat').length;
+        const sakit = reportDetails.filter((d: ReportDetail) => d.status === 'Sakit').length;
+        const izin = reportDetails.filter((d: ReportDetail) => d.status === 'Izin' || d.status === 'Dinas').length;
+        const alpa = reportDetails.filter((d: ReportDetail) => d.status === 'Alpa').length;
         return { hadir, sakit, izin, alpa };
     }, [reportDetails]);
 
@@ -59,19 +77,24 @@ export default function ReportClientShell({
         router.push(`${pathname}?${params.toString()}`);
     };
     
-    const safeFormat = (date, formatString) => {
+    const safeFormat = (date: string | Date | null, formatString: string): string => {
         if (!date) return '-';
         const dateObj = typeof date === 'string' ? parseISO(date) : date;
         return isValid(dateObj) ? format(dateObj, formatString, { locale: id }) : '-';
     }
 
     const handleDownloadPdf = () => {
-        // (PDF download logic remains largely the same, but uses corrected data sources)
         if (!userData) return;
         const doc = new jsPDF();
-        // ... PDF Header ...
 
-        const tableBody = reportDetails.map((item, index) => [
+        doc.setFontSize(16);
+        doc.text('Laporan Kehadiran Bulanan', 14, 20);
+
+        doc.setFontSize(10);
+        doc.text(`Nama: ${userData.name || '-'}`, 14, 30);
+        doc.text(`Bulan: ${format(currentMonth, 'MMMM yyyy', { locale: id })}`, 14, 35);
+
+        const tableBody = reportDetails.map((item: ReportDetail, index: number) => [
             index + 1,
             safeFormat(item.date, 'EEEE, dd MMMM yyyy'),
             safeFormat(item.checkInTime, 'HH:mm:ss'),
@@ -81,8 +104,11 @@ export default function ReportClientShell({
         ]);
 
         autoTable(doc, {
-            // ... autoTable options ...
-            body: tableBody
+            startY: 40,
+            head: [['No', 'Tanggal', 'Jam Masuk', 'Jam Pulang', 'Status', 'Keterangan']],
+            body: tableBody,
+            theme: 'grid',
+            headStyles: { fillColor: [34, 197, 94] },
         });
         
         doc.save(`Laporan Kehadiran - ${userData.name} - ${format(currentMonth, 'MMMM yyyy')}.pdf`);
@@ -90,7 +116,6 @@ export default function ReportClientShell({
 
     return (
         <div className="p-4 md:p-6 space-y-6">
-            {/* --- RE-IMPLEMENTED SUMMARY & CHART SECTION --- */}
             <Card>
                 <CardHeader>
                     <CardTitle>Ringkasan Laporan Bulan {format(currentMonth, 'MMMM yyyy', { locale: id })}</CardTitle>
@@ -105,7 +130,7 @@ export default function ReportClientShell({
                                     <XAxis dataKey="name" />
                                     <YAxis allowDecimals={false} />
                                     <Tooltip />
-                                    <Bar dataKey="Jumlah" fill="#8884d8" />
+                                    <Bar dataKey="Jumlah" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -141,7 +166,7 @@ export default function ReportClientShell({
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon" onClick={() => handleMonthChange(-1)}><ChevronLeft className="h-4 w-4" /></Button>
                             <span className="w-36 text-center font-semibold">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
-                            <Button variant="outline" size="icon" onClick={() => handleMonthChange(1)} disabled={currentMonth >= startOfMonth(new Date())}><ChevronRight className="h-4 w-4" /></Button>
+                            <Button variant="outline" size="icon" onClick={() => handleMonthChange(1)} disabled={currentMonth >= endOfMonth(new Date())}><ChevronRight className="h-4 w-4" /></Button>
                         </div>
                         <Button onClick={handleDownloadPdf} disabled={!userData}>
                             <Download className="mr-2 h-4 w-4" />
@@ -161,9 +186,8 @@ export default function ReportClientShell({
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {/* *** BUG FIX: Use reportDetails instead of reportData *** */}
                                 {reportDetails.length > 0 ? (
-                                    reportDetails.map((item, index) => (
+                                    reportDetails.map((item: ReportDetail, index: number) => (
                                         <TableRow key={item.id}>
                                             <TableCell>{index + 1}</TableCell>
                                             <TableCell>{safeFormat(item.date, 'EEEE, dd MMMM yyyy')}</TableCell>
