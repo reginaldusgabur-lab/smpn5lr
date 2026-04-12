@@ -1,10 +1,16 @@
-import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/google-genai';
+'use client';
+import { configureGenkit } from '@genkit-ai/core';
+import { googleAI } from '@genkit-ai/google-genai';
+import { firebase } from '@genkit-ai/firebase';
+import { gemini15Flash } from '@genkit-ai/google-genai';
 
-// The Genkit plugin will automatically look for the GEMINI_API_KEY
-// environment variable. We will set this in our Vercel project settings.
-
-export const ai = genkit({
-  plugins: [googleAI()], // No need to pass the key here directly
-  model: 'googleai/gemini-1.5-flash',
+export const config = configureGenkit({
+  plugins: [
+    firebase(), // Mengaktifkan logging dan tracing ke Firebase
+    googleAI(), // Mengaktifkan koneksi ke Google AI (Gemini)
+  ],
+  logLevel: 'debug',
+  enableTracingAndMetrics: true,
 });
+
+export const model = gemini15Flash;

@@ -7,7 +7,8 @@
  * - QuoteOutput - Tipe output untuk flow.
  */
 
-import { ai } from '@/ai/genkit';
+import { defineFlow, definePrompt } from '@genkit-ai/core';
+import { model } from '@/ai/genkit'; // Mengimpor model yang sudah dikonfigurasi
 import { z } from 'zod';
 
 const QuoteInputSchema = z.object({
@@ -31,10 +32,11 @@ const QuoteOutputSchema = z.object({
 export type QuoteOutput = z.infer<typeof QuoteOutputSchema>;
 
 export async function getQuote(input: QuoteInput): Promise<QuoteOutput> {
-  return quoteFlow(input);
+  const flow = await quoteFlow.run(input);
+  return flow.output();
 }
 
-const quotePrompt = ai.definePrompt(
+const quotePrompt = definePrompt(
   {
     name: 'quotePrompt',
     input: { schema: QuoteInputSchema },
@@ -66,16 +68,20 @@ Jenis Absensi: {{attendanceType}}
 Pastikan output Anda selalu dalam format JSON yang valid tanpa tambahan karakter atau penjelasan.
 `,
   },
+  model // Menentukan model yang akan digunakan untuk prompt ini
 );
 
-const quoteFlow = ai.defineFlow(
+export const quoteFlow = defineFlow(
   {
     name: 'quoteFlow',
     inputSchema: QuoteInputSchema,
     outputSchema: QuoteOutputSchema,
   },
   async (input) => {
-    const { output } = await quotePrompt(input);
-    return output!;
+    const llmResponse = await model.generate({ 
+        prompt: { text: await quotePrompt.renderText(input) },
+        output: { schema: QuoteOutputSchema },
+    });
+    return llmResponse.output()!;
   }
 );
