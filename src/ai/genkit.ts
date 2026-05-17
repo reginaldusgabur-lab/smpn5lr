@@ -1,9 +1,9 @@
 import "server-only";
 
-import { configureGenkit } from '@genkit-ai/core';
+import { configure } from '@genkit-ai/core';
 import { googleAI, gemini15Flash } from '@genkit-ai/google-genai';
 
-export const config = configureGenkit({
+configure({
   plugins: [
     googleAI(),
   ],
