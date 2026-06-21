@@ -9,7 +9,8 @@
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "push": "git add . && git commit -m 'feat: update and fix AI logic'"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
