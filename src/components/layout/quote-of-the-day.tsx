@@ -1,3 +1,4 @@
+'''
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -9,7 +10,7 @@ interface QuoteOfTheDayProps {
 }
 
 interface Quote {
-  content: string;
+  quote: string;   // DIUBAH: dari content menjadi quote
   author: string;
 }
 
@@ -19,21 +20,38 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!attendanceType) return;
+    // Jangan lakukan apa-apa jika data penting tidak ada
+    if (!category || !attendanceType) {
+      setIsLoading(false);
+      return;
+    }
 
     const fetchQuote = async () => {
       setIsLoading(true);
+      setError(null);
       try {
-        const response = await fetch(`/api/quote?category=${category || 'default'}&attendanceType=${attendanceType}`);
+        // DIUBAH: Menggunakan metode POST dengan body JSON
+        const response = await fetch('/api/quote', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            category: category,
+            attendanceType: attendanceType,
+          }),
+        });
         
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error("API Error Response:", errorText);
-          throw new Error('Gagal mengambil kutipan dari server.');
+          const errorData = await response.json();
+          console.error("API Error Response:", errorData);
+          throw new Error(errorData.message || 'Gagal mengambil kutipan dari server.');
         }
 
-        const data = await response.json();
-        if (data.content && data.author) {
+        const data: Quote = await response.json();
+
+        // DIUBAH: Validasi field `quote` dan `author`
+        if (data.quote && data.author) {
           setQuote(data);
         } else {
           throw new Error('Respon API tidak mengandung kutipan yang valid.');
@@ -50,6 +68,7 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
 
   }, [category, attendanceType]);
 
+  // Render logic tetap sama, hanya variabel yang disesuaikan
   return (
     <div className="mt-6 pt-4 border-t border-current/20">
       <div className="flex items-center justify-center text-sm font-semibold mb-2">
@@ -66,10 +85,10 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
         {!isLoading && error && (
             <p className="text-destructive/80">Gagal memuat kutipan saat ini.</p>
         )}
-        {!isLoading && quote && (
+        {!isLoading && !error && quote && (
           <div>
             <blockquote className="italic">
-              <p>"{quote.content}"</p>
+              <p>"{quote.quote}"</p>  // DIUBAH: dari quote.content menjadi quote.quote
             </blockquote>
             <cite className="block text-right mt-1 text-current/60">- {quote.author}</cite>
           </div>
@@ -80,3 +99,4 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
 };
 
 export default QuoteOfTheDay;
+'''
