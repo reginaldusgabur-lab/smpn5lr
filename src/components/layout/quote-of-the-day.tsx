@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -10,7 +9,7 @@ interface QuoteOfTheDayProps {
 }
 
 interface Quote {
-  quote: string;   // DIUBAH: dari content menjadi quote
+  quote: string;
   author: string;
 }
 
@@ -20,7 +19,6 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Jangan lakukan apa-apa jika data penting tidak ada
     if (!category || !attendanceType) {
       setIsLoading(false);
       return;
@@ -30,7 +28,6 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
       setIsLoading(true);
       setError(null);
       try {
-        // DIUBAH: Menggunakan metode POST dengan body JSON
         const response = await fetch('/api/quote', {
           method: 'POST',
           headers: {
@@ -50,7 +47,6 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
 
         const data: Quote = await response.json();
 
-        // DIUBAH: Validasi field `quote` dan `author`
         if (data.quote && data.author) {
           setQuote(data);
         } else {
@@ -68,7 +64,6 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
 
   }, [category, attendanceType]);
 
-  // Render logic tetap sama, hanya variabel yang disesuaikan
   return (
     <div className="mt-6 pt-4 border-t border-current/20">
       <div className="flex items-center justify-center text-sm font-semibold mb-2">
@@ -88,7 +83,7 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
         {!isLoading && !error && quote && (
           <div>
             <blockquote className="italic">
-              <p>"{quote.quote}"</p>  // DIUBAH: dari quote.content menjadi quote.quote
+              <p>"{quote.quote}"</p>
             </blockquote>
             <cite className="block text-right mt-1 text-current/60">- {quote.author}</cite>
           </div>
