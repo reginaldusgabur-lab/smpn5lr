@@ -1,4 +1,4 @@
-'''
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -99,4 +99,3 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
 };
 
 export default QuoteOfTheDay;
-'''
