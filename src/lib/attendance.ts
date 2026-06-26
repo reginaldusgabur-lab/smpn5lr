@@ -238,7 +238,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
             let description;
 
             if (attendanceRecord.manualEntry) {
-                description = 'Absen Terekam';
+                description = 'Kehadiran Penuh';
             } else { 
                 if (checkOutTime) {
                     if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {

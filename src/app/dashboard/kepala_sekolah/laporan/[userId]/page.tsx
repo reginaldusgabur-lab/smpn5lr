@@ -105,7 +105,7 @@ export default function HeadmasterUserAttendanceDetailPage() {
             const checkInTime = attendanceRecord.checkInTime.toDate();
             const checkOutTime = attendanceRecord.checkOutTime?.toDate();
             let status = 'Hadir';
-            let description = 'Absen Terekam';
+            let description = 'Kehadiran Penuh';
 
             if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
                 const [endH, endM] = schoolConfig.checkInEndTime.split(':').map(Number);

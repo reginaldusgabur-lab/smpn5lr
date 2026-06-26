@@ -132,7 +132,7 @@ export default function LaporanPage() {
             const checkOutTime = attendanceRecord.checkOutTime?.toDate();
 
             if (checkInTime && checkOutTime) {
-                let description = 'Absen Terekam';
+                let description = 'Kehadiran Penuh';
                 if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
                     const [endH, endM] = schoolConfig.checkInEndTime.split(':').map(Number);
                     const checkInDeadline = new Date(checkInTime);

@@ -94,7 +94,7 @@ export default function AbsenPage() {
         return toast({ title: 'Gagal', description: 'Data pengguna atau konfigurasi tidak siap.', variant: 'destructive' });
     }
     setStatus('processing');
-    
+
     let isCheckInTime = false, isCheckOutTime = false;
     if (schoolConfig.useTimeValidation) {
         const now = new Date(), currentTime = now.getHours() * 60 + now.getMinutes();
@@ -134,7 +134,6 @@ export default function AbsenPage() {
             if (todaysRecord) {
                 if (todaysRecord.checkInTime) return setStatus('error_already_in');
                 const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', todaysRecord.id);
-                // FIXED: Ensure 'date' field is included on update
                 await updateDoc(recordRef, { date: todayStr, checkInTime: now, checkInLatitude: latitude, checkInLongitude: longitude });
                 setStatus('success_in');
             } else {
@@ -144,17 +143,59 @@ export default function AbsenPage() {
         } else if (isCheckOutTime) {
             if (todaysRecord) {
                 if (todaysRecord.checkOutTime) return setStatus('error_already_out');
+                
                 const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', todaysRecord.id);
-                // FIXED: Ensure 'date' field is included on update
-                await updateDoc(recordRef, { date: todayStr, checkOutTime: now, checkOutLatitude: latitude, checkOutLongitude: longitude });
+                const updateData: any = {
+                    date: todayStr,
+                    checkOutTime: now,
+                    checkOutLatitude: latitude,
+                    checkOutLongitude: longitude
+                };
+
+                if (!todaysRecord.checkInTime) {
+                    if (!schoolConfig.checkInEndTime) {
+                        setStatus('error_generic');
+                        return toast({ title: 'Gagal', description: 'Konfigurasi jam masuk belum diatur.', variant: 'destructive' });
+                    }
+                    const [inEndH, inEndM] = schoolConfig.checkInEndTime.split(':').map(Number);
+                    const lateCheckInTime = new Date();
+                    lateCheckInTime.setHours(inEndH, inEndM, 0, 0);
+                    updateData.checkInTime = lateCheckInTime;
+                    updateData.checkInLatitude = null;
+                    updateData.checkInLongitude = null;
+                }
+
+                await updateDoc(recordRef, updateData);
                 setStatus('success_out');
-            } else {
-                await addDoc(collection(firestore, 'users', user.uid, 'attendanceRecords'), { userId: user.uid, date: todayStr, checkInTime: null, checkOutTime: now, checkOutLatitude: latitude, checkOutLongitude: longitude });
+
+            } else { // No record for today, create a new one with late check-in
+                if (!schoolConfig.checkInEndTime) {
+                    setStatus('error_generic');
+                    return toast({ title: 'Gagal', description: 'Konfigurasi jam masuk belum diatur.', variant: 'destructive' });
+                }
+
+                const [inEndH, inEndM] = schoolConfig.checkInEndTime.split(':').map(Number);
+                const lateCheckInTime = new Date();
+                lateCheckInTime.setHours(inEndH, inEndM, 0, 0);
+
+                await addDoc(collection(firestore, 'users', user.uid, 'attendanceRecords'), {
+                    userId: user.uid,
+                    date: todayStr,
+                    checkInTime: lateCheckInTime,
+                    checkInLatitude: null,
+                    checkInLongitude: null,
+                    checkOutTime: now,
+                    checkOutLatitude: latitude,
+                    checkOutLongitude: longitude,
+                });
                 setStatus('success_out');
             }
         }
-    } catch (error) { setStatus('error_generic'); }
-  }, [user, firestore, schoolConfig, todaysRecord, toast]);
+    } catch (error) {
+        console.error("Attendance Error:", error);
+        setStatus('error_generic');
+    }
+}, [user, firestore, schoolConfig, todaysRecord, toast]);
   
   const statusRef = useRef(status); statusRef.current = status;
   const handleAttendanceRef = useRef(handleAttendance); handleAttendanceRef.current = handleAttendance;

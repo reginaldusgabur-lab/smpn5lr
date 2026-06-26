@@ -101,7 +101,7 @@ export default async function UserReportDetailPage({ params, searchParams }: {
                 let description;
 
                 if (attendanceRecord.manualEntry) {
-                    description = 'Absen Terekam';
+                    description = 'Kehadiran Penuh';
                 } else {
                     if (checkOutTime) {
                         if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
