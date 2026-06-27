@@ -20,7 +20,7 @@ interface AbsentUser {
   name: string;
   nip: string;
   position: string;
-  status: 'Alpa' | 'Menunggu Persetujuan' | 'Izin' | 'Sakit' | 'Dinas';
+  status: 'Alpa' | 'Menunggu persetujuan' | 'Izin' | 'Sakit' | 'Dinas';
 }
 
 interface UserData {
@@ -124,7 +124,7 @@ const AbsentUsersTable = () => {
                 if(leaveInfo.status === 'approved') {
                     status = (leaveInfo.type as any) || 'Izin';
                 } else if (leaveInfo.status === 'pending') {
-                    status = 'Menunggu Persetujuan';
+                    status = 'Menunggu persetujuan';
                 }
             }
             
@@ -165,7 +165,7 @@ const AbsentUsersTable = () => {
           case 'Sakit': return 'destructive';
           case 'Izin': return 'secondary';
           case 'Dinas': return 'secondary';
-          case 'Menunggu Persetujuan': return 'outline';
+          case 'Menunggu persetujuan': return 'outline';
           default: return 'default';
       }
   }
@@ -183,8 +183,8 @@ const AbsentUsersTable = () => {
                 <TableHeader className="bg-muted/30">
                 <TableRow>
                     <TableHead className="w-[50px] text-center font-black">No</TableHead>
-                    <TableHead className="font-black uppercase text-[10px]">Nama</TableHead>
-                    <TableHead className="text-center font-black uppercase text-[10px]">Status</TableHead>
+                    <TableHead className="font-black text-[10px]">Nama</TableHead>
+                    <TableHead className="text-center font-black text-[10px]">Status</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -196,7 +196,7 @@ const AbsentUsersTable = () => {
                         <div className="text-[10px] text-muted-foreground font-bold">{user.position}</div>
                     </TableCell>
                     <TableCell className="text-center">
-                        <Badge variant={getBadgeVariant(user.status)} className="text-[9px] font-black uppercase">
+                        <Badge variant={getBadgeVariant(user.status)} className="text-[9px] font-black">
                             {user.status}
                         </Badge>
                     </TableCell>

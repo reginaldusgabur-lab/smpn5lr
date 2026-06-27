@@ -108,7 +108,7 @@ const RecentAttendanceTable = () => {
 
         const sortedActivities = activitiesData.sort((a, b) => {
             if (a.rawCheckInTime && b.rawCheckInTime) {
-                return a.rawCheckInTime.getTime() - b.rawCheckInTime.getTime();
+                return b.rawCheckInTime.getTime() - a.rawCheckInTime.getTime();
             }
             return 0;
         });
@@ -138,7 +138,7 @@ const RecentAttendanceTable = () => {
         return (
             <div className="flex flex-col items-center justify-center h-40 text-muted-foreground text-center px-4">
                 <CalendarOff className="w-10 h-10 mb-4 opacity-50" />
-                <h3 className="text-lg font-bold uppercase tracking-tight">Hari Libur</h3>
+                <h3 className="text-lg font-bold tracking-tight">Hari libur</h3>
                 <p className="text-xs">Sistem absensi non-aktif hari ini.</p>
             </div>
         );
@@ -146,7 +146,7 @@ const RecentAttendanceTable = () => {
     return (
         <div className="flex flex-col items-center justify-center h-40 text-muted-foreground text-center px-4">
             <WifiOff className="w-10 h-10 mb-4 opacity-50" />
-            <h3 className="text-lg font-bold uppercase tracking-tight">Belum Ada Aktivitas</h3>
+            <h3 className="text-lg font-bold tracking-tight">Belum ada aktivitas</h3>
             <p className="text-xs">Belum ada staf yang melakukan absensi masuk hari ini.</p>
         </div>
     );
@@ -167,7 +167,7 @@ const RecentAttendanceTable = () => {
         ) : error ? (
              <div className="flex flex-col items-center justify-center h-40 text-destructive text-center px-4">
                 <AlertCircle className="w-8 h-8 mb-3" />
-                <span className='font-bold uppercase text-xs'>Terjadi Kesalahan</span>
+                <span className='font-bold uppercase text-xs'>Terjadi kesalahan</span>
                 <span className="text-[10px]">{error}</span>
             </div>
         ) : activities.length > 0 ? (
@@ -176,10 +176,10 @@ const RecentAttendanceTable = () => {
               <TableHeader className="bg-muted/30">
                 <TableRow>
                   <TableHead className="w-[50px] text-center font-black">No</TableHead>
-                  <TableHead className="font-black uppercase text-[10px]">Nama</TableHead>
-                  <TableHead className="text-center font-black uppercase text-[10px]">Masuk</TableHead>
-                  <TableHead className="text-center font-black uppercase text-[10px]">Pulang</TableHead>
-                  <TableHead className="text-center font-black uppercase text-[10px]">Status</TableHead>
+                  <TableHead className="font-black text-[10px]">Nama</TableHead>
+                  <TableHead className="text-center font-black text-[10px]">Masuk</TableHead>
+                  <TableHead className="text-center font-black text-[10px]">Pulang</TableHead>
+                  <TableHead className="text-center font-black text-[10px]">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -193,7 +193,7 @@ const RecentAttendanceTable = () => {
                     <TableCell className="text-center font-mono text-xs">{activity.checkInTime}</TableCell>
                     <TableCell className="text-center font-mono text-xs">{activity.checkOutTime}</TableCell>
                      <TableCell className="text-center">
-                      <Badge variant={activity.status === 'Hadir' ? 'default' : 'secondary'} className="text-[9px] font-black uppercase">
+                      <Badge variant={activity.status === 'Hadir' ? 'default' : 'secondary'} className="text-[9px] font-black">
                           {activity.status}
                       </Badge>
                     </TableCell>
