@@ -111,6 +111,7 @@ export default function DashboardPage() {
 
   return (
     <div className="w-full space-y-6 pb-10 flex flex-col items-stretch">
+        {/* SECTION: SELAMAT DATANG - MEPEET PX-0 */}
         <div className="w-full px-0">
             <p className="text-base text-muted-foreground font-medium">Selamat Datang</p>
             <h1 className="text-2xl font-black tracking-tight text-foreground mt-0.5 leading-tight">

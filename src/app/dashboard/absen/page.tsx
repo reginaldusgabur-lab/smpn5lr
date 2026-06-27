@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Html5Qrcode, Html5QrcodeCameraScanConfig } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
-import { X, Loader2, CameraOff, CalendarOff, Sparkles } from 'lucide-react';
+import { X, Loader2, CameraOff, CalendarOff } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, addDoc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -214,6 +214,11 @@ export default function AbsenPage() {
 
         <div className="absolute inset-0 z-10 flex items-center justify-center p-6 pointer-events-none pb-20">
             <div className="relative w-full aspect-square max-w-[280px]">
+                {/* Garis Pemindai (Scan Line) */}
+                {isScannerReady && (
+                    <div className="absolute left-2 right-2 h-0.5 bg-primary shadow-[0_0_15px_rgba(var(--primary),0.8)] animate-scan-line z-20" />
+                )}
+
                 <div className={cn("absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 rounded-tl-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/40')} />
                 <div className={cn("absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 rounded-tr-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/40')} />
                 <div className={cn("absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 rounded-bl-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/40')} />
@@ -243,7 +248,7 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData }: { s
     const feedback = useMemo(() => {
         switch (status) {
             case 'processing': return { icon: <Loader2 className="h-16 w-16 animate-spin text-primary" />, title: 'Memproses...', desc: 'Sedang memvalidasi absensi Anda.', cardClass: 'bg-background' };
-            case 'locating': return { icon: <Loader2 className="h-16 w-16 animate-spin text-primary" />, title: 'Mencari Lokasi...', desc: 'Mohon tunggu, sedang mendapatkan data lokasi.', cardClass: 'bg-background' };
+            case 'locating': return { icon: <Loader2 className="h-16 w-16 animate-spin text-primary" />, title: 'Mencari lokasi...', desc: 'Mohon tunggu, sedang mendapatkan data lokasi.', cardClass: 'bg-background' };
             case 'success_in': return { icon: <CheckCircle className="h-16 w-16 text-green-500" />, title: 'Absen masuk berhasil', desc: 'Kehadiran Anda telah terekam. Selamat beraktivitas!', cardClass: 'bg-green-50 dark:bg-green-950/50' };
             case 'success_out': return { icon: <CheckCircle className="h-16 w-16 text-blue-500" />, title: 'Absen pulang berhasil', desc: 'Absen pulang terekam. Hati-hati di jalan!', cardClass: 'bg-blue-50 dark:bg-blue-950/50' };
             case 'error_radius': return { icon: <MapPin className="h-16 w-16 text-destructive" />, title: 'Di luar radius', desc: 'Anda harus berada di dalam area sekolah untuk absensi.', cardClass: 'bg-destructive/10' };
