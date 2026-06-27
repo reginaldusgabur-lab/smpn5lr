@@ -13,7 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { useFirestore } from '@/firebase';
 import { collection, query, where, getDocs, collectionGroup, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { isWithinInterval, startOfDay, endOfDay, format } from 'date-fns';
-import { Loader2, UserCheck, AlertCircle, CalendarOff } from 'lucide-react';
+import { Loader2, UserCheck, AlertCircle, CalendarOff, AlertTriangle } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 interface AbsentUser {
   no: number;
@@ -78,7 +79,6 @@ const AbsentUsersTable = () => {
             return;
         }
 
-        // FILTER: Only fetch ACTIVE staff
         const usersQuery = query(
             collection(firestore, 'users'), 
             where('role', 'in', ['guru', 'pegawai', 'kepala_sekolah']),
@@ -123,7 +123,7 @@ const AbsentUsersTable = () => {
 
         const usersToDisplay = allStaff
           .filter(user => !presentUserIds.has(user.id))
-          .sort((a, b) => (a.sequenceNumber ?? 999) - (b.sequenceNumber ?? 999)) // SORT: Use sequenceNumber
+          .sort((a, b) => (a.sequenceNumber ?? 999) - (b.sequenceNumber ?? 999)) 
           .map((user, index) => {
             const leaveInfo = onLeaveOrPendingUserIds.get(user.id);
             let status: AbsentUser['status'] = 'Alpa';
@@ -179,43 +179,48 @@ const AbsentUsersTable = () => {
 
   return (
     <div className="w-full space-y-4">
-      <div className="px-1">
-        <h3 className="font-black text-lg tracking-tight text-destructive uppercase tracking-widest">DAFTAR KETIDAKHADIRAN</h3>
-        <p className="text-[10px] font-bold text-muted-foreground">Staf tanpa absensi & izin hari ini</p>
-      </div>
-      <div className="bg-card border rounded-2xl overflow-hidden shadow-sm border-t-4 border-t-destructive">
-        {!isHoliday && absentUsers.length > 0 ? (
-          <div className="overflow-x-auto">
-            <Table>
-                <TableHeader className="bg-destructive/5">
-                <TableRow className="border-none">
-                    <TableHead className="w-[50px] text-center font-black text-[10px] uppercase tracking-widest text-destructive">No</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-destructive">Nama</TableHead>
-                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-destructive">Status</TableHead>
-                </TableRow>
-                </TableHeader>
-                <TableBody>
-                {absentUsers.map((user, index) => (
-                    <TableRow key={index} className="border-muted-foreground/5">
-                    <TableCell className="text-center font-bold text-xs text-muted-foreground">{index + 1}</TableCell>
-                    <TableCell>
-                        <div className="font-black text-sm">{user.name}</div>
-                        <div className="text-[10px] text-muted-foreground font-bold">{user.position}</div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                        <Badge variant={getBadgeVariant(user.status)} className="text-[9px] font-black uppercase">
-                            {user.status}
-                        </Badge>
-                    </TableCell>
-                    </TableRow>
-                ))}
-                </TableBody>
-            </Table>
+      <Card className="bg-card border rounded-2xl overflow-hidden shadow-sm border-t-4 border-t-destructive">
+        <CardHeader className="bg-destructive/5 p-4 border-b border-destructive/10 flex flex-row items-center justify-between gap-1">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+            <CardTitle className="font-black text-lg tracking-tight text-destructive uppercase tracking-widest">DAFTAR KETIDAKHADIRAN</CardTitle>
           </div>
-        ) : (
-          <EmptyState />
-        )}
-      </div>
+          <p className="text-[10px] font-bold text-muted-foreground">Staf tanpa absen & izin</p>
+        </CardHeader>
+        <CardContent className="p-0">
+          {!isHoliday && absentUsers.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                  <TableHeader className="bg-destructive/5">
+                  <TableRow className="border-none">
+                      <TableHead className="w-[50px] text-center font-black text-[10px] uppercase tracking-widest text-destructive">No</TableHead>
+                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-destructive">Nama</TableHead>
+                      <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-destructive">Status</TableHead>
+                  </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                  {absentUsers.map((user, index) => (
+                      <TableRow key={index} className="border-muted-foreground/5">
+                      <TableCell className="text-center font-bold text-xs text-muted-foreground">{index + 1}</TableCell>
+                      <TableCell>
+                          <div className="font-black text-sm">{user.name}</div>
+                          <div className="text-[10px] text-muted-foreground font-bold">{user.position}</div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                          <Badge variant={getBadgeVariant(user.status)} className="text-[9px] font-black uppercase">
+                              {user.status}
+                          </Badge>
+                      </TableCell>
+                      </TableRow>
+                  ))}
+                  </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <EmptyState />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

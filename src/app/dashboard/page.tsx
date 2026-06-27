@@ -127,14 +127,14 @@ export default function DashboardPage() {
         {isGuruOrPegawai && (
             <div className="w-full space-y-6 flex flex-col items-stretch">
                 <Card className="w-full border shadow-sm overflow-hidden bg-card border-t-4 border-t-primary">
-                    <CardHeader className="p-4 pb-0 flex flex-row items-center gap-2">
+                    <CardHeader className="p-4 flex flex-row items-center gap-2 bg-primary/5 border-b border-primary/10">
                         <Clock className="w-4 h-4 text-primary" />
                         <CardTitle className="text-xs font-bold text-primary uppercase tracking-widest">
                             Kehadiran Anda hari ini
                         </CardTitle>
                     </CardHeader>
                     
-                    <CardContent className="p-4 space-y-6">
+                    <CardContent className="p-4 space-y-6 pt-6">
                         <LiveClockUI />
                         
                         <div className="grid grid-cols-2 gap-3 w-full">
@@ -181,7 +181,7 @@ export default function DashboardPage() {
                 </Card>
 
                 <Card className="w-full border shadow-sm overflow-hidden bg-card border-t-4 border-t-primary">
-                    <CardHeader className="p-4 pb-0">
+                    <CardHeader className="p-4 bg-primary/5 border-b border-primary/10">
                         <div className="flex items-center justify-between">
                             <h2 className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-widest">
                                 <TrendingUp size={14} className="text-primary" /> Ringkasan bulanan
@@ -191,7 +191,7 @@ export default function DashboardPage() {
                             </p>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-4 pt-4">
+                    <CardContent className="p-4 pt-6">
                         <div className="w-full h-40">
                             {isPersonalSummaryLoading ? (
                                 <Skeleton className="h-full w-full rounded-xl" />
@@ -222,33 +222,39 @@ export default function DashboardPage() {
         {isAdminOrKepsek && (
             <div className="w-full space-y-8 pt-4 border-t border-dashed border-border/50 flex flex-col items-stretch">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-                    <Card className="bg-card border shadow-sm border-t-4 border-t-green-500">
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between mb-2">
+                    <Card className="bg-card border shadow-sm border-t-4 border-t-green-500 overflow-hidden">
+                        <CardHeader className="p-3 bg-green-500/5 border-b border-green-500/10">
+                            <div className="flex items-center justify-between">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-green-600">Hadir</p>
                                 <UserCheck className="h-4 w-4 text-green-500" />
                             </div>
+                        </CardHeader>
+                        <CardContent className="p-4">
                             <div className="text-2xl font-black text-green-700 dark:text-green-400">{isStatsLoading ? '...' : stats.hadir}</div>
                         </CardContent>
                     </Card>
                     
-                    <Card className="bg-card border shadow-sm border-t-4 border-t-blue-500">
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between mb-2">
+                    <Card className="bg-card border shadow-sm border-t-4 border-t-blue-500 overflow-hidden">
+                        <CardHeader className="p-3 bg-blue-500/5 border-b border-blue-500/10">
+                            <div className="flex items-center justify-between">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Izin / Sakit</p>
                                 <BookUser className="h-4 w-4 text-blue-500" />
                             </div>
-                            <div className="text-2xl font-black text-blue-700 dark:text-green-400">{isStatsLoading ? '...' : stats.izin + stats.sakit}</div>
+                        </CardHeader>
+                        <CardContent className="p-4">
+                            <div className="text-2xl font-black text-blue-700 dark:text-blue-400">{isStatsLoading ? '...' : stats.izin + stats.sakit}</div>
                         </CardContent>
                     </Card>
 
                     <Link href="/dashboard/izin-kepala-sekolah" className="block">
-                        <Card className="bg-card border shadow-sm border-t-4 border-t-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors group">
-                            <CardContent className="p-4">
-                                <div className="flex items-center justify-between mb-2">
+                        <Card className="bg-card border shadow-sm border-t-4 border-t-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors group overflow-hidden">
+                            <CardHeader className="p-3 bg-amber-500/5 border-b border-amber-500/10">
+                                <div className="flex items-center justify-between">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-amber-600">Menunggu</p>
                                     <MailWarning className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform" />
                                 </div>
+                            </CardHeader>
+                            <CardContent className="p-4">
                                 <div className="text-2xl font-black text-amber-700 dark:text-amber-400">{isStatsLoading ? '...' : stats.pending}</div>
                             </CardContent>
                         </Card>

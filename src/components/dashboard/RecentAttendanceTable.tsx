@@ -14,7 +14,8 @@ import { useFirestore } from '@/firebase';
 import { collection, query, where, getDocs, collectionGroup, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { id as indonesiaLocale } from 'date-fns/locale';
-import { Loader2, WifiOff, AlertCircle, CalendarOff } from 'lucide-react';
+import { Loader2, WifiOff, AlertCircle, CalendarOff, History } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 interface Activity {
   no: number;
@@ -154,58 +155,63 @@ const RecentAttendanceTable = () => {
 
   return (
     <div className="w-full space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-1">
-        <h3 className="font-black text-lg tracking-tight text-green-600 uppercase tracking-widest">AKTIVITAS KEHADIRAN</h3>
-        <p className="text-[11px] font-bold text-muted-foreground">{todayFormatted}</p>
-      </div>
-      <div className="bg-card border rounded-2xl overflow-hidden shadow-sm border-t-4 border-t-green-500">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-40 text-muted-foreground">
-            <Loader2 className="h-8 w-8 animate-spin mr-3" />
-            <span className="text-xs font-bold">Memuat aktivitas...</span>
+      <Card className="border shadow-sm rounded-2xl overflow-hidden border-t-4 border-t-green-500">
+        <CardHeader className="bg-green-500/5 p-4 border-b border-green-500/10 flex flex-row items-center justify-between gap-1">
+          <div className="flex items-center gap-2">
+            <History className="h-4 w-4 text-green-600" />
+            <CardTitle className="font-black text-sm tracking-tight text-green-600 uppercase tracking-widest">AKTIVITAS KEHADIRAN</CardTitle>
           </div>
-        ) : error ? (
-             <div className="flex flex-col items-center justify-center h-40 text-destructive text-center px-4">
-                <AlertCircle className="w-8 h-8 mb-3" />
-                <span className='font-bold text-xs'>Terjadi kesalahan</span>
-                <span className="text-[10px]">{error}</span>
+          <p className="text-[11px] font-bold text-muted-foreground">{todayFormatted}</p>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-40 text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin mr-3" />
+              <span className="text-xs font-bold">Memuat aktivitas...</span>
             </div>
-        ) : activities.length > 0 ? (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-green-500/10">
-                <TableRow className="border-none">
-                  <TableHead className="w-[50px] text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">No</TableHead>
-                  <TableHead className="font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Nama</TableHead>
-                  <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Masuk</TableHead>
-                  <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Pulang</TableHead>
-                  <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activities.map((activity, index) => (
-                  <TableRow key={index} className="border-muted-foreground/5">
-                    <TableCell className="text-center font-bold text-xs text-muted-foreground">{activity.no}</TableCell>
-                    <TableCell>
-                       <div className="font-black text-sm">{activity.name}</div>
-                      <div className="text-[10px] text-muted-foreground font-bold">{activity.nip}</div>
-                    </TableCell>
-                    <TableCell className="text-center font-mono text-xs font-bold">{activity.checkInTime}</TableCell>
-                    <TableCell className="text-center font-mono text-xs font-bold">{activity.checkOutTime}</TableCell>
-                     <TableCell className="text-center">
-                      <Badge variant={activity.status === 'Hadir' ? 'default' : 'secondary'} className="text-[9px] font-black uppercase">
-                          {activity.status}
-                      </Badge>
-                    </TableCell>
+          ) : error ? (
+               <div className="flex flex-col items-center justify-center h-40 text-destructive text-center px-4">
+                  <AlertCircle className="w-8 h-8 mb-3" />
+                  <span className='font-bold text-xs'>Terjadi kesalahan</span>
+                  <span className="text-[10px]">{error}</span>
+              </div>
+          ) : activities.length > 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-green-500/5">
+                  <TableRow className="border-none">
+                    <TableHead className="w-[50px] text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">No</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Nama</TableHead>
+                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Masuk</TableHead>
+                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Pulang</TableHead>
+                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <EmptyState />
-        )}
-      </div>
+                </TableHeader>
+                <TableBody>
+                  {activities.map((activity, index) => (
+                    <TableRow key={index} className="border-muted-foreground/5">
+                      <TableCell className="text-center font-bold text-xs text-muted-foreground">{activity.no}</TableCell>
+                      <TableCell>
+                         <div className="font-black text-sm">{activity.name}</div>
+                        <div className="text-[10px] text-muted-foreground font-bold">{activity.nip}</div>
+                      </TableCell>
+                      <TableCell className="text-center font-mono text-xs font-bold">{activity.checkInTime}</TableCell>
+                      <TableCell className="text-center font-mono text-xs font-bold">{activity.checkOutTime}</TableCell>
+                       <TableCell className="text-center">
+                        <Badge variant={activity.status === 'Hadir' ? 'default' : 'secondary'} className="text-[9px] font-black uppercase">
+                            {activity.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <EmptyState />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
