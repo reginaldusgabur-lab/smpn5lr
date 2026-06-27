@@ -6,19 +6,18 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, getDocs, query, where, doc } from 'firebase/firestore';
 import { format, isValid, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Download, AlertCircle, FileText, FileSpreadsheet, RefreshCw, Loader2, Edit, Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, AlertCircle, FileText, FileSpreadsheet, Loader2, Edit, Eye, Search, Filter } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import EditAttendanceModal from '@/components/modals/EditAttendanceModal';
@@ -41,8 +40,7 @@ interface ReportRowData {
     sequenceNumber: number | null;
 }
 
-// --- UTILITY & GENERATION LOGIC ---
-
+// --- UTILITY ---
 const safeFormat = (dateInput: string | Date | null | undefined, formatString: string, options: any = {}) => {
     if (!dateInput) return '-';
     const date = typeof dateInput === 'string' ? parseISO(dateInput) : dateInput;
@@ -364,22 +362,22 @@ export default function SchoolReportPage() {
 
     return (
         <div className="flex-1 pt-4 pb-24 md:p-8">
-            <div className="max-w-7xl mx-auto space-y-8">
+            <div className="max-w-7xl mx-auto space-y-6">
                 {isEditModalOpen && editingUser && (
                     <EditAttendanceModal user={editingUser} month={currentMonth} isOpen={isEditModalOpen} onClose={handleCloseModal} currentUser={user} />
                 )}
 
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-1 md:px-0">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Laporan Sekolah</h1>
-                        <p className="text-muted-foreground mt-1">Ringkasan kehadiran bulanan untuk seluruh personil sekolah.</p>
-                    </div>
+                <div className="px-4 md:px-0">
+                    <h1 className="text-3xl font-bold tracking-tight">Laporan Sekolah</h1>
+                    <p className="text-muted-foreground mt-1">Ringkasan kehadiran bulanan untuk seluruh personil sekolah.</p>
                 </div>
 
-                <Card className="w-full">
-                    <CardContent className="py-6">
-                        <div className="flex flex-col gap-6 mb-6">
-                            <div className="flex items-center justify-center gap-4">
+                <Card className="overflow-hidden">
+                    <CardContent className="p-0 sm:p-6">
+                        {/* --- Section 1: Navigation & Filters --- */}
+                        <div className="p-4 space-y-6">
+                            {/* Month Nav */}
+                            <div className="flex items-center justify-center gap-4 py-2">
                                 <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={currentMonth.getFullYear() === 2026 && currentMonth.getMonth() === 0}>
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
@@ -389,11 +387,13 @@ export default function SchoolReportPage() {
                                 </Button>
                             </div>
                             
-                            <div className="flex flex-col sm:flex-row items-center gap-4 w-full">
-                                <div className="flex-1 w-full">
+                            {/* Search & Role Filter */}
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                                <div className="md:col-span-4 space-y-2">
+                                    <label className="text-sm font-medium flex items-center gap-2"><Filter className="h-4 w-4" />Filter Peran</label>
                                     <Select value={roleFilter} onValueChange={setRoleFilter}>
-                                        <SelectTrigger className="w-full sm:w-[220px]">
-                                            <SelectValue placeholder="Filter berdasarkan peran" />
+                                        <SelectTrigger className="w-full bg-background">
+                                            <SelectValue placeholder="Pilih Peran" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="all">Semua Peran</SelectItem>
@@ -403,94 +403,108 @@ export default function SchoolReportPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="flex-1 w-full sm:max-w-xs">
-                                    <Input type="search" placeholder="Cari berdasarkan nama..." className="w-full" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                                <div className="md:col-span-5 space-y-2">
+                                    <label className="text-sm font-medium flex items-center gap-2"><Search className="h-4 w-4" />Cari Nama</label>
+                                    <Input type="search" placeholder="Masukkan nama..." className="w-full bg-background" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                                 </div>
-                                {user.role === 'admin' && (
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button className="w-full sm:w-auto font-semibold">
-                                                <Download className="mr-2 h-4 w-4" />
-                                                Unduh Laporan
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-[180px]">
-                                            <DropdownMenuItem onClick={handleDownloadExcel}>
-                                                <FileSpreadsheet className="mr-2 h-4 w-4"/>Ekspor Excel
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={handleDownloadPdf}>
-                                                <FileText className="mr-2 h-4 w-4"/>Ekspor PDF
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                )}
+                                <div className="md:col-span-3">
+                                    {user.role === 'admin' && (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button className="w-full font-semibold shadow-sm">
+                                                    <Download className="mr-2 h-4 w-4" />
+                                                    Unduh Laporan
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-[200px]">
+                                                <DropdownMenuItem onClick={handleDownloadExcel} className="cursor-pointer">
+                                                    <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600"/>Ekspor ke Excel
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={handleDownloadPdf} className="cursor-pointer">
+                                                    <FileText className="mr-2 h-4 w-4 text-red-600"/>Ekspor ke PDF
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto border rounded-md">
+                        {/* --- Section 2: Main Table --- */}
+                        <div className="border-t">
                              {isLoading ? (
-                                <div className="p-4 space-y-3">{[...Array(10)].map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
+                                <div className="p-4 space-y-3">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
                             ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-[50px] text-center">No</TableHead>
-                                            <TableHead>Nama</TableHead>
-                                            <TableHead>NIP</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead className="text-center">Hadir</TableHead>
-                                            <TableHead className="text-center">Izin</TableHead>
-                                            <TableHead className="text-center">Sakit</TableHead>
-                                            <TableHead className="text-center">Alpa</TableHead>
-                                            <TableHead className="text-center">Persentase</TableHead>
-                                            {user.role === 'admin' && (
-                                                <>
-                                                    <TableHead className="w-[50px] text-center">Opsi</TableHead>
-                                                    <TableHead className="w-[50px] text-center">Aksi</TableHead>
-                                                </>
-                                            )}
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredReports.length > 0 ? filteredReports.map((item) => (
-                                            <TableRow key={item.uid}>
-                                                <TableCell className="text-center">{item.no}</TableCell>
-                                                <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
-                                                <TableCell className="whitespace-nowrap">{item.nip}</TableCell>
-                                                <TableCell className="whitespace-nowrap">{item.position}</TableCell>
-                                                <TableCell className="text-center font-semibold">{Math.ceil(item.totalHadir)}</TableCell>
-                                                <TableCell className="text-center">{item.totalIzin}</TableCell>
-                                                <TableCell className="text-center">{item.totalSakit}</TableCell>
-                                                <TableCell className="text-center font-medium text-destructive">{item.totalAlpa}</TableCell>
-                                                <TableCell className="text-center font-bold">{item.persentase}</TableCell>
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader className="bg-muted/30">
+                                            <TableRow>
+                                                <TableHead className="w-[60px] text-center font-bold">No</TableHead>
+                                                <TableHead className="font-bold">Nama & NIP</TableHead>
+                                                <TableHead className="text-center font-bold">H</TableHead>
+                                                <TableHead className="text-center font-bold">I/S</TableHead>
+                                                <TableHead className="text-center font-bold">A</TableHead>
+                                                <TableHead className="text-center font-bold">%</TableHead>
                                                 {user.role === 'admin' && (
-                                                    <>
-                                                        <TableCell className="text-center">
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><Download className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end">
-                                                                    <DropdownMenuItem onClick={() => handleDownloadUserPdf(item)}><FileText className="mr-2 h-4 w-4"/>Unduh PDF</DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={() => handleDownloadUserExcel(item)}><FileSpreadsheet className="mr-2 h-4 w-4"/>Unduh Excel</DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                        </TableCell>
-                                                        <TableCell className="text-center">
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end">
-                                                                    <DropdownMenuItem onClick={() => handleEditClick(item)}><Edit className="mr-2 h-4 w-4"/>Edit Kehadiran</DropdownMenuItem>
-                                                                    <DropdownMenuItem asChild><Link href={`/dashboard/laporan/${item.uid}`}><Eye className="mr-2 h-4 w-4" />Lihat Detail</Link></DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                        </TableCell>
-                                                    </>
+                                                    <TableHead className="w-[80px] text-center font-bold">Aksi</TableHead>
                                                 )}
                                             </TableRow>
-                                        )) : (
-                                            <TableRow><TableCell colSpan={user.role === 'admin' ? 11 : 9} className="h-24 text-center">{error ? 'Gagal memuat data.' : 'Tidak ada data untuk ditampilkan.'}</TableCell></TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredReports.length > 0 ? filteredReports.map((item) => (
+                                                <TableRow key={item.uid} className="hover:bg-muted/20 transition-colors">
+                                                    <TableCell className="text-center font-medium">{item.no}</TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-sm sm:text-base leading-tight">{item.name}</span>
+                                                            <span className="text-xs text-muted-foreground mt-0.5">{item.nip}</span>
+                                                            <span className="text-[10px] uppercase tracking-wider font-semibold text-primary/70 mt-0.5">{item.position}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-center font-semibold text-green-600">{Math.ceil(item.totalHadir)}</TableCell>
+                                                    <TableCell className="text-center font-medium text-orange-600">{item.totalIzin + item.totalSakit}</TableCell>
+                                                    <TableCell className="text-center font-bold text-destructive">{item.totalAlpa}</TableCell>
+                                                    <TableCell className="text-center">
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="font-bold text-sm">{item.persentase}</span>
+                                                            <div className="w-10 h-1 bg-muted rounded-full mt-1 overflow-hidden hidden sm:block">
+                                                                <div className="h-full bg-primary" style={{ width: item.persentase }} />
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    {user.role === 'admin' && (
+                                                        <TableCell className="text-center">
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8"><Edit className="h-4 w-4" /></Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end" className="w-[180px]">
+                                                                    <DropdownMenuItem onClick={() => handleEditClick(item)} className="cursor-pointer">
+                                                                        <Edit className="mr-2 h-4 w-4"/>Edit Kehadiran
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem asChild className="cursor-pointer">
+                                                                        <Link href={`/dashboard/laporan/${item.uid}`}>
+                                                                            <Eye className="mr-2 h-4 w-4" />Lihat Detail
+                                                                        </Link>
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuItem onClick={() => handleDownloadUserPdf(item)} className="cursor-pointer">
+                                                                        <FileText className="mr-2 h-4 w-4 text-red-500"/>Unduh PDF (User)
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => handleDownloadUserExcel(item)} className="cursor-pointer">
+                                                                        <FileSpreadsheet className="mr-2 h-4 w-4 text-green-500"/>Unduh Excel (User)
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </TableCell>
+                                                    )}
+                                                </TableRow>
+                                            )) : (
+                                                <TableRow><TableCell colSpan={user.role === 'admin' ? 7 : 6} className="h-32 text-center text-muted-foreground">{error ? 'Gagal memuat data.' : 'Tidak ada data personil ditemukan.'}</TableCell></TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
                             )}
                         </div>
                     </CardContent>
