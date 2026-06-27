@@ -4,15 +4,13 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Html5Qrcode, Html5QrcodeCameraScanConfig } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { MapPin, CheckCircle, Clock, X, Loader2, AlertTriangle, CameraOff, CalendarOff, ArrowLeft, Sparkles } from 'lucide-react';
+import { X, Loader2, CameraOff, CalendarOff, Sparkles } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, addDoc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import QuoteOfTheDay from '@/components/layout/quote-of-the-day';
-import { PageWrapper } from '@/components/layout/page-wrapper';
 
 // --- Helper Functions ---
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -42,7 +40,7 @@ export default function AbsenPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isScannerReady, setIsScannerReady] = useState(false);
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
-  const readerId = "qr-reader";
+  const readerId = "qr-reader-fullscreen";
 
   // --- Firestore Data Hooks ---
   const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -235,65 +233,60 @@ export default function AbsenPage() {
   }, [effectiveStatus, handleCloseRedirect]);
 
   return (
-    <PageWrapper>
-      <div className="w-full space-y-6">
-        <div className="flex items-center gap-2 mb-2 px-1">
-            <Button variant="ghost" size="icon" className="-ml-2" onClick={() => router.back()}>
-                <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-2xl font-bold tracking-tight">Pindai QR Code</h1>
+    <div className="fixed inset-0 z-40 bg-black overflow-hidden" style={{ bottom: '4rem' }}>
+        {/* Fullscreen Scanner Container */}
+        {(showScanner || isCameraInitializing) && (
+            <div className="absolute inset-0">
+                <div id={readerId} className="w-full h-full" />
+                <style>{`
+                    #${readerId} > video { width: 100% !important; height: 100% !important; object-fit: cover !important; opacity: ${isScannerReady ? 1 : 0.5}; transition: opacity 0.5s ease-in-out; }
+                    #${readerId}__scan_region, #${readerId}__dashboard_section_csr { display: none !important; }
+                `}</style>
+            </div>
+        )}
+
+        {/* Transparent Overlay Instructions */}
+        <div className="absolute top-0 left-0 right-0 z-10 p-10 pt-20 text-center pointer-events-none bg-gradient-to-b from-black/60 to-transparent">
+            <h2 className="text-white text-xl font-bold mb-2">Arahkan Kamera</h2>
+            <p className="text-white/80 text-sm">Pastikan QR Code berada di dalam kotak pemindaian.</p>
         </div>
 
-        <Card className="w-full overflow-hidden border-border shadow-sm">
-            <CardHeader className="pb-4">
-                <CardTitle className="text-center text-lg">Arahkan Kamera</CardTitle>
-                <CardDescription className="text-center">Pastikan QR Code berada di dalam kotak pemindaian.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0 w-full">
-                <div className="bg-black w-full overflow-hidden">
-                    <div className="relative aspect-video w-full">
-                        {(showScanner || isCameraInitializing) && (
-                            <div className="absolute inset-0 z-0">
-                                <div id={readerId} className="w-full h-full" />
-                                <style>{`
-                                    #${readerId} > video { width: 100% !important; height: 100% !important; object-fit: cover !important; opacity: ${isScannerReady ? 1 : 0.5}; transition: opacity 0.5s ease-in-out; }
-                                    #${readerId}__scan_region, #${readerId}__dashboard_section_csr { display: none !important; }
-                                `}</style>
-                            </div>
-                        )}
+        {/* Scan Guide UI */}
+        <div className="absolute inset-0 z-10 flex items-center justify-center p-12 pointer-events-none">
+            <div className="relative w-full aspect-square max-w-[280px]">
+                <div className={cn("absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 rounded-tl-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/40')} />
+                <div className={cn("absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 rounded-tr-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/40')} />
+                <div className={cn("absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 rounded-bl-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/40')} />
+                <div className={cn("absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 rounded-br-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/40')} />
 
-                        <div className="absolute inset-0 z-10 flex items-center justify-center p-4 pointer-events-none">
-                            <div className="relative w-full h-full aspect-square mx-auto">
-                                <div className={cn("absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 rounded-tl-xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
-                                <div className={cn("absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 rounded-tr-xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
-                                <div className={cn("absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 rounded-bl-xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
-                                <div className={cn("absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 rounded-br-xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
-
-                                {showLoader && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-xl">
-                                        <Loader2 className="h-10 w-10 animate-spin text-white" />
-                                        <p className="mt-4 text-sm font-medium text-white">{isDataLoading ? 'Memuat data...' : 'Menyiapkan kamera...'}</p>
-                                    </div>
-                                )}
-
-                                {isScannerReady && !showLoader && (
-                                    <div className="absolute top-1/2 -translate-y-1/2 left-4 right-4 h-0.5 bg-primary shadow-[0_0_15px_2px_theme(colors.primary.DEFAULT)] animate-scan-line" />
-                                )}
-                            </div>
-                        </div>
+                {showLoader && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-2xl">
+                        <Loader2 className="h-10 w-10 animate-spin text-white" />
                     </div>
-                </div>
-            </CardContent>
-            <CardFooter className="bg-muted/30 p-6 flex flex-col items-center gap-2 w-full">
-                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest italic flex items-center gap-2">
-                   <Sparkles className="w-3 h-3" /> E-SPENLI Digital Attendance
-                 </p>
-            </CardFooter>
-        </Card>
+                )}
 
-        {effectiveStatus !== 'idle' && <StatusFeedbackOverlay status={effectiveStatus} locationError={locationError} onClose={handleOnClose} userData={userData} />}
-      </div>
-    </PageWrapper>
+                {isScannerReady && !showLoader && (
+                    <div className="absolute top-1/2 -translate-y-1/2 left-4 right-4 h-0.5 bg-primary shadow-[0_0_15px_2px_theme(colors.primary.DEFAULT)] animate-scan-line" />
+                )}
+            </div>
+        </div>
+
+        {/* Branding Overlay */}
+        <div className="absolute bottom-6 left-0 right-0 z-10 text-center pointer-events-none">
+            <p className="text-white/40 text-[10px] uppercase tracking-[0.2em] font-bold italic flex items-center justify-center gap-2">
+                <Sparkles className="w-3 h-3" /> E-SPENLI Digital Attendance
+            </p>
+        </div>
+
+        {effectiveStatus !== 'idle' && (
+            <StatusFeedbackOverlay 
+                status={effectiveStatus} 
+                locationError={locationError} 
+                onClose={handleOnClose} 
+                userData={userData} 
+            />
+        )}
+    </div>
   );
 }
 
@@ -328,14 +321,30 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData }: { s
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4" onClick={onClose}>
-            <Card className={cn("w-full max-w-sm text-center shadow-2xl relative", feedback.cardClass)} onClick={(e) => e.stopPropagation()}>
-                <Button variant="ghost" size="icon" className="absolute top-2 right-2 opacity-50 hover:opacity-100" onClick={onClose}><X className="h-5 w-5" /><span className="sr-only">Tutup</span></Button>
-                <CardHeader className="items-center pt-8"><div className="mb-4">{feedback.icon}</div><CardTitle className="text-2xl font-bold">{feedback.title}</CardTitle></CardHeader>
-                <CardContent className="pb-8">
+            <div className={cn("w-full max-w-sm text-center p-8 rounded-3xl shadow-2xl relative", feedback.cardClass)} onClick={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="icon" className="absolute top-4 right-4 opacity-50 hover:opacity-100" onClick={onClose}><X className="h-5 w-5" /><span className="sr-only">Tutup</span></Button>
+                <div className="flex flex-col items-center gap-4">
+                    <div className="mb-2">{feedback.icon}</div>
+                    <h3 className="text-2xl font-bold">{feedback.title}</h3>
                     <p className="text-muted-foreground">{feedback.desc}</p>
                     {showQuote && attendanceType && <QuoteOfTheDay category={userData?.role} attendanceType={attendanceType} />}
-                </CardContent>
-            </Card>
+                    <Button className="mt-4 w-full" onClick={onClose}>Tutup</Button>
+                </div>
+            </div>
         </div>
     );
 };
+
+// Simple icons logic to avoid missing imports
+const CheckCircle = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+);
+const MapPin = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+);
+const Clock = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+);
+const AlertTriangle = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+);
