@@ -208,7 +208,6 @@ function useMonthlyAttendanceSummary(user: any) {
             try {
                 const now = new Date();
                 const stats = await calculateAttendanceStats(firestore, user.uid, { start: startOfMonth(now), end: endOfMonth(now) });
-                // FIX: Gunakan kunci 'persentase' dari lib/attendance
                 const newSummary = { 
                     attendanceCount: stats.totalHadir, 
                     izinCount: stats.totalIzin, 

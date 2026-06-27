@@ -250,7 +250,7 @@ export default function AbsenPage() {
           </CardHeader>
           <CardContent className="p-0 w-full">
               <div className="bg-black w-full flex items-center justify-center overflow-hidden">
-                <div className="relative aspect-video w-full max-w-full">
+                <div className="relative aspect-video w-full">
                     {(showScanner || isCameraInitializing) && (
                         <div className="absolute inset-0 z-0">
                         <div id={readerId} className="w-full h-full" />
@@ -262,7 +262,7 @@ export default function AbsenPage() {
                     )}
 
                     <div className="absolute inset-0 z-10 flex items-center justify-center p-4 pointer-events-none">
-                        <div className="relative w-full h-full max-w-lg aspect-square mx-auto">
+                        <div className="relative w-full h-full aspect-square mx-auto">
                             {/* Corner Borders */}
                             <div className={cn("absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 rounded-tl-xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
                             <div className={cn("absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 rounded-tr-xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
@@ -308,7 +308,7 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData }: { s
             case 'error_time': return { icon: <Clock className="h-16 w-16 text-destructive" />, title: 'Di Luar Jam Absen', desc: 'Waktu absensi belum dibuka atau sudah ditutup.', cardClass: 'bg-destructive/10' };
             case 'error_already_in': return { icon: <X className="h-16 w-16 text-destructive" />, title: 'Sudah Absen Masuk', desc: 'Anda sudah melakukan absensi masuk hari ini.', cardClass: 'bg-destructive/10' };
             case 'error_already_out': return { icon: <X className="h-16 w-16 text-destructive" />, title: 'Sudah Absen Pulang', desc: 'Anda sudah melakukan absensi pulang hari ini.', cardClass: 'bg-destructive/10' };
-            case 'error_location': return { icon: <MapPin className="h-16 w-16 text-destructive" />, title: 'Lokasi Error', desc: locationError || 'Pastikan GPS aktif dan berikan izin akses.', cardClass: 'bg-destructive/10' };
+            case 'error_location': return { icon: <MapPin className="h-16 w-16 text-destructive" />, title: 'Lokasi Error', desc: locationError || 'Pastikan GPS aktif and berikan izin akses.', cardClass: 'bg-destructive/10' };
             case 'info_holiday': return { icon: <CalendarOff className="h-16 w-16 text-blue-500" />, title: 'Hari Libur', desc: 'Sistem absensi tidak aktif hari ini.', cardClass: 'bg-blue-50 dark:bg-blue-950/50' };
             case 'info_checked_out': return { icon: <CheckCircle className="h-16 w-16 text-green-500" />, title: 'Absensi Selesai', desc: 'Anda telah menyelesaikan absensi untuk hari ini.', cardClass: 'bg-green-50 dark:bg-green-950/50' };
             case 'info_no_camera': return { icon: <CameraOff className="h-16 w-16 text-destructive" />, title: 'Kamera Tidak Tersedia', desc: 'Izinkan akses kamera di pengaturan browser.', cardClass: 'bg-destructive/10' };
