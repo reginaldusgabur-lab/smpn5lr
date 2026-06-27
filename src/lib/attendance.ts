@@ -2,7 +2,7 @@
 'use client';
 
 import { doc, getDoc, collection, getDocs, query, where, collectionGroup } from 'firebase/firestore';
-import { eachDayOfInterval, isWithinInterval, startOfMonth, endOfMonth, startOfDay, subDays, format, isBefore, endOfDay, parseISO, isValid } from 'date-fns';
+import { eachDayOfInterval, isWithinInterval, startOfMonth, endOfMonth, startOfDay, subDays, format, isBefore, endOfDay, parseISO, isValid, isSameDay, setHours, setMinutes } from 'date-fns';
 import type { Firestore } from 'firebase/firestore';
 import { id } from 'date-fns/locale';
 
@@ -250,7 +250,8 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
     const attendanceHistory = attendanceHistorySnap.docs.map(d => ({ ...d.data(), id: d.id }));
     const leaveHistory = leaveHistorySnap.docs.map(d => d.data());
 
-    const today = startOfDay(new Date());
+    const now = new Date();
+    const todayStart = startOfDay(now);
     const offDays = schoolConfig.offDays ?? [0, 6];
     const holidays = monthlyConfig?.holidays ?? [];
 
@@ -268,23 +269,22 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
 
     const report = allDaysInMonth.map(day => {
         const dayStr = format(day, 'yyyy-MM-dd');
-        
+        const isToday = isSameDay(day, todayStart);
+        const isWorkingDay = !offDays.includes(day.getDay()) && !holidays.includes(dayStr);
+
         const attendanceRecord = attendanceMap.get(dayStr);
         if (attendanceRecord) {
             let checkInTime = attendanceRecord.checkInTime.toDate();
             let checkOutTime = attendanceRecord.checkOutTime?.toDate() || null;
             let rawDescription = attendanceRecord.reasonForUpdate || 'Kehadiran Penuh';
             
-            // CLEAN LOGIC: Remove legacy text
             let description = cleanDesc(rawDescription);
             if (!description) description = 'Kehadiran Penuh';
 
-            // LOGIKA REEL: Jika status "Terlambat", Masuk dianggap tidak ada
             if (description === 'Terlambat') {
                 checkInTime = null; 
             }
 
-            // LOGIKA REEL: Jika status "Pulang Cepat", Pulang dianggap tidak ada
             if (description === 'Pulang Cepat') {
                 checkOutTime = null;
             }
@@ -301,7 +301,6 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
         }
 
         const leaveRecord = leaveMap.get(dayStr);
-        const isWorkingDay = !offDays.includes(day.getDay()) && !holidays.includes(dayStr);
         if (leaveRecord && isWorkingDay && leaveRecord.type !== 'Pulang Cepat') {
             return {
                 id: `${leaveRecord.id}-${dayStr}`,
@@ -313,7 +312,24 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
             };
         }
 
-        if (isWorkingDay && isBefore(day, today)) {
+        // Logic Change: If it is today and we are past the check-in time, or it is a past day, mark as Alpa
+        let shouldMarkAsAlpa = false;
+        if (isWorkingDay) {
+            if (isBefore(day, todayStart)) {
+                shouldMarkAsAlpa = true;
+            } else if (isToday) {
+                // Check if we are past checkInEndTime
+                if (schoolConfig.checkInEndTime) {
+                    const [endH, endM] = schoolConfig.checkInEndTime.split(':').map(Number);
+                    const deadline = setHours(setMinutes(todayStart, endM), endH);
+                    if (now > deadline) {
+                        shouldMarkAsAlpa = true;
+                    }
+                }
+            }
+        }
+
+        if (shouldMarkAsAlpa) {
             return {
                 id: dayStr,
                 date: day,

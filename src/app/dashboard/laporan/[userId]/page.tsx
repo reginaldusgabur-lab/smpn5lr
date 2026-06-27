@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, getDoc, writeBatch, collection, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { format, startOfMonth, isValid, parseISO, startOfDay, endOfDay, addMinutes } from 'date-fns';
+import { format, startOfMonth, isValid, parseISO, startOfDay, endOfDay, addMinutes, isSameDay } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -47,7 +47,6 @@ const getRandomTime = (baseDate: Date, startTimeStr: string, endTimeStr: string)
     const endDate = new Date(baseDate.getTime());
     endDate.setHours(endH, endM, 0, 0);
     
-    // Ensure endDate is after startDate for randomization
     const startTs = startDate.getTime();
     const endTs = endDate.getTime();
     const randomTimestamp = startTs + Math.random() * (endTs - startTs);
@@ -160,7 +159,6 @@ export default function UserReportDetailPage() {
             const targetDate = parseISO(dateStr);
             const inEnd = schoolConfigData.checkInEndTime || '08:00';
             
-            // Late logic: checkInEndTime + random 1-10 minutes
             const [endH, endM] = inEnd.split(':').map(Number);
             const baseLateTime = new Date(targetDate);
             baseLateTime.setHours(endH, endM, 0);
@@ -168,7 +166,7 @@ export default function UserReportDetailPage() {
 
             const outStart = schoolConfigData.checkOutStartTime || '14:00';
             const outEnd = schoolConfigData.checkOutEndTime || '15:00';
-            const realOutTime = getRandomTime(targetDate, outStart, outEnd);
+            const realOutTime = isSameDay(targetDate, new Date()) ? null : getRandomTime(targetDate, outStart, outEnd);
 
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
             const newDocRef = doc(attendanceRef);
@@ -178,7 +176,7 @@ export default function UserReportDetailPage() {
                     userId,
                     date: dateStr,
                     checkInTime: Timestamp.fromDate(realInTime),
-                    checkOutTime: Timestamp.fromDate(realOutTime),
+                    checkOutTime: realOutTime ? Timestamp.fromDate(realOutTime) : null,
                     manualEntry: true,
                     reasonForUpdate: 'Terlambat',
                     updatedBy: currentUser.uid,
@@ -206,7 +204,7 @@ export default function UserReportDetailPage() {
             const outEnd = schoolConfigData.checkOutEndTime || '15:00';
 
             const checkInTime = getRandomTime(targetDate, inStart, inEnd);
-            const checkOutTime = getRandomTime(targetDate, outStart, outEnd);
+            const checkOutTime = isSameDay(targetDate, new Date()) ? null : getRandomTime(targetDate, outStart, outEnd);
 
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
             const newDocRef = doc(attendanceRef);
@@ -216,7 +214,7 @@ export default function UserReportDetailPage() {
                     userId,
                     date: dateStr,
                     checkInTime: Timestamp.fromDate(checkInTime),
-                    checkOutTime: Timestamp.fromDate(checkOutTime),
+                    checkOutTime: checkOutTime ? Timestamp.fromDate(checkOutTime) : null,
                     manualEntry: true,
                     reasonForUpdate: 'Kehadiran Penuh',
                     updatedBy: currentUser.uid,
