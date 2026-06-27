@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -172,8 +171,8 @@ export default function DashboardPage() {
                 <Card className="w-full border shadow-xl rounded-3xl overflow-hidden bg-card">
                     <CardHeader className="p-6 text-primary border-b border-muted-foreground/5">
                         <div className="flex items-center justify-center gap-3">
-                            <Clock className="w-5 h-5" />
-                            <CardTitle className="text-xs font-black tracking-normal">
+                            <Clock className="w-6 h-6" />
+                            <CardTitle className="text-base font-black tracking-tight">
                                 Kehadiran Anda hari ini
                             </CardTitle>
                         </div>
