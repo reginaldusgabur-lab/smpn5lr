@@ -34,7 +34,7 @@ const roleDescriptions: { [key: string]: string } = {
 };
 
 const WelcomeCard = ({ user, isLoading }: { user: any, isLoading: boolean }) => (
-    <div className="space-y-1 mb-6 w-full">
+    <div className="space-y-1 mb-6 w-full px-1">
         <p className="text-base text-muted-foreground leading-none">Selamat Datang</p>
         {isLoading ? (
             <Skeleton className="h-7 w-48 mt-2" />
@@ -101,98 +101,107 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
     const hasFinished = !!(checkInTime && checkOutTime);
 
     return (
-        <Card className="w-full bg-card border-border shadow-sm overflow-hidden">
-            <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-bold">Kehadiran Anda Hari Ini</CardTitle>
-                <CardDescription>Status kehadiran dan jam absensi Anda.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8 pb-8 pt-6 w-full">
-                {isLoading ? (
-                    <div className="w-full space-y-6">
-                        <div className="flex flex-col items-center gap-2">
-                            <Skeleton className="h-12 w-full max-w-[200px]" />
-                            <Skeleton className="h-4 w-full max-w-[150px]" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 w-full">
-                            <Skeleton className="h-20 w-full" />
-                            <Skeleton className="h-20 w-full" />
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        <div className="text-center w-full">
-                            <p className="text-6xl font-bold tracking-tighter tabular-nums text-primary">
-                                {format(currentTime, 'HH:mm:ss')}
-                            </p>
-                            <p className="text-sm font-medium text-muted-foreground mt-2">
-                                {format(currentTime, 'eeee, d MMMM yyyy', { locale: id })}
-                            </p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 w-full">
-                            <div className="flex flex-col items-center p-4 rounded-xl bg-muted/30 border shadow-sm">
-                                <div className="flex items-center gap-1.5 mb-2">
-                                    <LogIn size={16} className="text-muted-foreground" />
-                                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Masuk</span>
-                                </div>
-                                <p className={cn("text-2xl font-bold tabular-nums", isLate ? "text-destructive" : "text-foreground")}>
-                                    {checkInTime ? format(checkInTime, 'HH:mm') : '--:--'}
-                                </p>
+        <div className="space-y-2 w-full">
+            <div className="px-1">
+                <h2 className="text-lg font-bold">Kehadiran Anda Hari Ini</h2>
+                <p className="text-sm text-muted-foreground">Status kehadiran dan jam absensi Anda.</p>
+            </div>
+            <Card className="w-full bg-card border-border shadow-sm overflow-hidden">
+                <CardContent className="space-y-8 pb-8 pt-8 w-full">
+                    {isLoading ? (
+                        <div className="w-full space-y-6">
+                            <div className="flex flex-col items-center gap-2">
+                                <Skeleton className="h-12 w-full max-w-[200px]" />
+                                <Skeleton className="h-4 w-full max-w-[150px]" />
                             </div>
-                            <div className="flex flex-col items-center p-4 rounded-xl bg-muted/30 border shadow-sm">
-                                <div className="flex items-center gap-1.5 mb-2">
-                                    <LogOut size={16} className="text-muted-foreground" />
-                                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Pulang</span>
-                                </div>
-                                <p className={cn("text-2xl font-bold tabular-nums", isEarly ? "text-destructive" : "text-foreground")}>
-                                    {checkOutTime ? format(checkOutTime, 'HH:mm') : '--:--'}
-                                </p>
+                            <div className="grid grid-cols-2 gap-4 w-full">
+                                <Skeleton className="h-20 w-full" />
+                                <Skeleton className="h-20 w-full" />
                             </div>
                         </div>
-                    </>
-                )}
-            </CardContent>
-            <CardFooter className="flex flex-col gap-3 pt-0 pb-8 px-6 w-full">
-                {!isLoading && (
-                    <Button 
-                        size="lg" 
-                        className={cn("w-full h-12 text-base font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]", hasFinished && "opacity-50")}
-                        onClick={() => !hasFinished && router.push('/dashboard/absen')}
-                        disabled={hasFinished}
-                    >
-                        {hasFinished ? 'Absensi Selesai' : 'Absen Sekarang'}
-                    </Button>
-                )}
-                <Button variant="ghost" size="sm" asChild className="text-muted-foreground w-full"><Link href="/dashboard/laporan">Lihat Riwayat Lengkap</Link></Button>
-            </CardFooter>
-        </Card>
+                    ) : (
+                        <>
+                            <div className="text-center w-full">
+                                <p className="text-6xl font-bold tracking-tighter tabular-nums text-primary">
+                                    {format(currentTime, 'HH:mm:ss')}
+                                </p>
+                                <p className="text-sm font-medium text-muted-foreground mt-2">
+                                    {format(currentTime, 'eeee, d MMMM yyyy', { locale: id })}
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 w-full">
+                                <div className="flex flex-col items-center p-4 rounded-xl bg-muted/30 border shadow-sm">
+                                    <div className="flex items-center gap-1.5 mb-2">
+                                        <LogIn size={16} className="text-muted-foreground" />
+                                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Masuk</span>
+                                    </div>
+                                    <p className={cn("text-2xl font-bold tabular-nums", isLate ? "text-destructive" : "text-foreground")}>
+                                        {checkInTime ? format(checkInTime, 'HH:mm') : '--:--'}
+                                    </p>
+                                </div>
+                                <div className="flex flex-col items-center p-4 rounded-xl bg-muted/30 border shadow-sm">
+                                    <div className="flex items-center gap-1.5 mb-2">
+                                        <LogOut size={16} className="text-muted-foreground" />
+                                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Pulang</span>
+                                    </div>
+                                    <p className={cn("text-2xl font-bold tabular-nums", isEarly ? "text-destructive" : "text-foreground")}>
+                                        {checkOutTime ? format(checkOutTime, 'HH:mm') : '--:--'}
+                                    </p>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </CardContent>
+                <CardFooter className="flex flex-col gap-3 pt-0 pb-8 px-6 w-full">
+                    {!isLoading && (
+                        <Button 
+                            size="lg" 
+                            className={cn("w-full h-12 text-base font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]", hasFinished && "opacity-50")}
+                            onClick={() => !hasFinished && router.push('/dashboard/absen')}
+                            disabled={hasFinished}
+                        >
+                            {hasFinished ? 'Absensi Selesai' : 'Absen Sekarang'}
+                        </Button>
+                    )}
+                    <Button variant="ghost" size="sm" asChild className="text-muted-foreground w-full"><Link href="/dashboard/laporan">Lihat Riwayat Lengkap</Link></Button>
+                </CardFooter>
+            </Card>
+        </div>
     );
 };
 
 const MonthlyAttendanceChartUI = ({ summaryData, isLoading }: { summaryData: any, isLoading: boolean }) => {
     const now = new Date();
     return (
-        <Card className="w-full border-border shadow-sm">
-            <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><TrendingUp size={18} className="text-primary" /> Riwayat Bulan {format(now, 'MMMM', { locale: id })}</CardTitle><CardDescription>Persentase kehadiran: {isLoading ? '...' : `${summaryData.percentage}%`}</CardDescription></CardHeader>
-            <CardContent className="pt-4 w-full h-[350px]">
-                {isLoading ? 
-                    <Skeleton className="h-full w-full" /> : 
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={[
-                            { name: 'Hadir', jumlah: summaryData.attendanceCount || 0, fill: 'hsl(var(--primary))' },
-                            { name: 'Sakit', jumlah: summaryData.sakitCount || 0, fill: '#f97316' },
-                            { name: 'Izin', jumlah: summaryData.izinCount || 0, fill: '#facc15' },
-                            { name: 'Alpa', jumlah: summaryData.alpaCount || 0, fill: '#ef4444' },
-                        ]}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                            <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                            <YAxis fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} width={30} />
-                            <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                            <Bar dataKey="jumlah" radius={[6, 6, 0, 0]} barSize={40} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                }
-            </CardContent>
-        </Card>
+        <div className="space-y-2 w-full">
+            <div className="px-1">
+                <h2 className="flex items-center gap-2 text-lg font-bold">
+                    <TrendingUp size={18} className="text-primary" /> Riwayat Bulan {format(now, 'MMMM', { locale: id })}
+                </h2>
+                <p className="text-sm text-muted-foreground">Persentase kehadiran: {isLoading ? '...' : `${summaryData.percentage}%`}</p>
+            </div>
+            <Card className="w-full border-border shadow-sm">
+                <CardContent className="pt-6 w-full h-[350px]">
+                    {isLoading ? 
+                        <Skeleton className="h-full w-full" /> : 
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={[
+                                { name: 'Hadir', jumlah: summaryData.attendanceCount || 0, fill: 'hsl(var(--primary))' },
+                                { name: 'Sakit', jumlah: summaryData.sakitCount || 0, fill: '#f97316' },
+                                { name: 'Izin', jumlah: summaryData.izinCount || 0, fill: '#facc15' },
+                                { name: 'Alpa', jumlah: summaryData.alpaCount || 0, fill: '#ef4444' },
+                            ]}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                                <YAxis fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} width={30} />
+                                <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                                <Bar dataKey="jumlah" radius={[6, 6, 0, 0]} barSize={40} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    }
+                </CardContent>
+            </Card>
+        </div>
     );
 };
 

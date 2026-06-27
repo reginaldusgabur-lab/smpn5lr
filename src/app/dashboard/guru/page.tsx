@@ -15,7 +15,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@
 import { doc, collection, query, where, Timestamp, orderBy, limit } from 'firebase/firestore';
 import { format, isBefore, addDays, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
 import { id } from 'date-fns/locale';
-import Link from 'next/link';
+import Link from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -25,13 +25,12 @@ function LiveClock() {
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
 
   useEffect(() => {
-    // This now runs only on the client
     setCurrentTime(new Date());
     const timerId = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
     return () => clearInterval(timerId);
-  }, []); // Empty dependency array ensures this runs once on mount
+  }, []);
 
   return (
       <div className="flex flex-col items-center">
@@ -76,7 +75,7 @@ const DashboardSkeleton = () => (
           </CardHeader>
           <CardContent className="space-y-6 flex flex-col items-center justify-center pt-8">
               <Skeleton className="h-[72px] w-1/2" />
-              <div className="grid grid-cols-2 gap-4 text-center w-full max-w-sm pt-4">
+              <div className="grid grid-cols-2 gap-4 text-center w-full max-sm pt-4">
                   <Skeleton className="h-[88px] w-full" />
                   <Skeleton className="h-[88px] w-full" />
               </div>
@@ -86,26 +85,6 @@ const DashboardSkeleton = () => (
               <Skeleton className="h-10 w-full" />
           </CardFooter>
         </Card>
-        <Card className="w-full">
-          <CardHeader>
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="flex items-start space-x-4 p-2">
-                <Skeleton className="h-10 w-10 rounded-lg" />
-                <div className="flex-1 space-y-2">
-                  <div className="flex justify-between">
-                    <Skeleton className="h-4 w-1/4" />
-                    <Skeleton className="h-5 w-12 rounded-full" />
-                  </div>
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
       </div>
     </div>
 );
@@ -114,7 +93,7 @@ const getStartOfLastNWorkDays = (n: number): Date => {
     let date = new Date();
     let workDaysFound = 0;
     while (workDaysFound < n) {
-        if (date.getDay() !== 0 && date.getDay() !== 6) { // Exclude Sunday (0) and Saturday (6)
+        if (date.getDay() !== 0 && date.getDay() !== 6) {
             workDaysFound++;
         }
         if (workDaysFound < n) {
@@ -142,9 +121,8 @@ export default function GuruDashboardPage() {
 
   const todaysAttendanceQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+    const todayStart = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
     return query(
       collection(firestore, 'users', user.uid, 'attendanceRecords'),
       where('checkInTime', '>=', Timestamp.fromDate(todayStart)),
@@ -215,17 +193,10 @@ export default function GuruDashboardPage() {
 
     const leaveRecords = approvedLeaves.flatMap(rec => {
         try {
-            if (!rec || !rec.startDate?.toDate || !rec.endDate?.toDate) {
-                console.warn('Dashboard: Skipping invalid leave record (malformed or missing dates):', rec);
-                return [];
-            }
+            if (!rec || !rec.startDate?.toDate || !rec.endDate?.toDate) return [];
             const sDate = rec.startDate.toDate();
             const eDate = rec.endDate.toDate();
-
-            if (isBefore(eDate, sDate)) {
-                 console.warn("Dashboard: End date is before start date, skipping", rec);
-                 return [];
-            }
+            if (isBefore(eDate, sDate)) return [];
 
             const interval = { start: startOfDay(sDate), end: endOfDay(eDate) };
             return eachDayOfInterval(interval).map(loopDate => ({
@@ -235,33 +206,20 @@ export default function GuruDashboardPage() {
                 details: rec.reason,
                 status: rec.type,
             }));
-        } catch (e) {
-            console.error('Dashboard: Error processing leave record, skipping:', e, rec);
-            return [];
-        }
+        } catch (e) { return []; }
     });
 
     const combined = [...attendanceRecords, ...leaveRecords];
     combined.sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
-
     return combined;
   }, [attendanceHistory, leaveHistory]);
   
   const isHoliday = useMemo(() => {
     if (!schoolConfig) return false;
-
-    // Check manual holiday mode first
-    if (schoolConfig.isAttendanceActive === false) {
-      return true;
-    }
-
-    // Then check recurring off days from config
+    if (schoolConfig.isAttendanceActive === false) return true;
     const today = new Date();
-    const offDays: number[] = schoolConfig.offDays ?? [0]; // Default to Sunday off if not set
-    if (offDays.includes(today.getDay())) {
-      return true;
-    }
-
+    const offDays: number[] = schoolConfig.offDays ?? [0];
+    if (offDays.includes(today.getDay())) return true;
     return false;
   }, [schoolConfig]);
 
@@ -277,48 +235,26 @@ export default function GuruDashboardPage() {
       const [lateH, lateM] = schoolConfig.checkInEndTime.split(':').map(Number);
       const lateTime = new Date(checkInTime);
       lateTime.setHours(lateH, lateM, 0, 0);
-      if (checkInTime > lateTime) {
-        isLate = true;
-      }
+      if (checkInTime > lateTime) isLate = true;
     }
 
     if (schoolConfig?.useTimeValidation && checkOutTime) {
       const [earlyH, earlyM] = schoolConfig.checkOutStartTime.split(':').map(Number);
       const earlyTime = new Date(checkOutTime);
       earlyTime.setHours(earlyH, earlyM, 0, 0);
-      if (checkOutTime < earlyTime) {
-        isEarly = true;
-      }
+      if (checkOutTime < earlyTime) isEarly = true;
     }
-
 
     let buttonAction;
     if (checkInTime && !checkOutTime) {
-      buttonAction = (
-        <Button asChild size="lg" className="w-full">
-          <Link href="/dashboard/absen">Absen Pulang</Link>
-        </Button>
-      );
+      buttonAction = <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Pulang</Link></Button>;
     } else if (!checkInTime) {
-      buttonAction = (
-        <Button asChild size="lg" className="w-full">
-          <Link href="/dashboard/absen">Absen Masuk</Link>
-        </Button>
-      );
+      buttonAction = <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Masuk</Link></Button>;
     } else {
-       buttonAction = (
-        <Button disabled size="lg" className="w-full">
-          Absensi Selesai
-        </Button>
-      );
+       buttonAction = <Button disabled size="lg" className="w-full">Absensi Selesai</Button>;
     }
 
     return (
-      <>
-        <CardHeader>
-          <CardTitle>Kehadiran Anda Hari Ini</CardTitle>
-          <CardDescription>Status kehadiran dan jam absensi Anda.</CardDescription>
-        </CardHeader>
         <CardContent className="space-y-6 flex flex-col items-center justify-center pt-8">
           <LiveClock />
           <div className="grid grid-cols-2 gap-4 text-center w-full max-w-sm pt-4">
@@ -342,21 +278,10 @@ export default function GuruDashboardPage() {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col gap-2">
-          {buttonAction}
-          <Button asChild variant="ghost" className="w-full">
-             <Link href="/dashboard/laporan">
-                Lihat Riwayat Lengkap
-              </Link>
-          </Button>
-        </CardFooter>
-      </>
     );
   };
   
-  if (isLoading) {
-    return <DashboardSkeleton />;
-  }
+  if (isLoading) return <DashboardSkeleton />;
 
   if (isHoliday) {
     return (
@@ -369,11 +294,7 @@ export default function GuruDashboardPage() {
           <CardDescription>Sistem absensi sedang tidak aktif. Nikmati hari libur Anda.</CardDescription>
         </CardHeader>
         <CardFooter className="flex justify-center border-t pt-6">
-           <Button asChild variant="outline">
-            <Link href="/dashboard/izin">
-              Ajukan Izin/Sakit
-            </Link>
-          </Button>
+           <Button asChild variant="outline"><Link href="/dashboard/izin">Ajukan Izin/Sakit</Link></Button>
         </CardFooter>
       </Card>
     );
@@ -388,7 +309,7 @@ export default function GuruDashboardPage() {
 
   return (
     <div className="space-y-6">
-       <div className="space-y-1">
+       <div className="space-y-1 px-1">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Selamat Datang</h1>
             <p className="text-lg text-muted-foreground">{userData?.name || 'Pengguna'}</p>
             <p className="text-muted-foreground !mt-2">Ini adalah ringkasan kehadiran dan aktivitas Anda hari ini.</p>
@@ -398,45 +319,59 @@ export default function GuruDashboardPage() {
             <Alert variant="default" className="bg-amber-50 border-amber-300 text-amber-900 dark:bg-amber-950/50 dark:border-amber-800 dark:text-amber-200 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400">
                 <FileText className="h-4 w-4" />
                 <AlertTitle className="font-semibold text-amber-950 dark:text-amber-300">Pengajuan Izin/Sakit Sedang Ditinjau</AlertTitle>
-                <AlertDescription>
-                    Anda memiliki 1 atau lebih pengajuan yang sedang menunggu persetujuan. Statusnya dapat dilihat pada halaman <Link href="/dashboard/laporan" className="font-bold underline hover:text-amber-700 dark:hover:text-amber-100">Laporan</Link>.
-                </AlertDescription>
+                <AlertDescription>Anda memiliki pengajuan yang menunggu persetujuan. Statusnya dapat dilihat pada halaman <Link href="/dashboard/laporan" className="font-bold underline">Laporan</Link>.</AlertDescription>
             </Alert>
         )}
 
         <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="w-full lg:col-span-2">
-            {renderAttendanceContent()}
-          </Card>
+          <div className="lg:col-span-2 space-y-2">
+            <div className="px-1">
+                <h2 className="text-lg font-bold">Kehadiran Anda Hari Ini</h2>
+                <p className="text-sm text-muted-foreground">Status kehadiran dan jam absensi Anda.</p>
+            </div>
+            <Card className="w-full">
+                {renderAttendanceContent()}
+                <CardFooter className="flex flex-col gap-2">
+                    {todaysAttendance?.[0]?.checkInTime && !todaysAttendance?.[0]?.checkOutTime ? (
+                        <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Pulang</Link></Button>
+                    ) : !todaysAttendance?.[0]?.checkInTime ? (
+                        <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Masuk</Link></Button>
+                    ) : (
+                        <Button disabled size="lg" className="w-full">Absensi Selesai</Button>
+                    )}
+                    <Button asChild variant="ghost" className="w-full"><Link href="/dashboard/laporan">Lihat Riwayat Lengkap</Link></Button>
+                </CardFooter>
+            </Card>
+          </div>
       
-          <Card className="w-full">
-              <CardHeader>
-                  <CardTitle>Aktivitas Terkini</CardTitle>
-                  <CardDescription>Catatan kehadiran &amp; izin dalam 6 hari kerja terakhir.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                  {recentActivity.length > 0 ? (
-                      recentActivity.map(activity => {
-                          const config = activityConfig[activity.type] || activityConfig['Hadir'];
-                          return (
-                              <ActivityItem
-                                  key={activity.id}
-                                  icon={config.icon}
-                                  title={activity.type}
-                                  date={activity.date ? format(activity.date, 'eeee, d MMM yyyy', { locale: id }) : 'Tanggal tidak valid'}
-                                  details={activity.details}
-                                  status={activity.status}
-                                  statusVariant={config.variant}
-                              />
-                          );
-                      })
-                  ) : (
-                      <div className="flex flex-col items-center justify-center text-center p-6 text-muted-foreground h-full">
-                          <p className="text-sm">Belum ada aktivitas.</p>
-                      </div>
-                  )}
-              </CardContent>
-          </Card>
+          <div className="w-full space-y-2">
+              <div className="px-1">
+                  <h2 className="text-lg font-bold">Aktivitas Terkini</h2>
+                  <p className="text-sm text-muted-foreground">Catatan kehadiran &amp; izin dalam 6 hari kerja terakhir.</p>
+              </div>
+              <Card className="w-full">
+                <CardContent className="space-y-2 pt-6">
+                    {recentActivity.length > 0 ? (
+                        recentActivity.map(activity => {
+                            const config = activityConfig[activity.type] || activityConfig['Hadir'];
+                            return (
+                                <ActivityItem
+                                    key={activity.id}
+                                    icon={config.icon}
+                                    title={activity.type}
+                                    date={activity.date ? format(activity.date, 'eeee, d MMM yyyy', { locale: id }) : ''}
+                                    details={activity.details}
+                                    status={activity.status}
+                                    statusVariant={config.variant}
+                                />
+                            );
+                        })
+                    ) : (
+                        <div className="flex flex-col items-center justify-center text-center p-6 text-muted-foreground h-full"><p className="text-sm">Belum ada aktivitas.</p></div>
+                    )}
+                </CardContent>
+              </Card>
+          </div>
         </div>
     </div>
   );
