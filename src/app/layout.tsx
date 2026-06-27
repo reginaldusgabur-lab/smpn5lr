@@ -22,6 +22,16 @@ export const metadata: Metadata = {
   icons: {
     icon: '/logo-3d-v2.png',
     apple: '/logo-3d-v2.png',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-capable': 'yes',
+    'application-name': 'E-SPENLI',
+    'apple-mobile-web-app-title': 'E-SPENLI',
+    'theme-color': '#3F51B5',
+    'msapplication-navbutton-color': '#3F51B5',
+    'apple-mobile-web-app-status-bar-style': 'black-translucent',
+    'msapplication-starturl': '/',
   }
 };
 
@@ -49,6 +59,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="font-body antialiased bg-background text-foreground" suppressHydrationWarning>
