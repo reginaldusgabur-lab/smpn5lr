@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000 -H 0.0.0.0",
-    "dev:log": "next dev -p 3000 -H 0.0.0.0 &> server.log",
+    "dev": "next dev",
+    "dev:log": "next dev &> server.log",
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
