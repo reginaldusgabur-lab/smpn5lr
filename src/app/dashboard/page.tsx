@@ -6,7 +6,7 @@ import {
   Users,  UserCheck,  BookUser,  LogIn, LogOut, TrendingUp, MailWarning
 } from 'lucide-react';
 import {
-  Card,  CardContent,  CardHeader,  CardTitle, CardFooter
+  Card,  CardContent,  CardHeader,  CardTitle, CardFooter, CardDescription
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -101,29 +101,35 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
     const hasFinished = !!(checkInTime && checkOutTime);
 
     return (
-        <Card className="w-full bg-card border-border shadow-sm overflow-hidden">
-            <CardContent className="space-y-8 pb-8 pt-8 w-full">
-                {isLoading ? (
-                    <div className="w-full space-y-6">
-                        <div className="flex flex-col items-center gap-2">
-                            <Skeleton className="h-12 w-full max-w-[200px]" />
-                            <Skeleton className="h-4 w-full max-w-[150px]" />
+        <div className="w-full space-y-6">
+            {/* Jam & Tanggal DILUAR kartu */}
+            {!isLoading && (
+                <div className="text-center w-full py-6 animate-in fade-in slide-in-from-top-4 duration-700">
+                    <p className="text-7xl font-bold tracking-tighter tabular-nums text-primary">
+                        {format(currentTime, 'HH:mm:ss')}
+                    </p>
+                    <p className="text-lg font-medium text-muted-foreground mt-2">
+                        {format(currentTime, 'eeee, d MMMM yyyy', { locale: id })}
+                    </p>
+                </div>
+            )}
+
+            <Card className="w-full bg-card border-border shadow-sm overflow-hidden">
+                {/* Judul & Deskripsi DIDALAM kartu */}
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-xl font-bold">Kehadiran Anda Hari Ini</CardTitle>
+                    <CardDescription>Status kehadiran dan jam absensi Anda hari ini.</CardDescription>
+                </CardHeader>
+                
+                <CardContent className="space-y-8 pb-8 pt-4 w-full">
+                    {isLoading ? (
+                        <div className="w-full space-y-6">
+                            <div className="grid grid-cols-2 gap-4 w-full">
+                                <Skeleton className="h-24 w-full" />
+                                <Skeleton className="h-24 w-full" />
+                            </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4 w-full">
-                            <Skeleton className="h-20 w-full" />
-                            <Skeleton className="h-20 w-full" />
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        <div className="text-center w-full">
-                            <p className="text-6xl font-bold tracking-tighter tabular-nums text-primary">
-                                {format(currentTime, 'HH:mm:ss')}
-                            </p>
-                            <p className="text-sm font-medium text-muted-foreground mt-2">
-                                {format(currentTime, 'eeee, d MMMM yyyy', { locale: id })}
-                            </p>
-                        </div>
+                    ) : (
                         <div className="grid grid-cols-2 gap-4 w-full">
                             <div className="flex flex-col items-center p-6 rounded-xl bg-muted/30 border shadow-sm w-full">
                                 <div className="flex items-center gap-1.5 mb-2">
@@ -144,23 +150,23 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
                                 </p>
                             </div>
                         </div>
-                    </>
-                )}
-            </CardContent>
-            <CardFooter className="flex flex-col gap-3 pt-0 pb-8 px-6 w-full">
-                {!isLoading && (
-                    <Button 
-                        size="lg" 
-                        className={cn("w-full h-12 text-base font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]", hasFinished && "opacity-50")}
-                        onClick={() => !hasFinished && router.push('/dashboard/absen')}
-                        disabled={hasFinished}
-                    >
-                        {hasFinished ? 'Absensi Selesai' : 'Absen Sekarang'}
-                    </Button>
-                )}
-                <Button variant="ghost" size="sm" asChild className="text-muted-foreground w-full"><Link href="/dashboard/laporan">Lihat Riwayat Lengkap</Link></Button>
-            </CardFooter>
-        </Card>
+                    )}
+                </CardContent>
+                <CardFooter className="flex flex-col gap-3 pt-0 pb-8 px-6 w-full">
+                    {!isLoading && (
+                        <Button 
+                            size="lg" 
+                            className={cn("w-full h-12 text-base font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]", hasFinished && "opacity-50")}
+                            onClick={() => !hasFinished && router.push('/dashboard/absen')}
+                            disabled={hasFinished}
+                        >
+                            {hasFinished ? 'Absensi Selesai' : 'Absen Sekarang'}
+                        </Button>
+                    )}
+                    <Button variant="ghost" size="sm" asChild className="text-muted-foreground w-full"><Link href="/dashboard/laporan">Lihat Riwayat Lengkap</Link></Button>
+                </CardFooter>
+            </Card>
+        </div>
     );
 };
 
@@ -271,11 +277,7 @@ export default function DashboardPage() {
 
             {isGuruOrPegawai && (
                 <div className="w-full space-y-12">
-                    <div className="space-y-4 w-full">
-                        <div className="px-1">
-                            <h2 className="text-xl font-bold text-foreground">Kehadiran Anda Hari Ini</h2>
-                            <p className="text-sm text-muted-foreground">Status kehadiran dan jam absensi Anda hari ini.</p>
-                        </div>
+                    <div className="w-full">
                         <PersonalAttendanceCardUI 
                             attendanceData={todaysAttendance} 
                             schoolConfig={schoolConfig} 
