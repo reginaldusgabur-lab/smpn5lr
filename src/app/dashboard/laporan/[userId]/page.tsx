@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -263,7 +262,8 @@ export default function UserReportDetailPage() {
         const centerX = pageWidth / 2;
         const margin = 14;
         const monthName = format(currentMonth, 'MMMM yyyy', { locale: id });
-        const config = schoolConfigData || {};
+        const config = schoolConfigData || ({} as any);
+        const academicYearText = config.academicYear ? ` Tahun Ajaran ${config.academicYear}` : '';
 
         // Kop Surat - HANYA DI HALAMAN PERTAMA
         doc.setFont('times', 'bold').setFontSize(14);
@@ -282,7 +282,7 @@ export default function UserReportDetailPage() {
         doc.setFont('times', 'bold').setFontSize(14);
         doc.text('LAPORAN KEHADIRAN INDIVIDU', centerX, 58, { align: 'center' });
         doc.setFontSize(12);
-        doc.text(`Periode: ${monthName}`, centerX, 65, { align: 'center' });
+        doc.text(`Periode: ${monthName}${academicYearText}`, centerX, 65, { align: 'center' });
 
         // Info User
         doc.setFontSize(10).setFont('times', 'normal');

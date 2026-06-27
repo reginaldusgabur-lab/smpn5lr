@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button'
@@ -49,6 +48,7 @@ export default function PengaturanPage() {
   const [headmasterName, setHeadmasterName] = useState('');
   const [headmasterNip, setHeadmasterNip] = useState('');
   const [reportCity, setReportCity] = useState('');
+  const [academicYear, setAcademicYear] = useState('');
 
   // Firestore refs
   const userDocRef = useMemoFirebase(() => {
@@ -79,6 +79,7 @@ export default function PengaturanPage() {
       headmasterName: string;
       headmasterNip: string;
       reportCity: string;
+      academicYear: string;
   }>(user, schoolConfigRef);
 
   // Populate state from fetched data
@@ -97,6 +98,7 @@ export default function PengaturanPage() {
       setHeadmasterName(schoolConfigData.headmasterName ?? 'Fransiskus Sales, S.Pd');
       setHeadmasterNip(schoolConfigData.headmasterNip ?? '196805121994121004');
       setReportCity(schoolConfigData.reportCity ?? 'Mando');
+      setAcademicYear(schoolConfigData.academicYear ?? '');
     }
   }, [schoolConfigData]);
 
@@ -115,8 +117,6 @@ export default function PengaturanPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      // Tighter file size check to account for base64 encoding overhead.
-      // Firestore document limit is 1MiB. Base64 is ~33% larger. 750KB is a safe limit.
       if (file.size > 750 * 1024) {
           toast({
               variant: 'destructive',
@@ -155,7 +155,6 @@ export default function PengaturanPage() {
         updatePromises.push(updateProfile(user, authUpdates));
       }
       if (Object.keys(firestoreUpdates).length > 0) {
-        // Use awaited updateDoc to catch potential errors (like document size limit)
         updatePromises.push(updateDoc(userDocRef, firestoreUpdates));
       }
       
@@ -230,6 +229,7 @@ export default function PengaturanPage() {
       headmasterName,
       headmasterNip,
       reportCity,
+      academicYear,
     }, { merge: true });
     toast({
       title: 'Pengaturan Disimpan',
@@ -357,20 +357,26 @@ export default function PengaturanPage() {
                     <Label htmlFor="address">Alamat Sekolah</Label>
                     <Input id="address" value={address} onChange={e => setAddress(e.target.value)} placeholder="Jl. Ranaka, Karot, Langke Rembong..." />
                 </div>
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="report-city">Kota Laporan</Label>
                         <Input id="report-city" value={reportCity} onChange={e => setReportCity(e.target.value)} placeholder="Contoh: Mando" />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 sm:col-span-2">
                         <Label htmlFor="headmaster-name">Nama Kepala Sekolah</Label>
                         <Input id="headmaster-name" value={headmasterName} onChange={e => setHeadmasterName(e.target.value)} placeholder="Fransiskus Sales, S.Pd" />
                     </div>
                  </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="headmaster-nip">NIP Kepala Sekolah</Label>
-                    <Input id="headmaster-nip" value={headmasterNip} onChange={e => setHeadmasterNip(e.target.value)} placeholder="196805121994121004" />
-                </div>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="headmaster-nip">NIP Kepala Sekolah</Label>
+                        <Input id="headmaster-nip" value={headmasterNip} onChange={e => setHeadmasterNip(e.target.value)} placeholder="196805121994121004" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="academic-year">Tahun Ajaran</Label>
+                        <Input id="academic-year" value={academicYear} onChange={e => setAcademicYear(e.target.value)} placeholder="Contoh: 2025/2026" />
+                    </div>
+                 </div>
             </CardContent>
             <CardFooter className="border-t px-6 py-4">
                 <Button onClick={handleReportSettingsSave} disabled={isReportSaving}>

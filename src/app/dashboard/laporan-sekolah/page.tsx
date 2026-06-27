@@ -2,11 +2,13 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, getDocs, query, where, doc } from 'firebase/firestore';
-import { format, isValid, parseISO, startOfMonth, endOfMonth, isSameMonth, subMonths, addMonths } from 'date-fns';
+import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
+import { collection, query, where, getDocs, doc, collectionGroup } from 'firebase/firestore';
+import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths, isBefore, eachDayOfInterval, startOfDay, isWithinInterval, setHours, setMinutes, isSameDay } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Download, FileText, Eye, Search, Filter, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Loader2, ChevronLeft, ChevronRight, Search, Download, ChevronDown, MoreVertical, Filter, Eye, FileText } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,16 +16,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from "@/components/ui/skeleton";
 import { calculateAttendanceStats, fetchUserMonthlyReportData } from '@/lib/attendance';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useToast } from '@/hooks/use-toast';
+import { parseISO, isValid } from 'date-fns';
 
 interface ReportRowData {
     no: number;
@@ -127,7 +130,8 @@ export default function SchoolReportPage() {
             const margin = 14;
             let currentY = 20;
 
-            const config = schoolConfigData || {};
+            const config = schoolConfigData || ({} as any);
+            const academicYearText = config.academicYear ? ` Tahun Ajaran ${config.academicYear}` : '';
 
             doc.setFont('times', 'bold').setFontSize(14);
             doc.text((config.governmentAgency || 'PEMERINTAH KABUPATEN MANGGARAI').toUpperCase(), centerX, currentY, { align: 'center' });
@@ -148,7 +152,7 @@ export default function SchoolReportPage() {
             doc.text('LAPORAN KEHADIRAN INDIVIDU', centerX, currentY, { align: 'center' });
             currentY += 7;
             doc.setFontSize(12);
-            doc.text(`Periode: ${monthName}`, centerX, currentY, { align: 'center' });
+            doc.text(`Periode: ${monthName}${academicYearText}`, centerX, currentY, { align: 'center' });
             currentY += 12;
 
             doc.setFontSize(10).setFont('times', 'normal');
@@ -238,7 +242,8 @@ export default function SchoolReportPage() {
             const margin = 14;
             let finalY = 20;
 
-            const config = schoolConfigData || {};
+            const config = schoolConfigData || ({} as any);
+            const academicYearText = config.academicYear ? ` Tahun Ajaran ${config.academicYear}` : '';
             const instansi = (config.governmentAgency || 'PEMERINTAH KABUPATEN MANGGARAI').toUpperCase();
             const dinas = (config.educationAgency || 'DINAS PENDIDIKAN, KEPEMUDAAN DAN OLAHRAGA').toUpperCase();
             const sekolah = (config.schoolName || 'SMP NEGERI 5 LANGKE REMBONG').toUpperCase();
@@ -263,7 +268,7 @@ export default function SchoolReportPage() {
             doc.text('LAPORAN KEHADIRAN', centerX, finalY, { align: 'center' });
             finalY += 7;
             doc.setFontSize(12);
-            doc.text(`Periode: ${monthName}`, centerX, finalY, { align: 'center' });
+            doc.text(`Periode: ${monthName}${academicYearText}`, centerX, finalY, { align: 'center' });
             finalY += 12;
 
             const tableRows = filteredReports.map((item, index) => [
