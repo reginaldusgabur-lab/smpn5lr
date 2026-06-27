@@ -467,7 +467,7 @@ export default function SchoolReportPage() {
                                                                 ) : (
                                                                     <FileText className="mr-3 h-4 w-4 text-destructive" />
                                                                 )}
-                                                                <span className="text-xs font-bold text-destructive">Laporan Personal</span>
+                                                                <span className="text-xs font-bold text-destructive">Unduh Laporan</span>
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
