@@ -92,7 +92,7 @@ const WelcomeCard = ({ user, isLoading }: { user: any, isLoading: boolean }) => 
         </div>
     );
     return (
-        <div className="mb-4 px-0 w-full">
+        <div className="mb-4 px-0 w-full text-left">
             <p className="text-sm text-muted-foreground leading-none font-medium">Selamat Datang</p>
             <h1 className="text-2xl font-black tracking-tight text-foreground mt-1.5">{user?.name || 'Pengguna'}</h1>
             <p className="text-[11px] text-muted-foreground mt-1 font-medium">Lakukan absensi dan lihat riwayat kehadiran Anda.</p>
@@ -185,7 +185,6 @@ export default function DashboardPage() {
                         <CardContent className="p-4 pt-2">
                             <LiveClockUI />
                             
-                            {/* Grid 2 Kolom Fleksibel Mengikuti Lebar Kontainer */}
                             <div className="grid grid-cols-2 gap-3 mt-4 w-full">
                                 <div className="bg-muted/30 rounded-xl p-3 text-center border border-border/40 flex flex-col items-center justify-center">
                                     <div className="flex items-center justify-center gap-1.5 mb-1">
