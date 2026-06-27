@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -34,8 +35,8 @@ const roleDescriptions: { [key: string]: string } = {
 };
 
 const WelcomeCard = ({ user, isLoading }: { user: any, isLoading: boolean }) => (
-    <div className="space-y-1 mb-8 w-full px-1">
-        <p className="text-base text-muted-foreground leading-none">Selamat Datang</p>
+    <div className="space-y-1 mb-4 w-full px-1">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground leading-none">Selamat Datang</p>
         {isLoading ? (
             <Skeleton className="h-7 w-48 mt-2" />
         ) : (
@@ -44,7 +45,7 @@ const WelcomeCard = ({ user, isLoading }: { user: any, isLoading: boolean }) => 
         {isLoading ? (
             <Skeleton className="h-4 w-72 mt-2" />
         ) : (
-            <p className="text-sm text-muted-foreground mt-1">{roleDescriptions[user?.role || ''] || 'Selamat datang di dasbor Anda.'}</p>
+            <p className="text-sm text-muted-foreground">{roleDescriptions[user?.role || ''] || 'Selamat datang di dasbor Anda.'}</p>
         )}
     </div>
 );
@@ -101,14 +102,14 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
     const hasFinished = !!(checkInTime && checkOutTime);
 
     return (
-        <div className="w-full space-y-6">
-            {/* Jam & Tanggal DILUAR kartu */}
+        <div className="w-full space-y-4">
+            {/* Jam & Tanggal DILUAR kartu - Rapat & Presisi */}
             {!isLoading && (
-                <div className="text-center w-full py-6 animate-in fade-in slide-in-from-top-4 duration-700">
-                    <p className="text-7xl font-bold tracking-tighter tabular-nums text-primary">
+                <div className="text-center w-full py-2 animate-in fade-in slide-in-from-top-4 duration-700">
+                    <p className="text-6xl font-bold tracking-tighter tabular-nums text-primary">
                         {format(currentTime, 'HH:mm:ss')}
                     </p>
-                    <p className="text-lg font-medium text-muted-foreground mt-2">
+                    <p className="text-base font-medium text-muted-foreground mt-1">
                         {format(currentTime, 'eeee, d MMMM yyyy', { locale: id })}
                     </p>
                 </div>
@@ -117,53 +118,53 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
             <Card className="w-full bg-card border-border shadow-sm overflow-hidden">
                 {/* Judul & Deskripsi DIDALAM kartu */}
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-xl font-bold">Kehadiran Anda Hari Ini</CardTitle>
-                    <CardDescription>Status kehadiran dan jam absensi Anda hari ini.</CardDescription>
+                    <CardTitle className="text-lg font-bold">Kehadiran Anda Hari Ini</CardTitle>
+                    <CardDescription className="text-xs">Status kehadiran dan jam absensi Anda hari ini.</CardDescription>
                 </CardHeader>
                 
-                <CardContent className="space-y-8 pb-8 pt-4 w-full">
+                <CardContent className="space-y-4 pb-6 pt-2 w-full">
                     {isLoading ? (
-                        <div className="w-full space-y-6">
-                            <div className="grid grid-cols-2 gap-4 w-full">
-                                <Skeleton className="h-24 w-full" />
-                                <Skeleton className="h-24 w-full" />
+                        <div className="w-full space-y-4">
+                            <div className="grid grid-cols-2 gap-3 w-full">
+                                <Skeleton className="h-20 w-full" />
+                                <Skeleton className="h-20 w-full" />
                             </div>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 gap-4 w-full">
-                            <div className="flex flex-col items-center p-6 rounded-xl bg-muted/30 border shadow-sm w-full">
-                                <div className="flex items-center gap-1.5 mb-2">
-                                    <LogIn size={16} className="text-muted-foreground" />
-                                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Masuk</span>
+                        <div className="grid grid-cols-2 gap-3 w-full">
+                            <div className="flex flex-col items-center p-4 rounded-xl bg-muted/30 border shadow-sm w-full">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                    <LogIn size={14} className="text-muted-foreground" />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Masuk</span>
                                 </div>
-                                <p className={cn("text-3xl font-bold tabular-nums", isLate ? "text-destructive" : "text-foreground")}>
+                                <p className={cn("text-2xl font-bold tabular-nums", isLate ? "text-destructive" : "text-foreground")}>
                                     {checkInTime ? format(checkInTime, 'HH:mm') : '--:--'}
                                 </p>
                             </div>
-                            <div className="flex flex-col items-center p-6 rounded-xl bg-muted/30 border shadow-sm w-full">
-                                <div className="flex items-center gap-1.5 mb-2">
-                                    <LogOut size={16} className="text-muted-foreground" />
-                                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Pulang</span>
+                            <div className="flex flex-col items-center p-4 rounded-xl bg-muted/30 border shadow-sm w-full">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                    <LogOut size={14} className="text-muted-foreground" />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pulang</span>
                                 </div>
-                                <p className={cn("text-3xl font-bold tabular-nums", isEarly ? "text-destructive" : "text-foreground")}>
+                                <p className={cn("text-2xl font-bold tabular-nums", isEarly ? "text-destructive" : "text-foreground")}>
                                     {checkOutTime ? format(checkOutTime, 'HH:mm') : '--:--'}
                                 </p>
                             </div>
                         </div>
                     )}
                 </CardContent>
-                <CardFooter className="flex flex-col gap-3 pt-0 pb-8 px-6 w-full">
+                <CardFooter className="flex flex-col gap-2 pt-0 pb-6 px-6 w-full">
                     {!isLoading && (
                         <Button 
                             size="lg" 
-                            className={cn("w-full h-12 text-base font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]", hasFinished && "opacity-50")}
+                            className={cn("w-full h-11 text-sm font-bold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]", hasFinished && "opacity-50")}
                             onClick={() => !hasFinished && router.push('/dashboard/absen')}
                             disabled={hasFinished}
                         >
                             {hasFinished ? 'Absensi Selesai' : 'Absen Sekarang'}
                         </Button>
                     )}
-                    <Button variant="ghost" size="sm" asChild className="text-muted-foreground w-full"><Link href="/dashboard/laporan">Lihat Riwayat Lengkap</Link></Button>
+                    <Button variant="ghost" size="sm" asChild className="text-muted-foreground w-full h-8 text-[11px]"><Link href="/dashboard/laporan">Lihat Riwayat Lengkap</Link></Button>
                 </CardFooter>
             </Card>
         </div>
@@ -173,7 +174,7 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
 const MonthlyAttendanceChartUI = ({ summaryData, isLoading }: { summaryData: any, isLoading: boolean }) => {
     return (
         <Card className="w-full border-border shadow-sm">
-            <CardContent className="pt-6 w-full h-[350px]">
+            <CardContent className="pt-6 w-full h-[300px]">
                 {isLoading ? 
                     <Skeleton className="h-full w-full" /> : 
                     <ResponsiveContainer width="100%" height="100%">
@@ -184,10 +185,10 @@ const MonthlyAttendanceChartUI = ({ summaryData, isLoading }: { summaryData: any
                             { name: 'Alpa', jumlah: summaryData.alpaCount || 0, fill: '#ef4444' },
                         ]}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                            <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                            <YAxis fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} width={30} />
-                            <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                            <Bar dataKey="jumlah" radius={[6, 6, 0, 0]} barSize={40} />
+                            <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
+                            <YAxis fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} width={25} />
+                            <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px' }} />
+                            <Bar dataKey="jumlah" radius={[4, 4, 0, 0]} barSize={35} />
                         </BarChart>
                     </ResponsiveContainer>
                 }
@@ -198,7 +199,7 @@ const MonthlyAttendanceChartUI = ({ summaryData, isLoading }: { summaryData: any
 
 function useMonthlyAttendanceSummary(user: any) {
     const firestore = useFirestore();
-    const cacheKey = useMemo(() => user ? `monthlySummary_v8_${user.uid}` : null, [user]);
+    const cacheKey = useMemo(() => user ? `monthlySummary_v9_${user.uid}` : null, [user]);
     const [summary, setSummary] = useState<any>(() => cacheKey ? getFromCache(cacheKey) || null : null);
     const [isLoading, setIsLoading] = useState(summary === null);
 
@@ -232,7 +233,7 @@ function useMonthlyAttendanceSummary(user: any) {
 }
 
 function useStaffDashboardStats(firestore: any, user: any) {
-  const cacheKey = 'staffDashboardStats_v7';
+  const cacheKey = 'staffDashboardStats_v8';
   const [stats, setStats] = useState<any>(() => getFromCache(cacheKey) || null);
   const [isLoading, setIsLoading] = useState(stats === null);
 
@@ -276,7 +277,7 @@ export default function DashboardPage() {
             <WelcomeCard user={user} isLoading={isUserLoading} />
 
             {isGuruOrPegawai && (
-                <div className="w-full space-y-12">
+                <div className="w-full space-y-8">
                     <div className="w-full">
                         <PersonalAttendanceCardUI 
                             attendanceData={todaysAttendance} 
@@ -285,12 +286,12 @@ export default function DashboardPage() {
                         />
                     </div>
 
-                    <div className="space-y-4 w-full">
+                    <div className="space-y-3 w-full">
                         <div className="px-1">
-                            <h2 className="flex items-center gap-2 text-xl font-bold text-foreground">
-                                <TrendingUp size={20} className="text-primary" /> Riwayat Bulan {format(new Date(), 'MMMM', { locale: id })}
+                            <h2 className="flex items-center gap-2 text-lg font-bold text-foreground">
+                                <TrendingUp size={18} className="text-primary" /> Riwayat Bulan {format(new Date(), 'MMMM', { locale: id })}
                             </h2>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                                 Persentase kehadiran: <span className="font-bold text-primary">{isPersonalSummaryLoading ? '...' : `${personalSummary.percentage}%`}</span>
                             </p>
                         </div>
