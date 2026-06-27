@@ -126,10 +126,10 @@ export default function DashboardPage() {
 
         {isGuruOrPegawai && (
             <div className="w-full space-y-6 flex flex-col items-stretch">
-                <Card className="w-full border shadow-sm overflow-hidden bg-card border-t-4 border-t-primary">
-                    <CardHeader className="p-4 flex flex-row items-center gap-2 bg-primary/5 border-b border-primary/10">
-                        <Clock className="w-4 h-4 text-primary" />
-                        <CardTitle className="text-xs font-bold text-primary uppercase tracking-widest">
+                <Card className="w-full border shadow-sm overflow-hidden bg-card border-none">
+                    <CardHeader className="p-4 flex flex-row items-center gap-2 bg-primary text-primary-foreground">
+                        <Clock className="w-4 h-4" />
+                        <CardTitle className="text-xs font-black uppercase tracking-widest">
                             Kehadiran Anda hari ini
                         </CardTitle>
                     </CardHeader>
@@ -180,14 +180,14 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="w-full border shadow-sm overflow-hidden bg-card border-t-4 border-t-primary">
-                    <CardHeader className="p-4 bg-primary/5 border-b border-primary/10">
+                <Card className="w-full border shadow-sm overflow-hidden bg-card border-none">
+                    <CardHeader className="p-4 bg-primary text-primary-foreground">
                         <div className="flex items-center justify-between">
-                            <h2 className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-widest">
-                                <TrendingUp size={14} className="text-primary" /> Ringkasan bulanan
+                            <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest">
+                                <TrendingUp size={14} /> Ringkasan bulanan
                             </h2>
-                            <p className="text-[10px] text-muted-foreground font-bold">
-                                Skor: <span className="text-primary">{isPersonalSummaryLoading ? '...' : `${personalSummary.percentage}%`}</span>
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-80">
+                                Skor: {isPersonalSummaryLoading ? '...' : `${personalSummary.percentage}%`}
                             </p>
                         </div>
                     </CardHeader>
@@ -222,11 +222,11 @@ export default function DashboardPage() {
         {isAdminOrKepsek && (
             <div className="w-full space-y-8 pt-4 border-t border-dashed border-border/50 flex flex-col items-stretch">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-                    <Card className="bg-card border shadow-sm border-t-4 border-t-green-500 overflow-hidden">
-                        <CardHeader className="p-3 bg-green-500/5 border-b border-green-500/10">
+                    <Card className="bg-card border-none shadow-sm overflow-hidden">
+                        <CardHeader className="p-3 bg-green-600 text-white">
                             <div className="flex items-center justify-between">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-green-600">Hadir</p>
-                                <UserCheck className="h-4 w-4 text-green-500" />
+                                <p className="text-[10px] font-black uppercase tracking-widest">Hadir</p>
+                                <UserCheck className="h-4 w-4" />
                             </div>
                         </CardHeader>
                         <CardContent className="p-4">
@@ -234,11 +234,11 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
                     
-                    <Card className="bg-card border shadow-sm border-t-4 border-t-blue-500 overflow-hidden">
-                        <CardHeader className="p-3 bg-blue-500/5 border-b border-blue-500/10">
+                    <Card className="bg-card border-none shadow-sm overflow-hidden">
+                        <CardHeader className="p-3 bg-blue-600 text-white">
                             <div className="flex items-center justify-between">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Izin / Sakit</p>
-                                <BookUser className="h-4 w-4 text-blue-500" />
+                                <p className="text-[10px] font-black uppercase tracking-widest">Izin / Sakit</p>
+                                <BookUser className="h-4 w-4" />
                             </div>
                         </CardHeader>
                         <CardContent className="p-4">
@@ -247,11 +247,11 @@ export default function DashboardPage() {
                     </Card>
 
                     <Link href="/dashboard/izin-kepala-sekolah" className="block">
-                        <Card className="bg-card border shadow-sm border-t-4 border-t-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors group overflow-hidden">
-                            <CardHeader className="p-3 bg-amber-500/5 border-b border-amber-500/10">
+                        <Card className="bg-card border-none shadow-sm hover:opacity-90 transition-all group overflow-hidden">
+                            <CardHeader className="p-3 bg-amber-500 text-white">
                                 <div className="flex items-center justify-between">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-600">Menunggu</p>
-                                    <MailWarning className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest">Menunggu</p>
+                                    <MailWarning className="h-4 w-4 group-hover:scale-110 transition-transform" />
                                 </div>
                             </CardHeader>
                             <CardContent className="p-4">
