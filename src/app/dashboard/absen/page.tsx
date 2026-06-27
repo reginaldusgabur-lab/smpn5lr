@@ -250,7 +250,7 @@ export default function AbsenPage() {
           </CardHeader>
           <CardContent className="p-0">
               <div className="bg-black w-full flex items-center justify-center overflow-hidden">
-                <div className="relative aspect-video w-full max-w-2xl sm:aspect-square">
+                <div className="relative aspect-video w-full">
                     {(showScanner || isCameraInitializing) && (
                         <div className="absolute inset-0 z-0">
                         <div id={readerId} className="w-full h-full" />
@@ -262,7 +262,7 @@ export default function AbsenPage() {
                     )}
 
                     <div className="absolute inset-0 z-10 flex items-center justify-center p-8 pointer-events-none">
-                        <div className="relative w-full h-full max-w-sm aspect-square mx-auto">
+                        <div className="relative w-full h-full max-w-2xl aspect-square mx-auto">
                             {/* Corner Borders */}
                             <div className={cn("absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 rounded-tl-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
                             <div className={cn("absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 rounded-tr-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />

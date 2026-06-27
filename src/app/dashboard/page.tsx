@@ -34,7 +34,7 @@ const roleDescriptions: { [key: string]: string } = {
 };
 
 const WelcomeCard = ({ user, isLoading }: { user: any, isLoading: boolean }) => (
-    <div className="space-y-1 mb-6 px-1">
+    <div className="space-y-1 mb-6 w-full">
         <p className="text-base text-muted-foreground leading-none">Selamat Datang</p>
         {isLoading ? (
             <Skeleton className="h-7 w-48 mt-2" />
@@ -106,7 +106,7 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
                 <CardTitle className="text-lg font-bold">Kehadiran Anda Hari Ini</CardTitle>
                 <CardDescription>Status kehadiran dan jam absensi Anda.</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col flex-grow items-center justify-center space-y-8 pb-8 pt-6">
+            <CardContent className="flex flex-col flex-grow items-stretch justify-center space-y-8 pb-8 pt-6">
                 {isLoading ? (
                     <div className="w-full space-y-6">
                         <div className="flex flex-col items-center gap-2">
@@ -121,7 +121,7 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
                     </div>
                 ) : (
                     <>
-                        <div className="text-center">
+                        <div className="text-center w-full">
                             <p className="text-6xl font-bold tracking-tighter tabular-nums text-primary">{format(currentTime, 'HH:mm:ss')}</p>
                             <p className="text-sm font-medium text-muted-foreground mt-2">{format(currentTime, 'eeee, d MMMM yyyy', { locale: id })}</p>
                         </div>
@@ -208,7 +208,7 @@ function useMonthlyAttendanceSummary(user: any) {
             try {
                 const now = new Date();
                 const stats = await calculateAttendanceStats(firestore, user.uid, { start: startOfMonth(now), end: endOfMonth(now) });
-                const newSummary = { attendanceCount: stats.totalHadir, izinCount: stats.totalIzin, sakitCount: stats.totalSakit, alpaCount: stats.totalAlpa, percentage: stats.persentase.replace('%', '') };
+                const newSummary = { attendanceCount: stats.totalHadir, izinCount: stats.totalIzin, sakitCount: stats.totalSakit, alpaCount: stats.totalAlpa, percentage: stats.percentage.replace('%', '') };
                 setSummary(newSummary);
                 setInCache(cacheKey, newSummary, 900);
             } catch (error) { setSummary({}); } finally { setIsLoading(false); }
