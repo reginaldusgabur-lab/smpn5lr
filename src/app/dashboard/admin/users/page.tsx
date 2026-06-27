@@ -86,7 +86,7 @@ import { useRouter } from 'next/navigation';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 import { cn } from '@/lib/utils';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/skeleton';
 
 // --- Main Types ---
 type Role = 'guru' | 'pegawai' | 'kepala_sekolah' | 'admin';
@@ -125,7 +125,6 @@ const pegawaiPositions = ["Honorer", "PPPK", "PW", "PNS"];
 
 const sequenceNumberValidation = (data: { role: string; sequenceNumber?: string }) => {
     if ((data.role === 'guru' || data.role === 'kepala_sekolah') && data.sequenceNumber) {
-        // Allow only numeric input for sequenceNumber
         return /^\d+$/.test(data.sequenceNumber);
     }
     return true;
@@ -192,8 +191,8 @@ const TableSkeleton = ({ cols }: { cols: number }) => (
 
 const UserTable = ({ data, canManage, onEdit, onToggleStatus, onDelete }: TableProps) => {
     return (
-        <div className="border rounded-md overflow-x-auto">
-            <Table className="min-w-[1024px]">
+        <div className="overflow-x-auto">
+            <Table className="min-w-[1000px]">
                 <TableHeader>
                     <TableRow>
                         <TableHead className="w-[120px] text-center whitespace-nowrap">Nomor Urut</TableHead>
@@ -246,7 +245,7 @@ const UserTable = ({ data, canManage, onEdit, onToggleStatus, onDelete }: TableP
 
 const AdminTable = ({ data, canManage, onEdit, onToggleStatus, onDelete }: TableProps) => {
     return (
-        <div className="border rounded-md overflow-x-auto">
+        <div className="overflow-x-auto">
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -352,7 +351,6 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
             if (hasValA && hasValB) {
                 const strA = String(valA);
                 const strB = String(valB);
-                // Natural sort for numbers inside strings
                 return strA.localeCompare(strB, undefined, { numeric: true });
             }
 
@@ -666,9 +664,9 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                 )}
             </div>
 
-            <Card className="w-full overflow-hidden border-0 md:border shadow-none md:shadow-sm rounded-none md:rounded-lg">
-                <CardContent className="py-6 px-0 md:p-6">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 md:px-0">
+            <Card className="w-full overflow-hidden">
+                <CardContent className="py-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
                         <div className="flex-1">
                             <Select value={userFilter} onValueChange={(value) => setUserFilter(value as UserFilter)}>
                                 <SelectTrigger className="w-full sm:w-[240px]">
@@ -693,9 +691,7 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                             <Input type="search" placeholder="Cari nama pengguna..." className="w-full rounded-lg bg-background pl-8 sm:w-[250px] md:w-[300px]" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} />
                         </div>
                     </div>
-                    <div className="mt-6">
-                        {isUsersLoading ? <div className="px-4 md:px-0"><TableSkeleton cols={canManage ? 8 : 7} /></div> : <UserTable data={filteredUserData} canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />}
-                    </div>
+                    {isUsersLoading ? <TableSkeleton cols={canManage ? 8 : 7} /> : <UserTable data={filteredUserData} canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />}
                 </CardContent>
             </Card>
 
@@ -704,17 +700,15 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
                     <h2 className="text-xl font-bold tracking-tight">Manajemen Admin</h2>
                     <p className="text-sm text-muted-foreground">Kelola pengguna dengan peran admin.</p>
                 </div>
-                <Card className="w-full overflow-hidden border-0 md:border shadow-none md:shadow-sm rounded-none md:rounded-lg">
-                    <CardContent className="py-6 px-0 md:p-6">
-                        <div className="flex justify-end px-4 md:px-0">
+                <Card className="w-full overflow-hidden">
+                    <CardContent className="py-6">
+                        <div className="flex justify-end mb-6">
                              <div className="relative w-full sm:w-auto">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input type="search" placeholder="Cari nama admin..." className="w-full rounded-lg bg-background pl-8 sm:w-[250px] md:w-[300px]" value={adminSearch} onChange={(e) => setAdminSearch(e.target.value)} />
                             </div>
                         </div>
-                        <div className="mt-6">
-                            {isUsersLoading ? <div className="px-4 md:px-0"><TableSkeleton cols={canManage ? 5 : 4} /></div> : <AdminTable data={filteredAdminData} canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />}
-                        </div>
+                        {isUsersLoading ? <TableSkeleton cols={canManage ? 5 : 4} /> : <AdminTable data={filteredAdminData} canManage={canManage} onEdit={openEditDialog} onToggleStatus={handleToggleStatus} onDelete={openDeleteDialog} />}
                     </CardContent>
                 </Card>
             </div>
@@ -816,7 +810,7 @@ export default function AdminUsersPage() {
   }
   
   return (
-    <div className="flex-1 min-w-0 px-4 pt-4 pb-24 md:p-6 md:pt-8 space-y-8">
+    <div className="flex-1 pt-4 pb-24 md:p-8 space-y-8">
         <UsersView isAllowed={canView} canManage={canManage} />
     </div>
   );
