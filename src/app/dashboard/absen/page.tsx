@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -249,7 +248,7 @@ export default function AbsenPage() {
               <CardDescription className="text-center">Pastikan QR Code berada di dalam kotak pemindaian.</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-              <div className="relative aspect-square w-full bg-black">
+              <div className="relative aspect-video w-full bg-black sm:aspect-square">
                   {(showScanner || isCameraInitializing) && (
                     <div className="absolute inset-0 z-0">
                       <div id={readerId} className="w-full h-full" />
@@ -261,7 +260,7 @@ export default function AbsenPage() {
                   )}
 
                   <div className="absolute inset-0 z-10 flex items-center justify-center p-8 pointer-events-none">
-                      <div className="relative w-full h-full">
+                      <div className="relative w-full h-full max-w-md aspect-square">
                           {/* Corner Borders */}
                           <div className={cn("absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 rounded-tl-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
                           <div className={cn("absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 rounded-tr-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
