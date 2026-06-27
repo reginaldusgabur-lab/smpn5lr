@@ -1,4 +1,3 @@
-
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -15,6 +14,12 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'E-SPENLI',
+    startupImage: [
+      {
+        url: '/logo-3d-v2.png',
+        media: '(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)',
+      },
+    ],
   },
   formatDetection: {
     telephone: false,
@@ -61,6 +66,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/logo-3d-v2.png" />
       </head>
       <body className="font-body antialiased bg-background text-foreground" suppressHydrationWarning>
         <ThemeProvider
