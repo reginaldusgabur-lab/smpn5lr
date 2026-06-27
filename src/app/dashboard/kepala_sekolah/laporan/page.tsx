@@ -146,7 +146,7 @@ const StaffReportTable = ({ data, isLoading, currentMonth }: { data: any[], isLo
 
     const handleViewDetails = (userId: string) => {
         const monthStr = format(currentMonth, 'yyyy-MM');
-        router.push(`/dashboard/kepala_sekolah/laporan/${userId}?month=${monthStr}`);
+        router.push(`/dashboard/laporan/${userId}?month=${monthStr}`);
     };
     
     if (isLoading) {
@@ -236,56 +236,65 @@ function StaffReportView() {
   const noData = !summary[activeTab] || summary[activeTab].length === 0;
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-                <CardTitle>Laporan Kehadiran Staf</CardTitle>
-                <CardDescription>Rekapitulasi data kehadiran untuk Guru, Pegawai, dan Kepala Sekolah (Mode Pantau).</CardDescription>
-            </div>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                     <Button variant="outline" className="w-full sm:w-auto">
-                        <Download className="mr-2 h-4 w-4" />
-                        Unduh Laporan
-                        <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleExportExcel} disabled={isLoading || noData}>
-                        Unduh Excel
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleExportPdf} disabled={isLoading || noData || !schoolConfig}>
-                        Unduh PDF
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+    <div className="flex-1 pt-4 pb-24 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="px-4 md:px-0">
+          <h1 className="text-3xl font-bold tracking-tight">Laporan Staf</h1>
+          <p className="text-muted-foreground mt-1">Rekapitulasi data kehadiran bulanan untuk Guru dan Pegawai.</p>
         </div>
-      </CardHeader>
-      <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-                <TabsList className="overflow-x-auto whitespace-nowrap">
-                    <TabsTrigger value="guru">Data Guru</TabsTrigger>
-                    <TabsTrigger value="pegawai">Data Pegawai</TabsTrigger>
-                    <TabsTrigger value="kepala_sekolah">Kepala Sekolah</TabsTrigger>
-                </TabsList>
-                <div className="flex w-full items-center gap-2 md:w-auto">
-                    <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-4 w-4" /></Button>
-                    <span className="font-semibold text-center w-32 capitalize">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
-                    <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={isSameMonth(currentMonth, new Date())}><ChevronRight className="h-4 w-4" /></Button>
-                    <div className="relative w-full md:w-auto">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Cari nama..." className="pl-8 w-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+
+        <Card className="w-full">
+          <CardHeader>
+             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div>
+                    <CardTitle>Rekapitulasi Kehadiran</CardTitle>
+                    <CardDescription>Pilih kategori staf dan bulan untuk melihat laporan.</CardDescription>
+                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                         <Button variant="outline" className="w-full sm:w-auto">
+                            <Download className="mr-2 h-4 w-4" />
+                            Unduh Laporan
+                            <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleExportExcel} disabled={isLoading || noData}>
+                            Unduh Excel
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleExportPdf} disabled={isLoading || noData || !schoolConfig}>
+                            Unduh PDF
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                    <TabsList className="overflow-x-auto whitespace-nowrap">
+                        <TabsTrigger value="guru">Data Guru</TabsTrigger>
+                        <TabsTrigger value="pegawai">Data Pegawai</TabsTrigger>
+                        <TabsTrigger value="kepala_sekolah">Kepala Sekolah</TabsTrigger>
+                    </TabsList>
+                    <div className="flex w-full items-center gap-2 md:w-auto">
+                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-4 w-4" /></Button>
+                        <span className="font-semibold text-center w-32 capitalize">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
+                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={isSameMonth(currentMonth, new Date())}><ChevronRight className="h-4 w-4" /></Button>
+                        <div className="relative w-full md:w-auto">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="Cari nama..." className="pl-8 w-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                        </div>
                     </div>
                 </div>
-            </div>
-            <TabsContent value="guru"><StaffReportTable data={filteredData} isLoading={isLoading} currentMonth={currentMonth} /></TabsContent>
-            <TabsContent value="pegawai"><StaffReportTable data={filteredData} isLoading={isLoading} currentMonth={currentMonth} /></TabsContent>
-            <TabsContent value="kepala_sekolah"><StaffReportTable data={filteredData} isLoading={isLoading} currentMonth={currentMonth} /></TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+                <TabsContent value="guru"><StaffReportTable data={filteredData} isLoading={isLoading} currentMonth={currentMonth} /></TabsContent>
+                <TabsContent value="pegawai"><StaffReportTable data={filteredData} isLoading={isLoading} currentMonth={currentMonth} /></TabsContent>
+                <TabsContent value="kepala_sekolah"><StaffReportTable data={filteredData} isLoading={isLoading} currentMonth={currentMonth} /></TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }
 

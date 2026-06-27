@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import { format, startOfMonth, isValid, parseISO } from 'date-fns';
+import { doc, getDoc, writeBatch, collection, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { format, startOfMonth, isValid, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -14,15 +14,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { fetchUserMonthlyReportData, type MonthlyReportData } from '@/lib/attendance';
-import { Download, ChevronLeft, ChevronRight, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, AlertCircle, ArrowLeft, Loader2, MoreVertical } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
 
-// Helper to safely format dates that might be Timestamps or ISO strings
 const safeFormat = (dateInput: any, formatString: string): string => {
     if (!dateInput) return '-';
     let date: Date;
     if (typeof dateInput === 'string') {
         date = parseISO(dateInput);
-    } else if (dateInput.toDate) { // Handle Firebase Timestamp
+    } else if (dateInput.toDate) {
         date = dateInput.toDate();
     } else {
         date = new Date(dateInput);
@@ -30,50 +38,43 @@ const safeFormat = (dateInput: any, formatString: string): string => {
     return isValid(date) ? format(date, formatString, { locale: id }) : '-';
 };
 
-
 export default function UserReportDetailPage() {
     const params = useParams();
     const router = useRouter();
     const { user: currentUser, isUserLoading } = useUser();
     const firestore = useFirestore();
+    const { toast } = useToast();
     const userId = params.userId as string;
 
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [monthlyReportData, setMonthlyReportData] = useState<MonthlyReportData[]>([]);
     const [userData, setUserData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isMutating, setIsMutating] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const schoolConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'schoolConfig', 'default') : null, [firestore]);
     const { data: schoolConfigData, isLoading: isConfigLoading } = useDoc(currentUser, schoolConfigRef);
 
-    useEffect(() => {
+    const fetchData = async () => {
         if (!firestore || !userId || !schoolConfigData || !currentUser) return;
-        
-        if (!['admin', 'kepala_sekolah'].includes(currentUser.role)) return;
+        setIsLoading(true);
+        setError(null);
+        try {
+            const userRef = doc(firestore, 'users', userId);
+            const userSnap = await getDoc(userRef);
+            if (!userSnap.exists()) throw new Error('Pengguna tidak ditemukan.');
+            setUserData(userSnap.data());
+            const reportData = await fetchUserMonthlyReportData(firestore, userId, currentMonth, schoolConfigData);
+            setMonthlyReportData(reportData);
+        } catch (err: any) {
+            setError(err.message || 'Gagal memuat data laporan.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-        const fetchData = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const userRef = doc(firestore, 'users', userId);
-                const userSnap = await getDoc(userRef);
-                if (!userSnap.exists()) {
-                    throw new Error('Pengguna tidak ditemukan.');
-                }
-                setUserData(userSnap.data());
-
-                const reportData = await fetchUserMonthlyReportData(firestore, userId, currentMonth, schoolConfigData);
-                setMonthlyReportData(reportData);
-
-            } catch (err: any) {
-                console.error("Error fetching user report detail:", err);
-                setError(err.message || 'Gagal memuat data laporan pengguna.');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
+    useEffect(() => {
         fetchData();
     }, [firestore, userId, currentMonth, schoolConfigData, currentUser]);
 
@@ -82,23 +83,85 @@ export default function UserReportDetailPage() {
         setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + amount, 1));
     };
 
+    // LOGIKA FITUR KEMBALI: Mengubah status Alpa
+    const handleStatusChange = async (dateStr: string, newStatus: string, reason: string) => {
+        if (!currentUser || !firestore || isMutating) return;
+        setIsMutating(true);
+        try {
+            const targetDate = parseISO(dateStr);
+            const batch = writeBatch(firestore);
+            
+            const leaveRef = collection(firestore, 'users', userId, 'leaveRequests');
+            const newLeaveDoc = doc(leaveRef);
+            
+            batch.set(newLeaveDoc, {
+                userId,
+                type: newStatus,
+                status: 'approved',
+                reason: `${reason} (diubah oleh Admin)`,
+                startDate: Timestamp.fromDate(startOfDay(targetDate)),
+                endDate: Timestamp.fromDate(endOfDay(targetDate)),
+                createdAt: serverTimestamp(),
+                approvedBy: currentUser.uid,
+                approvedAt: serverTimestamp(),
+                createdBy: currentUser.uid,
+            });
+
+            await batch.commit();
+            toast({ title: 'Berhasil', description: `Status berhasil diubah menjadi ${newStatus}.` });
+            fetchData(); // Refresh data
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Gagal', description: 'Terjadi kesalahan saat mengubah status.' });
+        } finally {
+            setIsMutating(false);
+        }
+    };
+
+    // LOGIKA FITUR KEMBALI: Jadikan Terlambat (Manual Entry)
+    const handleSetLate = async (dateStr: string) => {
+        if (!currentUser || !firestore || !schoolConfigData || isMutating) return;
+        setIsMutating(true);
+        try {
+            const targetDate = parseISO(dateStr);
+            const [endH, endM] = (schoolConfigData.checkInEndTime || '08:00').split(':').map(Number);
+            const lateTime = new Date(targetDate);
+            lateTime.setHours(endH, endM + 5, 0); // Set 5 menit setelah jam masuk selesai
+
+            const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
+            const newDoc = doc(attendanceRef);
+            
+            await writeBatch(firestore)
+                .set(newDoc, {
+                    userId,
+                    date: dateStr,
+                    checkInTime: Timestamp.fromDate(lateTime),
+                    manualEntry: true,
+                    reasonForUpdate: 'Ditandai Terlambat oleh Admin',
+                    updatedBy: currentUser.uid,
+                    updatedAt: serverTimestamp()
+                })
+                .commit();
+
+            toast({ title: 'Berhasil', description: 'Kehadiran ditandai sebagai terlambat.' });
+            fetchData();
+        } catch (err) {
+            toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal memperbarui data.' });
+        } finally {
+            setIsMutating(false);
+        }
+    };
+
     const handleDownloadPdf = () => {
         if (!userData || monthlyReportData.length === 0) return;
-        
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
         const center = pageWidth / 2;
         const monthName = format(currentMonth, 'MMMM yyyy', { locale: id });
 
-        // Header PDF
-        doc.setFont('times', 'bold');
-        doc.setFontSize(14);
+        doc.setFont('times', 'bold').setFontSize(14);
         doc.text('LAPORAN KEHADIRAN INDIVIDU', center, 20, { align: 'center' });
-        
-        doc.setFont('times', 'normal');
-        doc.setFontSize(11);
+        doc.setFont('times', 'normal').setFontSize(11);
         doc.text(`Periode: ${monthName}`, center, 28, { align: 'center' });
-
         doc.text(`Nama: ${userData.name}`, 14, 40);
         doc.text(`NIP: ${userData.nip || '-'}`, 14, 46);
         doc.text(`Posisi: ${userData.position || '-'}`, 14, 52);
@@ -120,31 +183,14 @@ export default function UserReportDetailPage() {
             headStyles: { fillColor: [41, 128, 185], textColor: 255 },
             styles: { font: 'times', fontSize: 9 }
         });
-
         doc.save(`Laporan_${userData.name}_${monthName}.pdf`);
     };
 
-    const pageIsLoading = isUserLoading || isConfigLoading;
-
-    if (!isUserLoading && currentUser && !['admin', 'kepala_sekolah'].includes(currentUser.role)) {
-        return (
-             <div className="p-4 md:p-8">
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Akses Ditolak</AlertTitle>
-                    <AlertDescription>Anda tidak memiliki izin untuk melihat halaman ini.</AlertDescription>
-                </Alert>
-            </div>
-        );
-    }
-
-    const monthName = format(currentMonth, 'MMMM yyyy', { locale: id });
+    const isAdmin = currentUser?.role === 'admin';
 
     return (
         <div className="flex-1 pt-4 pb-24 md:p-8">
             <div className="max-w-7xl mx-auto space-y-6">
-                
-                {/* --- HEADER SECTION --- */}
                 <div className="px-4 md:px-0">
                     <div className="flex items-center gap-2 mb-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={() => router.back()}>
@@ -153,45 +199,39 @@ export default function UserReportDetailPage() {
                         <h1 className="text-3xl font-bold tracking-tight">Detail Laporan Kehadiran</h1>
                     </div>
                     <div className="h-6 flex items-center">
-                        {!userData && (pageIsLoading || isLoading) ? (
+                        {!userData && (isUserLoading || isConfigLoading || isLoading) ? (
                             <Skeleton className="h-4 w-64 ml-8 sm:ml-0" />
                         ) : (
                             <p className="text-muted-foreground ml-8 sm:ml-0">
-                                Laporan kehadiran harian untuk <span className='font-semibold text-foreground'>{userData?.name || 'Pengguna'}</span>.
+                                Laporan harian untuk <span className='font-semibold text-foreground'>{userData?.name || 'Pengguna'}</span>.
                             </p>
                         )}
                     </div>
                 </div>
 
-                {/* --- MAIN CARD --- */}
                 <Card className="overflow-hidden border shadow-sm">
                     <CardContent className="p-0 sm:p-6">
-                        
-                        {/* Navigasi Bulan & Divider */}
                         <div className="p-4 space-y-4">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
                                 <div className="flex items-center gap-4">
-                                    <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={currentMonth.getFullYear() === 2026 && currentMonth.getMonth() === 0}>
+                                    <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={isLoading}>
                                         <ChevronLeft className="h-4 w-4" />
                                     </Button>
-                                    <span className="w-40 text-center font-bold text-lg">{monthName}</span>
-                                    <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()}>
+                                    <span className="w-40 text-center font-bold text-lg">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
+                                    <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={isLoading || (currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear())}>
                                         <ChevronRight className="h-4 w-4" />
                                     </Button>
                                 </div>
                                 <div className="w-full h-px bg-border mt-2" />
                             </div>
-
-                            {/* Tombol Aksi */}
                             <div className="flex justify-center sm:justify-end">
-                                <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading} className="w-full sm:w-auto font-semibold">
-                                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                                <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-semibold">
+                                    {isLoading || isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                                     Unduh Laporan PDF
                                 </Button>
                             </div>
                         </div>
 
-                        {/* Tabel Data */}
                         <div className="border-t">
                             <div className="overflow-x-auto">
                                 <Table>
@@ -218,46 +258,49 @@ export default function UserReportDetailPage() {
                                                 </TableRow>
                                             ))
                                         ) : error ? (
-                                            <TableRow>
-                                                <TableCell colSpan={6} className="h-48 text-center text-destructive">
-                                                    <AlertCircle className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                                                    <p>{error}</p>
-                                                </TableCell>
-                                            </TableRow>
+                                            <TableRow><TableCell colSpan={6} className="h-48 text-center text-destructive"><AlertCircle className="h-10 w-10 mx-auto mb-2 opacity-50" /><p>{error}</p></TableCell></TableRow>
                                         ) : monthlyReportData.length > 0 ? (
                                             monthlyReportData.map((item, index) => (
-                                                <TableRow key={item.id} className={`${item.status === 'Alpa' ? 'bg-destructive/5 hover:bg-destructive/10' : 'hover:bg-muted/20'} transition-colors`}>
+                                                <TableRow key={item.id} className={`${item.status === 'Alpa' ? 'bg-destructive/5' : ''}`}>
                                                     <TableCell className='text-center font-medium'>{index + 1}</TableCell>
-                                                    <TableCell className="whitespace-nowrap">
-                                                        {safeFormat(item.date, 'eeee, dd MMM yyyy')}
-                                                    </TableCell>
-                                                    <TableCell className='text-center font-mono text-sm'>
-                                                        {safeFormat(item.checkInTime, 'HH:mm:ss')}
-                                                    </TableCell>
-                                                    <TableCell className='text-center font-mono text-sm'>
-                                                        {safeFormat(item.checkOutTime, 'HH:mm:ss')}
-                                                    </TableCell>
+                                                    <TableCell className="whitespace-nowrap">{safeFormat(item.date, 'eeee, dd MMM yyyy')}</TableCell>
+                                                    <TableCell className='text-center font-mono text-sm'>{safeFormat(item.checkInTime, 'HH:mm:ss')}</TableCell>
+                                                    <TableCell className='text-center font-mono text-sm'>{safeFormat(item.checkOutTime, 'HH:mm:ss')}</TableCell>
                                                     <TableCell className="text-center">
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${ 
-                                                            item.status === 'Hadir' ? 'bg-green-100 text-green-700' : 
-                                                            item.status === 'Alpa' ? 'bg-red-100 text-red-700' : 
-                                                            ['Sakit', 'Izin', 'Dinas'].includes(item.status) ? 'bg-orange-100 text-orange-700' : 
-                                                            'bg-gray-100 text-gray-700' 
-                                                        }`}>
-                                                            {item.status}
-                                                        </span>
+                                                        {isAdmin && item.status === 'Alpa' ? (
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button variant="outline" size="sm" className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100 font-bold">
+                                                                        Alpa <MoreVertical className="h-3 w-3 ml-1" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end" className="w-48">
+                                                                    <DropdownMenuLabel>Ubah Kehadiran</DropdownMenuLabel>
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuItem onClick={() => handleStatusChange(item.date, 'Sakit', 'Sakit')}>Sakit</DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => handleStatusChange(item.date, 'Izin', 'Izin Pribadi')}>Izin Pribadi</DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => handleStatusChange(item.date, 'Dinas', 'Dinas Pagi')}>Dinas Pagi</DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => handleStatusChange(item.date, 'Dinas', 'Dinas Siang')}>Dinas Siang</DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => handleStatusChange(item.date, 'Pulang Cepat', 'Pulang Cepat')}>Pulang Cepat</DropdownMenuItem>
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuItem onClick={() => handleSetLate(item.date)}>Set Terlambat</DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        ) : (
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${ 
+                                                                item.status === 'Hadir' ? 'bg-green-100 text-green-700' : 
+                                                                item.status === 'Alpa' ? 'bg-red-100 text-red-700' : 
+                                                                'bg-orange-100 text-orange-700' 
+                                                            }`}>
+                                                                {item.status}
+                                                            </span>
+                                                        )}
                                                     </TableCell>
-                                                    <TableCell className="text-sm text-muted-foreground italic">
-                                                        {item.description || '-'}
-                                                    </TableCell>
+                                                    <TableCell className="text-sm text-muted-foreground italic">{item.description || '-'}</TableCell>
                                                 </TableRow>
                                             ))
                                         ) : (
-                                            <TableRow>
-                                                <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
-                                                    Tidak ada data kehadiran untuk ditampilkan pada periode ini.
-                                                </TableCell>
-                                            </TableRow>
+                                            <TableRow><TableCell colSpan={6} className="h-48 text-center text-muted-foreground">Tidak ada data untuk periode ini.</TableCell></TableRow>
                                         )}
                                     </TableBody>
                                 </Table>
