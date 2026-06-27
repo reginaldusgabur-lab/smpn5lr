@@ -43,6 +43,7 @@ import { format, getDaysInMonth, startOfMonth, eachDayOfInterval } from 'date-fn
 import { id } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 const daysOfWeek = [
     { value: 0, label: 'Minggu' },
