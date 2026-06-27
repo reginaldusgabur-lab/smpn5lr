@@ -219,34 +219,34 @@ export default function DashboardPage() {
         {isAdminOrKepsek && (
             <div className="w-full space-y-8 pt-4 border-t border-dashed border-border/50 flex flex-col items-stretch">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-                    <Card className="bg-card border shadow-sm">
+                    <Card className="bg-card border shadow-sm border-l-4 border-l-green-500">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between mb-2">
-                                <p className="text-[10px] font-bold text-muted-foreground">Hadir</p>
-                                <UserCheck className="h-3.5 w-3.5 text-primary" />
+                                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Hadir</p>
+                                <UserCheck className="h-4 w-4 text-green-500" />
                             </div>
-                            <div className="text-2xl font-black">{isStatsLoading ? '...' : stats.hadir}</div>
+                            <div className="text-2xl font-black text-green-700 dark:text-green-400">{isStatsLoading ? '...' : stats.hadir}</div>
                         </CardContent>
                     </Card>
                     
-                    <Card className="bg-card border shadow-sm">
+                    <Card className="bg-card border shadow-sm border-l-4 border-l-blue-500">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between mb-2">
-                                <p className="text-[10px] font-bold text-muted-foreground">Izin / Sakit</p>
-                                <BookUser className="h-3.5 w-3.5 text-primary" />
+                                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Izin / Sakit</p>
+                                <BookUser className="h-4 w-4 text-blue-500" />
                             </div>
-                            <div className="text-2xl font-black">{isStatsLoading ? '...' : stats.izin + stats.sakit}</div>
+                            <div className="text-2xl font-black text-blue-700 dark:text-blue-400">{isStatsLoading ? '...' : stats.izin + stats.sakit}</div>
                         </CardContent>
                     </Card>
 
                     <Link href="/dashboard/izin-kepala-sekolah" className="block">
-                        <Card className="bg-card border shadow-sm hover:bg-accent/10 transition-colors">
+                        <Card className="bg-card border shadow-sm border-l-4 border-l-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors group">
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between mb-2">
-                                    <p className="text-[10px] font-bold text-muted-foreground">Menunggu</p>
-                                    <MailWarning className="h-3.5 w-3.5 text-primary" />
+                                    <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Menunggu</p>
+                                    <MailWarning className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform" />
                                 </div>
-                                <div className="text-2xl font-black">{isStatsLoading ? '...' : stats.pending}</div>
+                                <div className="text-2xl font-black text-amber-700 dark:text-amber-400">{isStatsLoading ? '...' : stats.pending}</div>
                             </CardContent>
                         </Card>
                     </Link>
