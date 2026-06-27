@@ -122,35 +122,35 @@ export default function SchoolReportPage() {
             const sekolah = (config.schoolName || 'SMP NEGERI 5 LANGKE REMBONG').toUpperCase();
             const alamat = config.address || 'Alamat Sekolah';
 
-            // Kop Surat - Font Instansi & Dinas lebih besar
+            // Kop Surat - Instansi & Dinas (14pt Bold)
             doc.setFont('times', 'bold').setFontSize(14);
             doc.text(instansi, centerX, finalY, { align: 'center' });
             finalY += 7;
             doc.text(dinas, centerX, finalY, { align: 'center' });
             finalY += 7;
             
-            // Nama Sekolah sedikit lebih kecil atau sama
+            // Nama Sekolah (12pt Bold)
             doc.setFontSize(12);
             doc.text(sekolah, centerX, finalY, { align: 'center' });
             finalY += 5;
             
-            // Alamat
+            // Alamat (9pt Normal)
             doc.setFont('times', 'normal').setFontSize(9);
             doc.text(`Alamat: ${alamat}`, centerX, finalY, { align: 'center' });
             finalY += 4;
             
-            // Garis bawah Kop (Double line effect)
+            // Garis Ganda Pembatas Header
             doc.setLineWidth(0.8).line(margin, finalY, pageWidth - margin, finalY);
             doc.setLineWidth(0.2).line(margin, finalY + 0.8, pageWidth - margin, finalY + 0.8);
-            finalY += 12;
+            finalY += 15;
 
             // Judul Laporan
-            doc.setFont('times', 'bold').setFontSize(12);
+            doc.setFont('times', 'bold').setFontSize(14);
             doc.text('LAPORAN KEHADIRAN', centerX, finalY, { align: 'center' });
-            finalY += 6;
-            doc.setFont('times', 'normal');
+            finalY += 7;
+            doc.setFontSize(12);
             doc.text(`Periode: ${monthName}`, centerX, finalY, { align: 'center' });
-            finalY += 10;
+            finalY += 12;
 
             const tableRows = filteredReports.map((item, index) => [
                 index + 1,
@@ -169,18 +169,31 @@ export default function SchoolReportPage() {
                 head: [['No', 'Nama', 'NIP', 'Status', 'Hadir', 'Izin', 'Sakit', 'Alpa', 'Persen']],
                 body: tableRows,
                 theme: 'grid',
-                styles: { font: 'times', fontSize: 8, cellPadding: 2, lineWidth: 0.1, lineColor: [200, 200, 200] },
-                headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center', fontStyle: 'bold' },
+                styles: { 
+                    font: 'times', 
+                    fontSize: 9, 
+                    cellPadding: 3, 
+                    lineWidth: 0.1, 
+                    lineColor: [150, 150, 150],
+                    valign: 'middle'
+                },
+                headStyles: { 
+                    fillColor: [41, 128, 185], 
+                    textColor: 255, 
+                    halign: 'center', 
+                    fontStyle: 'bold',
+                    fontSize: 10
+                },
                 columnStyles: {
-                    0: { halign: 'center', cellWidth: 8 },
-                    1: { cellWidth: 42 },
-                    2: { cellWidth: 32 },
-                    3: { halign: 'center', cellWidth: 15 },
-                    4: { halign: 'center', cellWidth: 12 },
-                    5: { halign: 'center', cellWidth: 10 },
-                    6: { halign: 'center', cellWidth: 10 },
-                    7: { halign: 'center', cellWidth: 10 },
-                    8: { halign: 'center', cellWidth: 15 },
+                    0: { halign: 'center', cellWidth: 10 }, // No
+                    1: { halign: 'left', cellWidth: 'auto' }, // Nama
+                    2: { halign: 'left', cellWidth: 35 }, // NIP
+                    3: { halign: 'center', cellWidth: 20 }, // Status
+                    4: { halign: 'center', cellWidth: 15 }, // Hadir
+                    5: { halign: 'center', cellWidth: 15 }, // Izin
+                    6: { halign: 'center', cellWidth: 15 }, // Sakit
+                    7: { halign: 'center', cellWidth: 15 }, // Alpa
+                    8: { halign: 'center', cellWidth: 20 }, // Persen
                 }
             });
 
@@ -189,15 +202,15 @@ export default function SchoolReportPage() {
             const kota = config.reportCity || 'Mando';
             const tgl = format(new Date(), 'd MMMM yyyy', { locale: id });
 
-            doc.setFontSize(10);
+            doc.setFontSize(11).setFont('times', 'normal');
             doc.text(`${kota}, ${tgl}`, signatureX, finalTableY);
-            doc.text('Mengetahui,', signatureX, finalTableY + 5);
-            doc.text('Kepala Sekolah', signatureX, finalTableY + 10);
+            doc.text('Mengetahui,', signatureX, finalTableY + 6);
+            doc.text('Kepala Sekolah', signatureX, finalTableY + 12);
             
             doc.setFont('times', 'bold');
-            doc.text(config.headmasterName || 'Kepala Sekolah', signatureX, finalTableY + 35);
+            doc.text(config.headmasterName || 'Kepala Sekolah', signatureX, finalTableY + 38);
             doc.setFont('times', 'normal');
-            doc.text(`NIP. ${config.headmasterNip || '-'}`, signatureX, finalTableY + 40);
+            doc.text(`NIP. ${config.headmasterNip || '-'}`, signatureX, finalTableY + 44);
 
             doc.save(`Laporan_Sekolah_${monthName.replace(' ', '_')}.pdf`);
             toast({ title: "Berhasil", description: "Laporan PDF berhasil diunduh." });
@@ -214,7 +227,7 @@ export default function SchoolReportPage() {
             <div className="max-w-7xl mx-auto space-y-6">
                 <div className="px-4 md:px-0">
                     <h1 className="text-3xl font-bold tracking-tight text-foreground">Laporan Sekolah</h1>
-                    <p className="text-muted-foreground mt-1">Ringkasan kehadiran bulanan untuk seluruh personil.</p>
+                    <p className="text-muted-foreground mt-1">Ringkasan kehadiran bulanan untuk seluruh personil aktif.</p>
                 </div>
 
                 <Card className="overflow-hidden border shadow-sm">
@@ -229,8 +242,8 @@ export default function SchoolReportPage() {
                                 <div className="w-full h-px bg-border/60" />
                             </div>
                             
-                            <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
-                                <div className="flex flex-col sm:flex-row gap-3 flex-1">
+                            <div className="flex flex-wrap gap-3 items-center justify-between">
+                                <div className="flex flex-wrap gap-3 flex-1 min-w-[300px]">
                                     <div className="w-full sm:w-[180px] relative">
                                         <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
                                         <Select value={roleFilter} onValueChange={setRoleFilter}>
@@ -243,7 +256,7 @@ export default function SchoolReportPage() {
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <div className="flex-1 relative">
+                                    <div className="flex-1 relative min-w-[200px]">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
                                         <Input placeholder="Cari nama personil..." className="pl-10 h-11 rounded-xl bg-muted/30 border-muted-foreground/10 focus:ring-primary" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                                     </div>
