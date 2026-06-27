@@ -98,8 +98,9 @@ export default async function UserReportDetailPage({ params, searchParams }: {
             const attendanceRecord = attendanceMap.get(dayStr);
             const leaveRecord = leaveMap.get(dayStr);
 
-            // --- REVERTED FILTER ---
-            if (!isWorkingDay && !attendanceRecord && !leaveRecord) {
+            // --- STRICT FILTER ---
+            // If it's a holiday, hide it completely regardless of data
+            if (!isWorkingDay) {
                 return null;
             }
 
@@ -147,7 +148,7 @@ export default async function UserReportDetailPage({ params, searchParams }: {
                     date: day, 
                     checkInTime: null, 
                     checkOutTime: null, 
-                    status: isToday && !isWorkingDay ? 'Hari Libur' : 'Alpa', 
+                    status: 'Alpa', 
                     description: isToday ? 'Belum Ada Aktivitas' : 'Tidak Ada Keterangan' 
                 };
             }

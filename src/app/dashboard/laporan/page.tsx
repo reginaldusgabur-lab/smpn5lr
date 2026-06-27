@@ -108,6 +108,12 @@ export default function LaporanPage() {
         const isToday = isSameDay(day, today);
         const isWorkingDay = !offDays.includes(day.getDay()) && !holidays.includes(dayStr);
 
+        // --- STRICT FILTER ---
+        // Always hide holidays in the report list
+        if (!isWorkingDay) {
+            return null;
+        }
+
         const attendanceRecord = attendanceHistory.find(a => {
             const checkInDate = a.checkInTime?.toDate();
             return checkInDate && format(checkInDate, 'yyyy-MM-dd') === dayStr;
@@ -116,11 +122,6 @@ export default function LaporanPage() {
         const leaveRecord = leaveHistory.find(l => 
             l.status === 'approved' && isWithinInterval(day, { start: startOfDay(l.startDate.toDate()), end: endOfDay(l.endDate.toDate()) })
         );
-
-        // --- REVERTED FILTER ---
-        if (!isWorkingDay && !attendanceRecord && !leaveRecord) {
-            return null;
-        }
 
         if (leaveRecord) {
             return {
@@ -190,7 +191,7 @@ export default function LaporanPage() {
                 dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
                 checkIn: '-',
                 checkOut: '-',
-                status: isToday && !isWorkingDay ? 'Hari Libur' : 'Alpa',
+                status: 'Alpa',
                 description: isToday ? 'Belum Ada Aktivitas' : 'Tidak Ada Keterangan',
             };
         }

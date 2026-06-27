@@ -79,13 +79,26 @@ function useStaffAttendanceSummary(currentMonth: Date) {
             const holidays: string[] = monthlyConfig?.holidays ?? [];
             const today = startOfDay(new Date());
 
+            // WORKING DAYS ONLY
             const workingDaysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd }).filter(day => !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd')));
+            const workingDaysSet = new Set(workingDaysInMonth.map(d => format(d, 'yyyy-MM-dd')));
+            
             const pastWorkingDaysInMonth = workingDaysInMonth.filter(day => isBefore(day, today) || isSameDay(day, today));
             const totalWorkingDays = workingDaysInMonth.length;
             const totalPastWorkingDays = pastWorkingDaysInMonth.length;
 
-            const attendanceByUser = allAttendance.reduce((acc: any, record: any) => { (acc[record.userId] = acc[record.userId] || []).push(record); return acc; }, {});
-            const leaveByUser = allLeave.reduce((acc: any, record: any) => { (acc[record.userId] = acc[record.userId] || []).push(record); return acc; }, {});
+            const attendanceByUser = allAttendance.reduce((acc: any, record: any) => { 
+                // Only count attendance on working days
+                if (workingDaysSet.has(format(record.checkInTime, 'yyyy-MM-dd'))) {
+                    (acc[record.userId] = acc[record.userId] || []).push(record); 
+                }
+                return acc; 
+            }, {});
+
+            const leaveByUser = allLeave.reduce((acc: any, record: any) => { 
+                (acc[record.userId] = acc[record.userId] || []).push(record); 
+                return acc; 
+            }, {});
 
             const userSummary = users.map((u: any) => {
                 const userAttendance = attendanceByUser[u.id] || [];
@@ -107,7 +120,7 @@ function useStaffAttendanceSummary(currentMonth: Date) {
                 userLeave.forEach((leave: any) => {
                     eachDayOfInterval({ start: leave.startDate, end: leave.endDate }).forEach(day => {
                         if (isWithinInterval(day, { start: monthStart, end: monthEnd }) && workingDaysInMonth.some(wd => isSameDay(wd, day))) {
-                            if (leave.type === 'Izin') izinCount++;
+                            if (leave.type === 'Izin' || leave.type === 'Dinas') izinCount++;
                             else if (leave.type === 'Sakit') sakitCount++;
                         }
                     });

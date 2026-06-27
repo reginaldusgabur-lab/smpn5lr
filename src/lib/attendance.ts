@@ -118,6 +118,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
     const schoolConfigRef = doc(firestore, 'schoolConfig', 'default');
     const monthlyConfigId = format(start, 'yyyy-MM');
     const monthlyConfigRef = doc(firestore, 'monthlyConfigs', monthlyConfigId);
+    
     const attendanceQuery = query(
         collection(firestore, 'users', userId, 'attendanceRecords'),
         where('checkInTime', '>=', start),
@@ -145,9 +146,12 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
     const holidays: string[] = monthlyConfig?.holidays ?? [];
     const today = startOfDay(new Date());
 
+    // Filter ONLY working days
     const effectiveWorkingDays = eachDayOfInterval({ start, end }).filter(day => 
         !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd'))
     );
+
+    const workingDaysSet = new Set(effectiveWorkingDays.map(day => format(day, 'yyyy-MM-dd')));
 
     const pastEffectiveWorkingDays = effectiveWorkingDays.filter(day => isBefore(day, today) || isSameDay(day, today));
     
@@ -158,8 +162,11 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         }
     });
 
+    // ONLY count attendance on working days
     const hadirScore = attendanceData.reduce((total, att) => {
         const attDateStr = format(att.checkInTime.toDate(), 'yyyy-MM-dd');
+        if (!workingDaysSet.has(attDateStr)) return total; // SKIP HOLIDAYS
+
         if (att.checkInTime && att.checkOutTime) {
             return total + 1;
         } else if (att.checkInTime) {
@@ -169,7 +176,11 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         return total;
     }, 0);
 
-    const anyAttendanceDates = new Set(attendanceData.map(att => format(att.checkInTime.toDate(), 'yyyy-MM-dd')));
+    const anyAttendanceDates = new Set(
+        attendanceData
+            .filter(att => workingDaysSet.has(format(att.checkInTime.toDate(), 'yyyy-MM-dd')))
+            .map(att => format(att.checkInTime.toDate(), 'yyyy-MM-dd'))
+    );
 
     let izinCount = 0;
     let sakitCount = 0;
@@ -181,7 +192,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
 
         eachDayOfInterval({ start: leave.startDate.toDate(), end: leave.endDate.toDate() }).forEach(day => {
             const dayStr = format(day, 'yyyy-MM-dd');
-            if (isWithinInterval(day, { start, end }) && effectiveWorkingDays.some(wd => format(wd, 'yyyy-MM-dd') === dayStr)) {
+            if (workingDaysSet.has(dayStr)) { // ONLY count if it's a working day
                 if (leave.type === 'Izin' || leave.type === 'Dinas') izinCount++;
                 else if (leave.type === 'Sakit') sakitCount++;
                 leaveDates.add(dayStr);
@@ -259,14 +270,14 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
         const isToday = isSameDay(day, todayStart);
         const isWorkingDay = !offDays.includes(day.getDay()) && !holidays.includes(dayStr);
 
-        // --- REVERTED FILTER ---
-        // Hari libur tanpa data (absen/izin) akan disembunyikan kembali
-        const attendanceRecord = attendanceMap.get(dayStr);
-        const leaveRecord = leaveMap.get(dayStr);
-        
-        if (!isWorkingDay && !attendanceRecord && !leaveRecord) {
+        // --- STRICT FILTER ---
+        // If it's a holiday, hide it completely regardless of data
+        if (!isWorkingDay) {
             return null;
         }
+
+        const attendanceRecord = attendanceMap.get(dayStr);
+        const leaveRecord = leaveMap.get(dayStr);
 
         if (attendanceRecord) {
             let checkInTime = attendanceRecord.checkInTime.toDate();
@@ -325,7 +336,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                 date: day,
                 checkInTime: null,
                 checkOutTime: null,
-                status: isToday && !isWorkingDay ? 'Hari Libur' : 'Alpa',
+                status: 'Alpa',
                 description: isToday ? 'Belum Ada Aktivitas' : 'Tidak Ada Keterangan',
             };
         }
