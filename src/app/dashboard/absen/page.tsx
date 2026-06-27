@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -245,7 +246,7 @@ export default function AbsenPage() {
             </div>
         )}
 
-        {/* Transparent Overlay Instructions - Positioned at top, completely transperent bg */}
+        {/* Transparent Overlay Instructions - Positioned higher, completely transparent bg */}
         <div className="absolute top-0 left-0 right-0 z-10 p-10 pt-16 text-center pointer-events-none bg-black/20">
             <h2 className="text-white text-xl font-bold mb-2">Arahkan Kamera</h2>
             <p className="text-white/80 text-sm">Pastikan QR Code berada di dalam kotak pemindaian.</p>
