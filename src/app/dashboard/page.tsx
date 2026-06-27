@@ -125,7 +125,7 @@ export default function DashboardPage() {
 
         {isGuruOrPegawai && (
             <div className="w-full space-y-6 flex flex-col items-stretch">
-                <Card className="w-full border shadow-sm overflow-hidden bg-card">
+                <Card className="w-full border shadow-sm overflow-hidden bg-card border-t-4 border-t-primary">
                     <CardHeader className="p-4 pb-0 flex flex-row items-center gap-2">
                         <Clock className="w-4 h-4 text-primary" />
                         <CardTitle className="text-xs font-bold text-primary/80 uppercase tracking-widest">
@@ -179,7 +179,7 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="w-full border shadow-sm overflow-hidden bg-card">
+                <Card className="w-full border shadow-sm overflow-hidden bg-card border-t-4 border-t-primary">
                     <CardHeader className="p-4 pb-0">
                         <div className="flex items-center justify-between">
                             <h2 className="flex items-center gap-2 text-xs font-bold text-primary/80 uppercase tracking-widest">
@@ -221,7 +221,7 @@ export default function DashboardPage() {
         {isAdminOrKepsek && (
             <div className="w-full space-y-8 pt-4 border-t border-dashed border-border/50 flex flex-col items-stretch">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-                    <Card className="bg-card border shadow-sm border-l-4 border-l-green-500">
+                    <Card className="bg-card border shadow-sm border-t-4 border-t-green-500">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between mb-2">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-green-600">Hadir</p>
@@ -231,7 +231,7 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
                     
-                    <Card className="bg-card border shadow-sm border-l-4 border-l-blue-500">
+                    <Card className="bg-card border shadow-sm border-t-4 border-t-blue-500">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between mb-2">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Izin / Sakit</p>
@@ -242,7 +242,7 @@ export default function DashboardPage() {
                     </Card>
 
                     <Link href="/dashboard/izin-kepala-sekolah" className="block">
-                        <Card className="bg-card border shadow-sm border-l-4 border-l-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors group">
+                        <Card className="bg-card border shadow-sm border-t-4 border-t-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors group">
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-[10px] font-black uppercase tracking-widest text-amber-600">Menunggu</p>

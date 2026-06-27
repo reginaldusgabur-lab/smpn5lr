@@ -155,10 +155,10 @@ const RecentAttendanceTable = () => {
   return (
     <div className="w-full space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-1">
-        <h3 className="font-black text-lg tracking-tight text-green-600 uppercase tracking-widest">Aktivitas Kehadiran</h3>
+        <h3 className="font-black text-lg tracking-tight text-green-600 uppercase tracking-widest">AKTIVITAS KEHADIRAN</h3>
         <p className="text-[11px] font-bold text-muted-foreground">{todayFormatted}</p>
       </div>
-      <div className="bg-card/30 border rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-card border rounded-2xl overflow-hidden shadow-sm border-t-4 border-t-green-500">
         {isLoading ? (
           <div className="flex items-center justify-center h-40 text-muted-foreground">
             <Loader2 className="h-8 w-8 animate-spin mr-3" />

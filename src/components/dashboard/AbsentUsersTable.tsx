@@ -183,7 +183,7 @@ const AbsentUsersTable = () => {
         <h3 className="font-black text-lg tracking-tight text-destructive uppercase tracking-widest">DAFTAR KETIDAKHADIRAN</h3>
         <p className="text-[10px] font-bold text-muted-foreground">Staf tanpa absensi & izin hari ini</p>
       </div>
-      <div className="bg-card/30 border rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-card border rounded-2xl overflow-hidden shadow-sm border-t-4 border-t-destructive">
         {!isHoliday && absentUsers.length > 0 ? (
           <div className="overflow-x-auto">
             <Table>
