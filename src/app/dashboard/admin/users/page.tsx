@@ -77,9 +77,6 @@ import { doc, collection } from 'firebase/firestore';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
-
-type Role = 'guru' | 'pegawai' | 'kepala_sekolah' | 'admin';
 
 const addUserSchema = z.object({
     name: z.string().min(1, { message: 'Nama wajib diisi' }),
@@ -144,7 +141,6 @@ export default function AdminUsersPage() {
 
         try {
             if (editingUser) {
-                // Update existing user
                 const userRef = doc(firestore, "users", editingUser.id);
                 const updatedData = {
                     name: values.name,
@@ -158,7 +154,6 @@ export default function AdminUsersPage() {
                 setIsUserDialogOpen(false);
                 setEditingUser(null);
             } else {
-                // Create new user
                 if (!values.password) {
                     toast({ variant: 'destructive', title: 'Gagal', description: 'Password wajib diisi untuk pengguna baru.' });
                     setIsSaving(false);
@@ -347,7 +342,7 @@ export default function AdminUsersPage() {
 
             {/* Dialog Tambah/Edit User */}
             <Dialog open={isUserDialogOpen} onOpenChange={(open) => { setIsUserDialogOpen(open); if (!open) setEditingUser(null); }}>
-                <DialogContent className="rounded-3xl border-none max-w-lg p-0 overflow-hidden max-h-[90vh] flex flex-col">
+                <DialogContent className="rounded-3xl border-none max-w-lg p-0 overflow-hidden flex flex-col max-h-[90vh]">
                     <DialogHeader className="p-6 pb-2 space-y-1">
                         <DialogTitle className="text-2xl font-black text-primary">
                             {editingUser ? 'Perbarui Data' : 'Tambah Personil'}
@@ -356,7 +351,9 @@ export default function AdminUsersPage() {
                             {editingUser ? `Mengubah informasi data untuk ${editingUser.name}.` : 'Masukkan detail akun untuk personil baru sekolah.'}
                         </DialogDescription>
                     </DialogHeader>
-                    <ScrollArea className="flex-1 px-6 pb-6">
+                    
+                    {/* --- KUNCI: Wrapper scrollable untuk isi form --- */}
+                    <div className="flex-1 overflow-y-auto px-6 pb-6 custom-scrollbar">
                         <Form {...userForm}>
                             <form onSubmit={userForm.handleSubmit(handleSaveUser)} className="space-y-4 py-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -432,14 +429,14 @@ export default function AdminUsersPage() {
                                     )} />
                                 )}
 
-                                <div className="pt-4">
+                                <div className="pt-4 sticky bottom-0 bg-card/80 backdrop-blur-sm">
                                     <Button type="submit" className="w-full h-12 rounded-xl font-bold bg-primary shadow-lg active:scale-95 transition-all" disabled={isSaving}>
                                         {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : (editingUser ? 'Perbarui Data' : 'Buat Akun Sekarang')}
                                     </Button>
                                 </div>
                             </form>
                         </Form>
-                    </ScrollArea>
+                    </div>
                 </DialogContent>
             </Dialog>
 

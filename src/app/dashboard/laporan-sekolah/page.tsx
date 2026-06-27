@@ -47,7 +47,6 @@ export default function SchoolReportPage() {
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState("all");
-    const [refetchIndex, setRefetchIndex] = useState(0);
 
     const schoolConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'schoolConfig', 'default') : null, [firestore]);
     const { data: schoolConfigData } = useDoc(user, schoolConfigRef);
@@ -59,7 +58,7 @@ export default function SchoolReportPage() {
         const loadData = async () => {
             setIsReportLoading(true);
             try {
-                // FILTER: Only fetch ACTIVE staff
+                // FILTER: Hanya ambil personil AKTIF
                 const usersQuery = query(
                     collection(firestore, 'users'), 
                     where('role', 'in', ['guru', 'pegawai', 'kepala_sekolah']),
@@ -86,7 +85,7 @@ export default function SchoolReportPage() {
                 });
 
                 const results = await Promise.all(reportPromises);
-                // SORT: Ensure sequenceNumber is the primary sorting criteria
+                // SORT: Utamakan sequenceNumber
                 results.sort((a, b) => (a.sequenceNumber ?? 999) - (b.sequenceNumber ?? 999));
 
                 if (isMounted) setReportData(results.map((r, i) => ({ ...r, no: i + 1 })));
@@ -95,7 +94,7 @@ export default function SchoolReportPage() {
         };
         loadData();
         return () => { isMounted = false; };
-    }, [user, isUserLoading, firestore, currentMonth, refetchIndex]);
+    }, [user, isUserLoading, firestore, currentMonth]);
 
     const filteredReports = useMemo(() => reportData.filter(r => (roleFilter === 'all' || r.role === roleFilter) && r.name.toLowerCase().includes(searchTerm.toLowerCase())), [reportData, roleFilter, searchTerm]);
     const monthName = format(currentMonth, 'MMMM yyyy', { locale: id });
@@ -104,7 +103,7 @@ export default function SchoolReportPage() {
         <div className="flex-1 pt-4 pb-24 md:p-8">
             <div className="max-w-7xl mx-auto space-y-6">
                 <div className="px-4 md:px-0">
-                    <h1 className="text-3xl font-bold tracking-tight">Laporan Sekolah</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">Laporan Sekolah</h1>
                     <p className="text-muted-foreground mt-1">Ringkasan kehadiran bulanan untuk seluruh personil.</p>
                 </div>
 
