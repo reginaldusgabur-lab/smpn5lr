@@ -5,25 +5,57 @@ import { collection, getDocs, query, where, doc, updateDoc, writeBatch } from 'f
 import { useFirestore, useUser } from '@/firebase';
 import { DataTable } from '@/components/data-table';
 import { columns as createColumns } from './columns';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, Inbox, ShieldAlert } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+// Skeleton untuk tabel persetujuan
+const ApprovalTableSkeleton = () => (
+    <div className="rounded-md border">
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead className="w-[200px]"><Skeleton className="h-4 w-24" /></TableHead>
+                    <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                    <TableHead><Skeleton className="h-4 w-32" /></TableHead>
+                    <TableHead><Skeleton className="h-4 w-32" /></TableHead>
+                    <TableHead><Skeleton className="h-4 w-40" /></TableHead>
+                    <TableHead className="text-right"><Skeleton className="h-4 w-20 ml-auto" /></TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {[...Array(5)].map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                        <TableCell><div className="flex justify-end gap-2"><Skeleton className="h-8 w-20" /><Skeleton className="h-8 w-20" /></div></TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    </div>
+);
 
 export default function IzinKepalaSekolahPage() {
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const [requests, setRequests] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingData, setIsLoadingData] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!user || user.role !== 'kepala_sekolah' || !firestore) {
-            setIsLoading(false);
+        if (isUserLoading || !user || user.role !== 'kepala_sekolah' || !firestore) {
+            if (!isUserLoading) setIsLoadingData(false);
             return;
         }
 
         const fetchPendingRequests = async () => {
-            setIsLoading(true);
+            setIsLoadingData(true);
             setError(null);
             try {
                 // 1. Get all staff (guru & pegawai)
@@ -32,7 +64,7 @@ export default function IzinKepalaSekolahPage() {
 
                 if (usersSnapshot.empty) {
                     setRequests([]);
-                    setIsLoading(false);
+                    setIsLoadingData(false);
                     return;
                 }
 
@@ -63,35 +95,40 @@ export default function IzinKepalaSekolahPage() {
                 // 3. Wait for all queries to complete
                 await Promise.all(promises);
 
+                // Sort by date (newest first)
+                allPendingRequests.sort((a, b) => {
+                    const dateA = a.startDate?.toDate ? a.startDate.toDate().getTime() : 0;
+                    const dateB = b.startDate?.toDate ? b.startDate.toDate().getTime() : 0;
+                    return dateB - dateA;
+                });
+
                 setRequests(allPendingRequests);
             } catch (err: any) {
                 console.error("Error fetching leave requests:", err);
-                // Check for permission error, which is the most likely cause
                 if (err.code === 'permission-denied') {
-                    setError("Gagal mengambil data: Pastikan aturan keamanan Firestore memperbolehkan Kepala Sekolah untuk membaca koleksi 'users' dan sub-koleksi 'leaveRequests'.");
+                    setError("Gagal mengambil data: Akses ditolak.");
                 } else {
-                    setError(`Gagal mengambil data permintaan izin. Terjadi kesalahan: ${err.message}`);
+                    setError(`Gagal mengambil data permintaan izin.`);
                 }
             } finally {
-                setIsLoading(false);
+                setIsLoadingData(false);
             }
         };
 
         fetchPendingRequests();
-
-        // Note: This approach doesn't use a real-time listener (onSnapshot)
-        // to avoid complex and potentially costly collectionGroup queries.
-        // The user might need to refresh the page to see new requests.
-
-    }, [user, firestore]);
+    }, [user, isUserLoading, firestore]);
 
     const handleUpdateRequest = async (path: string, status: 'approved' | 'rejected') => {
-        if (!user) return;
+        if (!user || !firestore) return;
         try {
             const requestDocRef = doc(firestore, path);
             const batch = writeBatch(firestore);
 
-            batch.update(requestDocRef, { status });
+            batch.update(requestDocRef, { 
+                status,
+                approvedBy: user.uid,
+                approvedAt: new Date()
+            });
 
             const activityRef = doc(collection(firestore, "activities"));
             batch.set(activityRef, {
@@ -105,8 +142,6 @@ export default function IzinKepalaSekolahPage() {
             });
 
             await batch.commit();
-
-            // Refresh the list after updating
             setRequests(prevRequests => prevRequests.filter(req => req.path !== path));
 
         } catch (err) {
@@ -116,51 +151,59 @@ export default function IzinKepalaSekolahPage() {
 
     const columns = useMemo(() => createColumns(handleUpdateRequest), [handleUpdateRequest]);
 
-    if (isLoading) {
-        return <div className="flex h-screen items-center justify-center"><Loader2 className="h-12 w-12 animate-spin" /></div>;
-    }
-
-    if (error) {
+    // Handle unauthorized access
+    if (!isUserLoading && user && user.role !== 'kepala_sekolah') {
         return (
-            <div className="p-4">
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Error</AlertTitle>
-                    <AlertDescription>{error}</AlertDescription>
-                </Alert>
-            </div>
-        );
-    }
-
-    if (user?.role !== 'kepala_sekolah') {
-        return (
-            <div className="p-4">
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Akses Ditolak</AlertTitle>
-                    <AlertDescription>Halaman ini hanya dapat diakses oleh Kepala Sekolah.</AlertDescription>
-                </Alert>
+            <div className="flex-1 pt-4 pb-24 md:p-8">
+                <div className="max-w-7xl mx-auto">
+                    <Alert variant="destructive">
+                        <ShieldAlert className="h-4 w-4" />
+                        <AlertTitle>Akses Ditolak</AlertTitle>
+                        <AlertDescription>Halaman ini hanya dapat diakses oleh Kepala Sekolah.</AlertDescription>
+                    </Alert>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="p-4 md:p-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Persetujuan Izin</CardTitle>
-                    <CardDescription>Tinjau dan proses permintaan izin atau sakit yang diajukan oleh guru dan pegawai.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                     {requests.length > 0 ? (
-                        <DataTable columns={columns} data={requests} />
-                    ) : (
-                        <div className="text-center p-8 border rounded-md">
-                            <p className="text-muted-foreground">Tidak ada permintaan izin yang sedang menunggu persetujuan.</p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+        <div className="flex-1 pt-4 pb-24 md:p-8">
+            <div className="max-w-7xl mx-auto space-y-6">
+                
+                {/* Judul Halaman di Luar Kartu */}
+                <div className="px-4 md:px-0">
+                    <h1 className="text-3xl font-bold tracking-tight">Persetujuan Izin</h1>
+                    <p className="text-muted-foreground mt-1">Tinjau dan proses permintaan izin atau sakit yang diajukan oleh guru dan pegawai.</p>
+                </div>
+
+                <Card className="overflow-hidden border shadow-sm">
+                    <CardContent className="p-0 sm:p-6">
+                        {error ? (
+                            <div className="p-8 text-center">
+                                <Alert variant="destructive">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertTitle>Error</AlertTitle>
+                                    <AlertDescription>{error}</AlertDescription>
+                                </Alert>
+                            </div>
+                        ) : (isLoadingData || isUserLoading) ? (
+                            <div className="p-4 sm:p-0">
+                                <ApprovalTableSkeleton />
+                            </div>
+                        ) : requests.length > 0 ? (
+                            <div className="p-4 sm:p-0">
+                                <DataTable columns={columns} data={requests} />
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center text-center py-20 px-4 text-muted-foreground">
+                                <Inbox className="h-12 w-12 mb-4 opacity-20" />
+                                <h3 className="text-lg font-semibold text-foreground">Tidak Ada Permintaan</h3>
+                                <p className="text-sm">Semua permintaan izin dan sakit telah diproses.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }
