@@ -1,9 +1,11 @@
 
 export const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyD8GnxJliuNeu1yZ22o7GTDnqqIrHkrUzQ",
+  authDomain: "aplikasi-smpn5lr02-45474403.firebaseapp.com",
+  databaseURL: "https://aplikasi-smpn5lr02-45474403-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "aplikasi-smpn5lr02-45474403",
+  storageBucket: "aplikasi-smpn5lr02-45474403.firebasestorage.app",
+  messagingSenderId: "743627090512",
+  appId: "1:743627090512:web:014dd91d892d84c4b63f55",
+  measurementId: "G-6KMNZ04G1H"
 };
