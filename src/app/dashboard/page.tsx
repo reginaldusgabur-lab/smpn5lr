@@ -34,17 +34,17 @@ const roleDescriptions: { [key: string]: string } = {
 };
 
 const WelcomeCard = ({ user, isLoading }: { user: any, isLoading: boolean }) => (
-    <div className="space-y-1 mb-2">
+    <div className="space-y-1 mb-6 px-1">
         <p className="text-base text-muted-foreground leading-none">Selamat Datang</p>
         {isLoading ? (
-            <Skeleton className="h-7 w-48 mt-1" />
+            <Skeleton className="h-7 w-48 mt-2" />
         ) : (
-            <h1 className="text-xl font-bold">{user?.name || 'Pengguna'}</h1>
+            <h1 className="text-2xl font-bold mt-1">{user?.name || 'Pengguna'}</h1>
         )}
         {isLoading ? (
             <Skeleton className="h-4 w-72 mt-2" />
         ) : (
-            <p className="text-sm text-muted-foreground">{roleDescriptions[user?.role || ''] || 'Selamat datang di dasbor Anda.'}</p>
+            <p className="text-sm text-muted-foreground mt-1">{roleDescriptions[user?.role || ''] || 'Selamat datang di dasbor Anda.'}</p>
         )}
     </div>
 );
@@ -101,7 +101,7 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
     const hasFinished = !!(checkInTime && checkOutTime);
 
     return (
-        <Card className="w-full flex flex-col overflow-hidden bg-gradient-to-br from-card to-muted/20">
+        <Card className="w-full flex flex-col overflow-hidden bg-gradient-to-br from-card to-muted/20 border-border">
             <CardHeader className="pb-2">
                 <CardTitle className="text-lg font-bold">Kehadiran Anda Hari Ini</CardTitle>
                 <CardDescription>Status kehadiran dan jam absensi Anda.</CardDescription>
@@ -113,7 +113,7 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
                             <Skeleton className="h-12 w-48" />
                             <Skeleton className="h-4 w-32" />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-4 w-full">
                             <Skeleton className="h-20 w-full" />
                             <Skeleton className="h-20 w-full" />
                         </div>
@@ -148,7 +148,7 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
                     </>
                 )}
             </CardContent>
-            <CardFooter className="flex flex-col gap-3 pt-0 pb-8">
+            <CardFooter className="flex flex-col gap-3 pt-0 pb-8 px-6">
                 {!isLoading && (
                     <Button 
                         size="lg" 
@@ -159,7 +159,7 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
                         {hasFinished ? 'Absensi Selesai' : 'Absen Sekarang'}
                     </Button>
                 )}
-                <Button variant="ghost" size="sm" asChild className="text-muted-foreground"><Link href="/dashboard/laporan">Lihat Riwayat Lengkap</Link></Button>
+                <Button variant="ghost" size="sm" asChild className="text-muted-foreground w-full"><Link href="/dashboard/laporan">Lihat Riwayat Lengkap</Link></Button>
             </CardFooter>
         </Card>
     );
@@ -168,7 +168,7 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
 const MonthlyAttendanceChartUI = ({ summaryData, isLoading }: { summaryData: any, isLoading: boolean }) => {
     const now = new Date();
     return (
-        <Card className="w-full flex flex-col">
+        <Card className="w-full flex flex-col border-border">
             <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><TrendingUp size={18} className="text-primary" /> Riwayat Bulan {format(now, 'MMMM', { locale: id })}</CardTitle><CardDescription>Persentase kehadiran: {isLoading ? '...' : `${summaryData.percentage}%`}</CardDescription></CardHeader>
             <CardContent className="flex-grow min-h-[300px] pt-4">
                 {isLoading ? 
@@ -263,7 +263,7 @@ export default function DashboardPage() {
         <WelcomeCard user={user} isLoading={isUserLoading} />
 
         {isGuruOrPegawai && (
-            <div className="space-y-6">
+            <div className="w-full space-y-6">
                 <PersonalAttendanceCardUI 
                     attendanceData={todaysAttendance} 
                     schoolConfig={schoolConfig} 
@@ -277,7 +277,7 @@ export default function DashboardPage() {
         )}
 
         {isAdminOrKepsek && (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 w-full">
                 <StatCard 
                     title="Hadir Hari Ini" 
                     value={stats.hadir} 

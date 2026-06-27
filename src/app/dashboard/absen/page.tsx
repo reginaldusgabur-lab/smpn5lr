@@ -235,22 +235,22 @@ export default function AbsenPage() {
   }, [effectiveStatus, handleCloseRedirect]);
 
   return (
-    <div className="w-full space-y-4">
-      <div className="flex items-center gap-2 mb-4 px-1">
+    <div className="w-full space-y-6">
+      <div className="flex items-center gap-2 mb-2 px-1">
           <Button variant="ghost" size="icon" className="-ml-2" onClick={() => router.back()}>
               <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-2xl font-bold tracking-tight">Pindai QR Code</h1>
       </div>
 
-      <Card className="w-full overflow-hidden">
+      <Card className="w-full overflow-hidden border-border">
           <CardHeader className="pb-4">
               <CardTitle className="text-center text-lg">Arahkan Kamera</CardTitle>
               <CardDescription className="text-center">Pastikan QR Code berada di dalam kotak pemindaian.</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
               <div className="bg-black w-full flex items-center justify-center overflow-hidden">
-                <div className="relative aspect-video w-full max-w-xl sm:aspect-square">
+                <div className="relative aspect-video w-full max-w-2xl sm:aspect-square">
                     {(showScanner || isCameraInitializing) && (
                         <div className="absolute inset-0 z-0">
                         <div id={readerId} className="w-full h-full" />
