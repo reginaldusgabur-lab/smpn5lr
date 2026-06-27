@@ -117,7 +117,8 @@ export default function LaporanPage() {
             l.status === 'approved' && isWithinInterval(day, { start: startOfDay(l.startDate.toDate()), end: endOfDay(l.endDate.toDate()) })
         );
 
-        if (!isWorkingDay && !isToday && !attendanceRecord && !leaveRecord) {
+        // --- REVERTED FILTER ---
+        if (!isWorkingDay && !attendanceRecord && !leaveRecord) {
             return null;
         }
 

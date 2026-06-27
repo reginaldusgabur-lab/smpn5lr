@@ -259,11 +259,12 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
         const isToday = isSameDay(day, todayStart);
         const isWorkingDay = !offDays.includes(day.getDay()) && !holidays.includes(dayStr);
 
-        // Jika bukan hari kerja DAN bukan hari ini DAN tidak ada data, sembunyikan
+        // --- REVERTED FILTER ---
+        // Hari libur tanpa data (absen/izin) akan disembunyikan kembali
         const attendanceRecord = attendanceMap.get(dayStr);
         const leaveRecord = leaveMap.get(dayStr);
         
-        if (!isWorkingDay && !isToday && !attendanceRecord && !leaveRecord) {
+        if (!isWorkingDay && !attendanceRecord && !leaveRecord) {
             return null;
         }
 
@@ -275,7 +276,6 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
             let description = cleanDesc(rawDescription);
             if (!description) description = 'Kehadiran Penuh';
 
-            // Visual fix for "Terlambat" and "Pulang Cepat" to match instructed reel logic
             if (description === 'Terlambat') {
                 checkInTime = null; 
             }

@@ -42,7 +42,7 @@ export default async function UserReportDetailPage({ params, searchParams }: {
         const [userSnap, schoolConfigSnap, monthlyConfigSnap] = await Promise.all([
             userRef.get(),
             schoolConfigRef.get(),
-            monthlyConfigSnap.get(),
+            monthlyConfigRef.get(),
         ]);
 
         if (!userSnap.exists) {
@@ -98,8 +98,8 @@ export default async function UserReportDetailPage({ params, searchParams }: {
             const attendanceRecord = attendanceMap.get(dayStr);
             const leaveRecord = leaveMap.get(dayStr);
 
-            // Filter out non-working days that don't have records, UNLESS it's today
-            if (!isWorkingDay && !isToday && !attendanceRecord && !leaveRecord) {
+            // --- REVERTED FILTER ---
+            if (!isWorkingDay && !attendanceRecord && !leaveRecord) {
                 return null;
             }
 
