@@ -124,7 +124,7 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
                             <p className="text-5xl font-bold tracking-tighter tabular-nums text-primary">{format(currentTime, 'HH:mm:ss')}</p>
                             <p className="text-sm font-medium text-muted-foreground mt-1">{format(currentTime, 'eeee, d MMMM yyyy', { locale: id })}</p>
                         </div>
-                        <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
+                        <div className="grid grid-cols-2 gap-3 w-full">
                             <div className="flex flex-col items-center p-3 rounded-xl bg-background border shadow-sm transition-colors">
                                 <div className="flex items-center gap-1.5 mb-1">
                                     <LogIn size={14} className="text-muted-foreground" />
@@ -151,7 +151,7 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
                 {!isLoading && (
                     <Button 
                         size="lg" 
-                        className={cn("w-full max-w-sm font-bold shadow-lg shadow-primary/20 transition-all active:scale-95", hasFinished && "opacity-50")}
+                        className={cn("w-full font-bold shadow-lg shadow-primary/20 transition-all active:scale-95", hasFinished && "opacity-50")}
                         onClick={() => !hasFinished && router.push('/dashboard/absen')}
                         disabled={hasFinished}
                     >
