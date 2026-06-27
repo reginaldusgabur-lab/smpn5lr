@@ -159,9 +159,9 @@ const RecentAttendanceTable = () => {
         <CardHeader className="p-6 flex flex-row items-center justify-between gap-1 text-green-700 border-b border-muted-foreground/5">
           <div className="flex items-center gap-3">
             <History className="h-5 w-5" />
-            <CardTitle className="font-black text-sm tracking-tight uppercase tracking-widest">AKTIVITAS KEHADIRAN</CardTitle>
+            <CardTitle className="font-bold text-sm tracking-tight">Aktivitas Kehadiran</CardTitle>
           </div>
-          <p className="text-[11px] font-black uppercase opacity-80 tracking-widest bg-green-500/10 px-3 py-1 rounded-full">{todayFormatted}</p>
+          <p className="text-[11px] font-bold uppercase opacity-80 tracking-widest bg-green-500/10 px-3 py-1 rounded-full">{todayFormatted}</p>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
@@ -180,11 +180,11 @@ const RecentAttendanceTable = () => {
               <Table>
                 <TableHeader className="bg-green-500/5">
                   <TableRow className="border-none">
-                    <TableHead className="w-[60px] text-center font-black text-[10px] uppercase tracking-widest text-green-700">No</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-green-700">Nama & NIP</TableHead>
-                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700">Masuk</TableHead>
-                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700">Pulang</TableHead>
-                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700">Status</TableHead>
+                    <TableHead className="w-[60px] text-center font-bold text-[10px] uppercase tracking-widest text-green-700">No</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest text-green-700">Nama & NIP</TableHead>
+                    <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-green-700">Masuk</TableHead>
+                    <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-green-700">Pulang</TableHead>
+                    <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-green-700">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

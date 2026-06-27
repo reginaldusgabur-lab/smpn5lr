@@ -216,7 +216,7 @@ export default function PersetujuanIzinPage() {
     <div className="space-y-8">
       <Card className="overflow-hidden border shadow-xl rounded-3xl bg-card">
         <CardHeader className="p-4 sm:p-6 text-primary border-b border-muted-foreground/10">
-          <CardTitle className="font-black text-xs uppercase tracking-widest">Permintaan Izin Tertunda</CardTitle>
+          <CardTitle className="font-bold text-sm tracking-tight">Permintaan Izin Tertunda</CardTitle>
           <CardDescription className="text-muted-foreground font-medium pt-1">Tinjau dan proses permintaan izin atau sakit yang menunggu persetujuan.</CardDescription>
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
@@ -233,11 +233,11 @@ export default function PersetujuanIzinPage() {
               <Table>
                 <TableHeader className="bg-muted/30">
                   <TableRow className="border-none">
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary/80">Nama Pengguna</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary/80">Jenis</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary/80">Tanggal</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary/80">Alasan</TableHead>
-                    <TableHead className="text-right font-black text-[10px] uppercase tracking-widest text-primary/80 pr-6">Aksi</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest text-primary/80">Nama Pengguna</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest text-primary/80">Jenis</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest text-primary/80">Tanggal</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest text-primary/80">Alasan</TableHead>
+                    <TableHead className="text-right font-bold text-[10px] uppercase tracking-widest text-primary/80 pr-6">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -277,7 +277,7 @@ export default function PersetujuanIzinPage() {
 
       <Card className="overflow-hidden border shadow-xl rounded-3xl bg-card">
         <CardHeader className="p-4 sm:p-6 text-primary border-b border-muted-foreground/10">
-          <CardTitle className="font-black text-xs uppercase tracking-widest">Riwayat Persetujuan</CardTitle>
+          <CardTitle className="font-bold text-sm tracking-tight">Riwayat Persetujuan</CardTitle>
           <CardDescription className="text-muted-foreground font-medium pt-1">Riwayat permintaan izin atau sakit yang telah diproses dalam 6 hari terakhir.</CardDescription>
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
@@ -292,10 +292,10 @@ export default function PersetujuanIzinPage() {
               <Table>
                 <TableHeader className="bg-muted/30">
                   <TableRow className="border-none">
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary/80">Nama Pengguna</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary/80">Jenis</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary/80">Tanggal</TableHead>
-                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-primary/80">Status</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest text-primary/80">Nama Pengguna</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest text-primary/80">Jenis</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest text-primary/80">Tanggal</TableHead>
+                    <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-primary/80">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

@@ -183,9 +183,9 @@ const AbsentUsersTable = () => {
         <CardHeader className="p-6 flex flex-row items-center justify-between gap-1 text-destructive border-b border-muted-foreground/5">
           <div className="flex items-center gap-3">
             <AlertTriangle className="h-5 w-5" />
-            <CardTitle className="font-black text-lg tracking-tight uppercase tracking-widest">DAFTAR KETIDAKHADIRAN</CardTitle>
+            <CardTitle className="font-bold text-sm tracking-tight">Daftar Ketidakhadiran</CardTitle>
           </div>
-          <p className="text-[10px] font-black uppercase opacity-80 tracking-widest bg-destructive/10 px-3 py-1 rounded-lg">Staf tanpa absen & izin</p>
+          <p className="text-[10px] font-bold uppercase opacity-80 tracking-widest bg-destructive/10 px-3 py-1 rounded-lg">Staf Tanpa Absen & Izin</p>
         </CardHeader>
         <CardContent className="p-0">
           {!isHoliday && absentUsers.length > 0 ? (
@@ -193,9 +193,9 @@ const AbsentUsersTable = () => {
               <Table>
                   <TableHeader className="bg-destructive/5">
                   <TableRow className="border-none">
-                      <TableHead className="w-[60px] text-center font-black text-[10px] uppercase tracking-widest text-destructive">No</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-destructive">Nama & Posisi</TableHead>
-                      <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-destructive">Status</TableHead>
+                      <TableHead className="w-[60px] text-center font-bold text-[10px] uppercase tracking-widest text-destructive">No</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-widest text-destructive">Nama & Posisi</TableHead>
+                      <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-destructive">Status</TableHead>
                   </TableRow>
                   </TableHeader>
                   <TableBody>

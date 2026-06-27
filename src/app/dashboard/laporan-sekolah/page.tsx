@@ -353,7 +353,7 @@ export default function SchoolReportPage() {
 
                 <Card className="overflow-hidden border shadow-xl rounded-3xl bg-card">
                     <CardHeader className="p-6 border-b border-muted-foreground/10 text-primary">
-                        <CardTitle className="font-black text-xs uppercase tracking-widest">REKAPITULASI KEHADIRAN</CardTitle>
+                        <CardTitle className="font-bold text-sm tracking-tight">Rekapitulasi Kehadiran</CardTitle>
                         <CardDescription className="text-muted-foreground font-medium">Data kehadiran akumulatif seluruh personil bulan {monthName}.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-0 sm:p-6 min-h-[500px]">
@@ -395,12 +395,12 @@ export default function SchoolReportPage() {
                                 </div>
                                 <div className="w-full lg:w-auto">
                                     <Button 
-                                        className="w-full lg:w-auto h-12 rounded-2xl font-black shadow-lg active:scale-95 transition-all px-8 bg-primary hover:bg-primary/90 text-sm" 
+                                        className="w-full lg:w-auto h-12 rounded-2xl font-bold shadow-lg active:scale-95 transition-all px-8 bg-primary hover:bg-primary/90 text-sm" 
                                         disabled={isReportLoading || !filteredReports.length || isExporting}
                                         onClick={handleDownloadPdf}
                                     >
                                         {isExporting && !exportingUserId ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : <Download className="mr-3 h-5 w-5" />}
-                                        <span className="whitespace-nowrap uppercase tracking-wider">UNDUH PDF</span>
+                                        <span className="whitespace-nowrap uppercase tracking-wider">Unduh PDF</span>
                                     </Button>
                                 </div>
                             </div>
