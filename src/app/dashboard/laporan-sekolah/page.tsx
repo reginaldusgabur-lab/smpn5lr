@@ -129,7 +129,6 @@ export default function SchoolReportPage() {
 
             const config = schoolConfigData || {};
 
-            // Kop Surat - HANYA DI HALAMAN PERTAMA
             doc.setFont('times', 'bold').setFontSize(14);
             doc.text((config.governmentAgency || 'PEMERINTAH KABUPATEN MANGGARAI').toUpperCase(), centerX, currentY, { align: 'center' });
             currentY += 7;
@@ -141,12 +140,10 @@ export default function SchoolReportPage() {
             doc.setFont('times', 'normal').setFontSize(9);
             doc.text(`Alamat: ${config.address || 'Alamat Sekolah'}`, centerX, currentY, { align: 'center' });
             currentY += 4;
-            // Garis Ganda Header
             doc.setLineWidth(0.8).line(margin, currentY, pageWidth - margin, currentY);
             doc.setLineWidth(0.2).line(margin, currentY + 0.8, pageWidth - margin, currentY + 0.8);
             currentY += 15;
 
-            // Judul Laporan
             doc.setFont('times', 'bold').setFontSize(14);
             doc.text('LAPORAN KEHADIRAN INDIVIDU', centerX, currentY, { align: 'center' });
             currentY += 7;
@@ -154,7 +151,6 @@ export default function SchoolReportPage() {
             doc.text(`Periode: ${monthName}`, centerX, currentY, { align: 'center' });
             currentY += 12;
 
-            // Info User
             doc.setFontSize(10).setFont('times', 'normal');
             doc.text(`Nama`, margin, currentY);
             doc.text(`: ${targetUser.name}`, margin + 35, currentY);
@@ -191,7 +187,6 @@ export default function SchoolReportPage() {
                 }
             });
 
-            // Tanda Tangan Kepala Sekolah (Hanya di halaman terakhir)
             let finalTableY = (doc as any).lastAutoTable.finalY;
             if (finalTableY > pageHeight - 65) {
                 doc.addPage();
@@ -209,7 +204,6 @@ export default function SchoolReportPage() {
             doc.setFont('times', 'normal');
             doc.text(`NIP. ${config.headmasterNip || '198507272011011020'}`, signatureX, signY + 44);
 
-            // Footer Otomatis di Setiap Halaman
             const totalPages = (doc as any).internal.getNumberOfPages();
             for (let i = 1; i <= totalPages; i++) {
                 doc.setPage(i);
@@ -250,7 +244,6 @@ export default function SchoolReportPage() {
             const sekolah = (config.schoolName || 'SMP NEGERI 5 LANGKE REMBONG').toUpperCase();
             const alamat = config.address || 'Alamat Sekolah';
 
-            // Kop Surat - HANYA DI HALAMAN PERTAMA
             doc.setFont('times', 'bold').setFontSize(14);
             doc.text(instansi, centerX, finalY, { align: 'center' });
             finalY += 7;
@@ -266,7 +259,6 @@ export default function SchoolReportPage() {
             doc.setLineWidth(0.2).line(margin, finalY + 0.8, pageWidth - margin, finalY + 0.8);
             finalY += 15;
 
-            // Judul Laporan
             doc.setFont('times', 'bold').setFontSize(14);
             doc.text('LAPORAN KEHADIRAN', centerX, finalY, { align: 'center' });
             finalY += 7;
@@ -352,66 +344,73 @@ export default function SchoolReportPage() {
             <div className="max-w-7xl mx-auto space-y-6">
                 <div className="px-4 md:px-0">
                     <h1 className="text-3xl font-bold tracking-tight text-foreground">Laporan Sekolah</h1>
-                    <p className="text-muted-foreground mt-1">Ringkasan kehadiran bulanan untuk seluruh personil aktif.</p>
+                    <p className="text-muted-foreground mt-1 font-medium">Ringkasan kehadiran bulanan untuk seluruh personil aktif.</p>
                 </div>
 
-                <Card className="overflow-hidden border shadow-sm">
+                <Card className="overflow-hidden border-none shadow-xl rounded-3xl bg-card">
                     <CardContent className="p-0 sm:p-6 min-h-[500px]">
-                        <div className="p-4 space-y-6">
+                        <div className="p-6 space-y-6">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
                                 <div className="flex items-center gap-6">
-                                    <Button variant="outline" size="icon" className="rounded-full shrink-0" onClick={() => setCurrentMonth(prev => subMonths(prev, 1))}><ChevronLeft className="h-4 w-4" /></Button>
-                                    <span className="w-48 text-center font-black text-2xl text-primary">{monthName}</span>
-                                    <Button variant="outline" size="icon" className="rounded-full shrink-0" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isSameMonth(currentMonth, new Date())}><ChevronRight className="h-4 w-4" /></Button>
+                                    <Button variant="outline" size="icon" className="rounded-full shrink-0 h-10 w-10 border-primary/20 hover:bg-primary/5" onClick={() => setCurrentMonth(prev => subMonths(prev, 1))}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
+                                    <span className="w-48 text-center font-black text-2xl text-primary tracking-tight">{monthName}</span>
+                                    <Button variant="outline" size="icon" className="rounded-full shrink-0 h-10 w-10 border-primary/20 hover:bg-primary/5" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isSameMonth(currentMonth, new Date())}><ChevronRight className="h-5 w-5 text-primary" /></Button>
                                 </div>
-                                <div className="w-full h-px bg-border/60" />
+                                <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent mt-2" />
                             </div>
                             
-                            <div className="flex flex-wrap gap-3 items-center justify-between">
+                            <div className="flex flex-wrap gap-4 items-center justify-between">
                                 <div className="flex flex-wrap gap-3 flex-1 min-w-[300px]">
-                                    <div className="w-full sm:w-[180px] relative">
-                                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
+                                    <div className="w-full sm:w-[180px] relative group">
+                                        <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-primary z-10 pointer-events-none transition-colors group-focus-within:text-primary" />
                                         <Select value={roleFilter} onValueChange={setRoleFilter}>
-                                            <SelectTrigger className="pl-10 h-11 rounded-xl bg-muted/30 border-muted-foreground/10 focus:ring-primary"><SelectValue placeholder="Peran" /></SelectTrigger>
-                                            <SelectContent className="rounded-xl">
-                                                <SelectItem value="all">Semua Peran</SelectItem>
-                                                <SelectItem value="guru">Guru</SelectItem>
-                                                <SelectItem value="pegawai">Pegawai</SelectItem>
-                                                <SelectItem value="kepala_sekolah">Kepala Sekolah</SelectItem>
+                                            <SelectTrigger className="pl-11 h-12 rounded-2xl bg-muted/40 border-muted-foreground/10 focus:ring-primary focus:bg-background transition-all">
+                                                <SelectValue placeholder="Peran" />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-2xl border-none shadow-2xl">
+                                                <SelectItem value="all" className='rounded-xl'>Semua Peran</SelectItem>
+                                                <SelectItem value="guru" className='rounded-xl'>Guru</SelectItem>
+                                                <SelectItem value="pegawai" className='rounded-xl'>Pegawai</SelectItem>
+                                                <SelectItem value="kepala_sekolah" className='rounded-xl'>Kepala Sekolah</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <div className="flex-1 relative min-w-[200px]">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
-                                        <Input placeholder="Cari nama personil..." className="pl-10 h-11 rounded-xl bg-muted/30 border-muted-foreground/10 focus:ring-primary" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                                    <div className="flex-1 relative min-w-[200px] group">
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-primary z-10 pointer-events-none group-focus-within:scale-110 transition-transform" />
+                                        <Input 
+                                            placeholder="Lihat Kehadiran" 
+                                            className="pl-12 h-12 rounded-2xl bg-muted/40 border-muted-foreground/10 focus:ring-primary focus:bg-background transition-all font-bold placeholder:text-muted-foreground/60" 
+                                            value={searchTerm} 
+                                            onChange={e => setSearchTerm(e.target.value)} 
+                                        />
                                     </div>
                                 </div>
                                 <div className="w-full lg:w-auto">
                                     <Button 
-                                        className="w-full h-11 rounded-xl font-bold shadow-md active:scale-95 transition-all px-6 bg-primary hover:bg-primary/90" 
+                                        className="w-full lg:w-auto h-12 rounded-2xl font-black shadow-lg shadow-primary/20 active:scale-95 transition-all px-8 bg-primary hover:bg-primary/90 text-sm" 
                                         disabled={isReportLoading || !filteredReports.length || isExporting}
                                         onClick={handleDownloadPdf}
                                     >
-                                        {isExporting && !exportingUserId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                                        <span className="whitespace-nowrap">Unduh Laporan PDF</span>
+                                        {isExporting && !exportingUserId ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : <Download className="mr-3 h-5 w-5" />}
+                                        <span className="whitespace-nowrap uppercase tracking-wider">Unduh Laporan PDF</span>
                                     </Button>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="border-t border-muted-foreground/10">
+                        <div className="border-t border-muted-foreground/5 shadow-inner">
                             <div className="overflow-x-auto">
                                 <Table>
                                     <TableHeader className="bg-muted/30">
                                         <TableRow className="border-none">
-                                            <TableHead className="w-[60px] text-center font-bold text-xs">No</TableHead>
-                                            <TableHead className="font-bold text-xs">Nama & NIP</TableHead>
-                                            <TableHead className="text-center font-bold text-xs">H</TableHead>
-                                            <TableHead className="text-center font-bold text-xs">I</TableHead>
-                                            <TableHead className="text-center font-bold text-xs">S</TableHead>
-                                            <TableHead className="text-center font-bold text-xs">A</TableHead>
-                                            <TableHead className="text-center font-bold text-xs">%</TableHead>
-                                            <TableHead className="w-[80px] text-center font-bold text-xs">Aksi</TableHead>
+                                            <TableHead className="w-[60px] text-center font-black text-[10px] uppercase tracking-widest text-muted-foreground">No</TableHead>
+                                            <TableHead className="font-black text-[10px] uppercase tracking-widest text-muted-foreground">Nama & NIP</TableHead>
+                                            <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-muted-foreground">H</TableHead>
+                                            <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-muted-foreground">I</TableHead>
+                                            <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-muted-foreground">S</TableHead>
+                                            <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-muted-foreground">A</TableHead>
+                                            <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-muted-foreground">%</TableHead>
+                                            <TableHead className="w-[80px] text-center font-black text-[10px] uppercase tracking-widest text-muted-foreground">Aksi</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -419,55 +418,59 @@ export default function SchoolReportPage() {
                                             [...Array(10)].map((_, i) => (
                                                 <TableRow key={i} className="border-muted-foreground/5">
                                                     <TableCell><Skeleton className="h-4 w-4 mx-auto" /></TableCell>
-                                                    <TableCell><Skeleton className="h-10 w-48 rounded-lg" /></TableCell>
+                                                    <TableCell><Skeleton className="h-10 w-48 rounded-xl" /></TableCell>
                                                     <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
                                                     <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
                                                     <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
                                                     <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
-                                                    <TableCell><Skeleton className="h-6 w-12 mx-auto rounded-md" /></TableCell>
-                                                    <TableCell><Skeleton className="h-8 w-8 mx-auto rounded-full" /></TableCell>
+                                                    <TableCell><Skeleton className="h-7 w-14 mx-auto rounded-xl" /></TableCell>
+                                                    <TableCell><Skeleton className="h-10 w-10 mx-auto rounded-full" /></TableCell>
                                                 </TableRow>
                                             ))
                                         ) : filteredReports.length > 0 ? filteredReports.map((item) => (
-                                            <TableRow key={item.uid} className="hover:bg-muted/20 transition-colors border-muted-foreground/5">
-                                                <TableCell className="text-center font-bold text-muted-foreground">{item.no}</TableCell>
+                                            <TableRow key={item.uid} className="hover:bg-primary/5 transition-colors border-muted-foreground/5">
+                                                <TableCell className="text-center font-black text-muted-foreground/60">{item.no}</TableCell>
                                                 <TableCell>
                                                     <div className="flex flex-col">
-                                                        <span className="font-black text-sm text-foreground">{item.name}</span>
+                                                        <span className="font-black text-sm text-foreground group-hover:text-primary transition-colors">{item.name}</span>
                                                         <span className="text-[10px] font-bold text-muted-foreground">{item.nip}</span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-center font-bold text-green-600">{Math.ceil(item.totalHadir)}</TableCell>
-                                                <TableCell className="text-center font-bold text-blue-500">{item.totalIzin}</TableCell>
-                                                <TableCell className="text-center font-bold text-orange-500">{item.totalSakit}</TableCell>
-                                                <TableCell className="text-center font-bold text-destructive">{item.totalAlpa}</TableCell>
-                                                <TableCell className="text-center font-black text-primary">{item.persentase}</TableCell>
+                                                <TableCell className="text-center font-black text-green-600/80">{Math.ceil(item.totalHadir)}</TableCell>
+                                                <TableCell className="text-center font-black text-blue-500/80">{item.totalIzin}</TableCell>
+                                                <TableCell className="text-center font-black text-orange-500/80">{item.totalSakit}</TableCell>
+                                                <TableCell className="text-center font-black text-destructive/80">{item.totalAlpa}</TableCell>
+                                                <TableCell className="text-center">
+                                                    <span className="inline-flex items-center px-3 py-1 rounded-xl bg-primary/10 text-primary font-black text-xs">
+                                                        {item.persentase}
+                                                    </span>
+                                                </TableCell>
                                                 <TableCell className="text-center">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted-foreground/10">
-                                                                <Eye className="h-4 w-4" />
+                                                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-primary/10 active:scale-90 transition-all">
+                                                                <Eye className="h-5 w-5 text-primary" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="w-52 rounded-2xl p-2 shadow-2xl">
-                                                            <DropdownMenuItem asChild className="rounded-xl cursor-pointer py-2.5 px-3 focus:bg-primary/5">
+                                                        <DropdownMenuContent align="end" className="w-52 rounded-2xl p-2 shadow-2xl border-none">
+                                                            <DropdownMenuItem asChild className="rounded-xl cursor-pointer py-3 px-4 focus:bg-primary/5 group">
                                                                 <Link href={`/dashboard/laporan/${item.uid}`} className="flex items-center">
-                                                                    <Search className="mr-3 h-4 w-4 text-primary" />
-                                                                    <span className="text-xs font-bold">Lihat Kehadiran</span>
+                                                                    <Search className="mr-3 h-4.5 w-4.5 text-primary group-hover:scale-110 transition-transform" />
+                                                                    <span className="text-xs font-black text-foreground">Lihat Kehadiran</span>
                                                                 </Link>
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuSeparator className="my-1.5 opacity-50" />
+                                                            <DropdownMenuSeparator className="my-1.5 opacity-30" />
                                                             <DropdownMenuItem 
-                                                                className="rounded-xl cursor-pointer py-2.5 px-3 focus:bg-destructive/5"
+                                                                className="rounded-xl cursor-pointer py-3 px-4 focus:bg-destructive/5 group"
                                                                 disabled={isExporting && exportingUserId === item.uid}
                                                                 onClick={() => handleDownloadPersonalPdf(item)}
                                                             >
                                                                 {exportingUserId === item.uid ? (
-                                                                    <Loader2 className="mr-3 h-4 w-4 animate-spin text-destructive" />
+                                                                    <Loader2 className="mr-3 h-4.5 w-4.5 animate-spin text-destructive" />
                                                                 ) : (
-                                                                    <FileText className="mr-3 h-4 w-4 text-destructive" />
+                                                                    <FileText className="mr-3 h-4.5 w-4.5 text-destructive group-hover:scale-110 transition-transform" />
                                                                 )}
-                                                                <span className="text-xs font-bold text-destructive">Unduh Laporan</span>
+                                                                <span className="text-xs font-black text-destructive">Unduh Laporan</span>
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
