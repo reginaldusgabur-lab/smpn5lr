@@ -8,7 +8,7 @@ import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { TrendingUp, LogIn, LogOut, Sparkles, UserCheck, BookUser, MailWarning, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -31,14 +31,14 @@ const LiveClockUI = () => {
         return () => clearInterval(timer);
     }, []);
 
-    if (!time) return <div className="h-24 w-full" />;
+    if (!time) return <div className="h-32 w-full flex items-center justify-center"><Skeleton className="h-12 w-48" /></div>;
 
     return (
         <div className="flex flex-col items-center justify-center py-4 w-full">
-            <h2 className="text-6xl sm:text-7xl font-black tracking-tighter tabular-nums text-primary leading-none">
+            <h2 className="text-6xl font-black tracking-tighter tabular-nums text-primary leading-none">
                 {format(time, 'HH:mm:ss')}
             </h2>
-            <p className="text-[11px] font-bold text-muted-foreground mt-4 uppercase tracking-widest">
+            <p className="text-base font-medium text-muted-foreground mt-4 capitalize">
                 {format(time, 'EEEE, d MMMM yyyy', { locale: id })}
             </p>
         </div>
@@ -99,8 +99,8 @@ export default function DashboardPage() {
                 <Skeleton className="h-8 w-48" />
             </div>
             <div className="pt-10 space-y-4">
+                <Skeleton className="h-64 w-full rounded-2xl" />
                 <Skeleton className="h-40 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
             </div>
         </div>
     );
@@ -118,69 +118,72 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="w-full space-y-10 pb-10 flex flex-col items-stretch">
+    <div className="w-full space-y-8 pb-10 flex flex-col items-stretch">
         {/* WELCOME SECTION */}
         <div className="w-full px-0">
-            <p className="text-sm text-muted-foreground font-medium">Selamat Datang</p>
-            <h1 className="text-2xl font-black tracking-tight text-foreground mt-1 leading-tight">
+            <p className="text-base text-muted-foreground font-medium">Selamat Datang</p>
+            <h1 className="text-3xl font-black tracking-tight text-foreground mt-1 leading-tight">
                 {user?.name || 'Pengguna'}
             </h1>
-            <p className="text-[11px] text-muted-foreground mt-1 font-medium opacity-70">
+            <p className="text-sm text-muted-foreground mt-2 font-medium">
                 Lakukan absensi dan lihat riwayat kehadiran Anda.
             </p>
         </div>
 
         {isGuruOrPegawai && (
-            <div className="w-full space-y-8 flex flex-col items-stretch">
-                {/* ATTENDANCE CARD */}
-                <Card className="w-full border-none sm:border shadow-none sm:shadow-sm overflow-hidden bg-transparent sm:bg-card">
-                    <div className="flex items-center gap-2 px-0 mb-6 sm:px-4 sm:pt-4">
-                        <Clock className="w-5 h-5 text-primary" />
-                        <h2 className="text-sm font-black uppercase tracking-tight">
-                            Kehadiran Hari Ini
-                        </h2>
-                    </div>
+            <div className="w-full space-y-6 flex flex-col items-stretch">
+                {/* ATTENDANCE CARD - INTEGRATED DESIGN */}
+                <Card className="w-full border shadow-sm overflow-hidden bg-card">
+                    <CardHeader className="p-6 pb-2">
+                        <CardTitle className="text-2xl font-bold tracking-tight">
+                            Kehadiran Anda Hari Ini
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                            Status kehadiran dan jam absensi Anda.
+                        </p>
+                    </CardHeader>
                     
-                    <CardContent className="px-0 sm:px-4 space-y-8">
+                    <CardContent className="px-6 space-y-6">
+                        {/* Clock and Date inside Card */}
                         <LiveClockUI />
                         
                         <div className="grid grid-cols-2 gap-4 w-full">
                             <div className="bg-muted/30 rounded-2xl p-4 text-center border border-border/40 flex flex-col items-center justify-center">
-                                <div className="flex items-center justify-center gap-1.5 mb-1 opacity-60">
-                                    <LogIn className="w-3.5 h-3.5" />
-                                    <p className="text-[9px] uppercase font-black tracking-widest">Masuk</p>
+                                <div className="flex items-center justify-center gap-1.5 mb-2 opacity-70">
+                                    <LogIn className="w-4 h-4 text-primary" />
+                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Masuk</p>
                                 </div>
-                                <p className="text-2xl font-black tabular-nums">
+                                <p className="text-xl font-black tabular-nums">
                                     {isAttendanceLoading ? '...' : (todaysAttendance?.[0]?.checkInTime ? format(todaysAttendance[0].checkInTime.toDate(), 'HH:mm') : '--:--')}
                                 </p>
                             </div>
                             <div className="bg-muted/30 rounded-2xl p-4 text-center border border-border/40 flex flex-col items-center justify-center">
-                                <div className="flex items-center justify-center gap-1.5 mb-1 opacity-60">
-                                    <LogOut className="w-3.5 h-3.5" />
-                                    <p className="text-[9px] uppercase font-black tracking-widest">Pulang</p>
+                                <div className="flex items-center justify-center gap-1.5 mb-2 opacity-70">
+                                    <LogOut className="w-4 h-4 text-primary" />
+                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Pulang</p>
                                 </div>
-                                <p className="text-2xl font-black tabular-nums">
+                                <p className="text-xl font-black tabular-nums">
                                     {isAttendanceLoading ? '...' : (todaysAttendance?.[0]?.checkOutTime ? format(todaysAttendance[0].checkOutTime.toDate(), 'HH:mm') : '--:--')}
                                 </p>
                             </div>
                         </div>
 
-                        <div className="flex flex-col items-center gap-4 pt-4">
+                        <div className="flex flex-col items-center gap-4 pt-2">
                             {todaysAttendance?.[0]?.checkInTime && !todaysAttendance?.[0]?.checkOutTime ? (
-                                <Button asChild size="lg" className="w-full font-black rounded-2xl h-14 text-base uppercase tracking-wider shadow-md">
+                                <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-sm">
                                     <Link href="/dashboard/absen">Absen Pulang Sekarang</Link>
                                 </Button>
                             ) : !todaysAttendance?.[0]?.checkInTime ? (
-                                <Button asChild size="lg" className="w-full font-black rounded-2xl h-14 text-base uppercase tracking-wider shadow-md">
+                                <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-sm">
                                     <Link href="/dashboard/absen">Absen Masuk Sekarang</Link>
                                 </Button>
                             ) : (
-                                <div className="w-full bg-green-500/10 text-green-600 border border-green-500/20 font-black rounded-2xl h-14 flex items-center justify-center text-base uppercase tracking-widest">
-                                    <Sparkles className="mr-2 w-5 h-5" /> Absensi Selesai
+                                <div className="w-full bg-green-500/10 text-green-600 border border-green-500/20 font-bold rounded-xl h-12 flex items-center justify-center text-sm uppercase tracking-wider">
+                                    <Sparkles className="mr-2 w-4 h-4" /> Absensi Selesai
                                 </div>
                             )}
 
-                            <Button variant="link" size="sm" asChild className="h-auto p-0 text-[11px] font-bold text-muted-foreground hover:text-primary transition-colors uppercase tracking-widest">
+                            <Button variant="link" size="sm" asChild className="h-auto p-0 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors">
                                 <Link href="/dashboard/laporan">Lihat Riwayat Lengkap</Link>
                             </Button>
                         </div>
@@ -189,17 +192,17 @@ export default function DashboardPage() {
 
                 {/* GRAPH CARD */}
                 <Card className="w-full border shadow-sm overflow-hidden bg-card">
-                    <CardHeader className="p-4 pb-0">
+                    <CardHeader className="p-6 pb-0">
                         <div className="flex items-center justify-between">
-                            <h2 className="flex items-center gap-2 text-[11px] font-black text-foreground uppercase tracking-tight">
+                            <h2 className="flex items-center gap-2 text-sm font-bold text-foreground uppercase tracking-tight">
                                 <TrendingUp size={16} className="text-primary" /> Ringkasan Bulanan
                             </h2>
-                            <p className="text-[11px] text-muted-foreground font-black uppercase tracking-wider">
+                            <p className="text-xs text-muted-foreground font-bold">
                                 Skor: <span className="text-primary">{isPersonalSummaryLoading ? '...' : `${personalSummary.percentage}%`}</span>
                             </p>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-4 pt-6">
+                    <CardContent className="p-6 pt-6">
                         <div className="w-full h-56">
                             {isPersonalSummaryLoading ? (
                                 <Skeleton className="h-full w-full rounded-2xl" />
@@ -228,7 +231,7 @@ export default function DashboardPage() {
         )}
 
         {isAdminOrKepsek && (
-            <div className="w-full space-y-10 pt-6 border-t border-dashed border-border/50 flex flex-col items-stretch">
+            <div className="w-full space-y-10 pt-4 border-t border-dashed border-border/50 flex flex-col items-stretch">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                     <Card className="bg-card border shadow-sm">
                         <CardContent className="p-6">
@@ -248,7 +251,7 @@ export default function DashboardPage() {
                             </div>
                             <div className="text-3xl font-black">{isStatsLoading ? '...' : stats.izin + stats.sakit}</div>
                         </CardContent>
-                    </Card>
+                    </div>
 
                     <Link href="/dashboard/izin-kepala-sekolah" className="block">
                         <Card className="bg-card border shadow-sm hover:bg-accent/10 transition-colors">
