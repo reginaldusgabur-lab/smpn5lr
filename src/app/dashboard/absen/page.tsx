@@ -246,9 +246,9 @@ export default function AbsenPage() {
         )}
 
         {/* Transparent Overlay Instructions - Posisi Atas & Presisi */}
-        <div className="absolute top-8 left-0 right-0 z-10 px-8 text-center pointer-events-none transition-all">
-            <h2 className="text-white text-2xl font-bold mb-1 drop-shadow-lg">Arahkan Kamera</h2>
-            <p className="text-white/90 text-xs drop-shadow-md max-w-[200px] mx-auto">Pastikan QR Code berada di dalam kotak pemindaian.</p>
+        <div className="absolute top-8 left-0 right-0 z-50 px-8 text-center pointer-events-none transition-all">
+            <h2 className="text-white text-2xl font-black mb-1 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">Arahkan Kamera</h2>
+            <p className="text-white/90 text-xs font-bold drop-shadow-[0_1px_5px_rgba(0,0,0,0.8)] max-w-[200px] mx-auto uppercase tracking-wider">Dekatkan QR Code ke dalam kotak pemindaian.</p>
         </div>
 
         {/* Scan Guide UI - Area Tengah */}
