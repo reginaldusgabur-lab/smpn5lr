@@ -296,7 +296,11 @@ export default function UserReportDetailPage() {
         doc.text(`: ${userData.nip || '-'}`, margin + 35, currentY);
         currentY += 6;
         doc.text(`Jabatan / Status`, margin, currentY);
-        doc.text(`: ${userData.position || '-'}`, margin + 35, currentY);
+        
+        // Format Role and Position for Jabatan / Status display
+        const displayRole = userData.role.replace('_', ' ').split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        const jabStat = `${displayRole} / ${userData.position || '-'}`;
+        doc.text(`: ${jabStat}`, margin + 35, currentY);
         currentY += 10;
 
         const tableRows = monthlyReportData.map((item, index) => [

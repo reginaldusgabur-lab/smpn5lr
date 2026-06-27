@@ -164,7 +164,11 @@ export default function SchoolReportPage() {
             doc.text(`: ${targetUser.nip}`, margin + 35, currentY);
             currentY += 6;
             doc.text(`Jabatan / Status`, margin, currentY);
-            doc.text(`: ${targetUser.position}`, margin + 35, currentY);
+            
+            // Format Role and Position for Jabatan / Status display
+            const displayRole = targetUser.role.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            const jabStat = `${displayRole} / ${targetUser.position}`;
+            doc.text(`: ${jabStat}`, margin + 35, currentY);
             currentY += 10;
 
             const tableRows = detailData.map((item, index) => [
