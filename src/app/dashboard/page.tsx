@@ -124,11 +124,11 @@ const LiveClock = () => {
     if (!time) return <div className="h-24" />;
 
     return (
-        <div className="flex flex-col items-center justify-center py-2 mb-4 animate-in fade-in duration-500">
+        <div className="flex flex-col items-center justify-center py-1 mb-3 animate-in fade-in duration-500">
             <h2 className="text-5xl font-black tracking-tighter tabular-nums text-foreground leading-none">
                 {format(time, 'HH:mm:ss')}
             </h2>
-            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mt-3 bg-muted/40 px-3 py-1 rounded-full">
+            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.2em] mt-2.5 bg-muted/40 px-3 py-1 rounded-full">
                 {format(time, 'EEEE, d MMMM yyyy', { locale: id })}
             </p>
         </div>
@@ -169,7 +169,7 @@ export default function DashboardPage() {
             <LiveClock />
 
             {isGuruOrPegawai && (
-                <div className="w-full space-y-6">
+                <div className="w-full space-y-5">
                     {/* AREA KEHADIRAN HARI INI */}
                     <Card className="w-full overflow-hidden shadow-md border-muted/50">
                         <CardHeader className="pb-3 space-y-1">
@@ -182,33 +182,43 @@ export default function DashboardPage() {
                         <CardContent className="pt-2">
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-muted/30 rounded-xl p-3 text-center border border-border/40">
-                                    <p className="text-[9px] uppercase font-bold text-muted-foreground mb-1">Masuk</p>
+                                    <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                                        <LogIn className="w-3 h-3 text-muted-foreground" />
+                                        <p className="text-[9px] uppercase font-bold text-muted-foreground">Masuk</p>
+                                    </div>
                                     <p className="text-xl font-black tabular-nums">
                                         {isAttendanceLoading ? '...' : (todaysAttendance?.[0]?.checkInTime ? format(todaysAttendance[0].checkInTime.toDate(), 'HH:mm') : '--:--')}
                                     </p>
                                 </div>
                                 <div className="bg-muted/30 rounded-xl p-3 text-center border border-border/40">
-                                    <p className="text-[9px] uppercase font-bold text-muted-foreground mb-1">Pulang</p>
+                                    <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                                        <LogOut className="w-3 h-3 text-muted-foreground" />
+                                        <p className="text-[9px] uppercase font-bold text-muted-foreground">Pulang</p>
+                                    </div>
                                     <p className="text-xl font-black tabular-nums">
                                         {isAttendanceLoading ? '...' : (todaysAttendance?.[0]?.checkOutTime ? format(todaysAttendance[0].checkOutTime.toDate(), 'HH:mm') : '--:--')}
                                     </p>
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="bg-muted/5 border-t py-4">
+                        <CardFooter className="bg-muted/5 border-t py-4 flex flex-col items-center gap-3">
                             {todaysAttendance?.[0]?.checkInTime && !todaysAttendance?.[0]?.checkOutTime ? (
                                 <Button asChild size="lg" className="w-full font-bold shadow-sm">
-                                    <Link href="/dashboard/absen"><LogOut className="mr-2 w-4 h-4" /> Absen Pulang Sekarang</Link>
+                                    <Link href="/dashboard/absen">Absen Pulang Sekarang</Link>
                                 </Button>
                             ) : !todaysAttendance?.[0]?.checkInTime ? (
                                 <Button asChild size="lg" className="w-full font-bold shadow-sm">
-                                    <Link href="/dashboard/absen"><LogIn className="mr-2 w-4 h-4" /> Absen Masuk Sekarang</Link>
+                                    <Link href="/dashboard/absen">Absen Masuk Sekarang</Link>
                                 </Button>
                             ) : (
                                 <Button disabled size="lg" className="w-full bg-green-500/10 text-green-600 border-green-500/20 font-bold">
                                     <Sparkles className="mr-2 w-4 h-4" /> Absensi Hari Ini Selesai
                                 </Button>
                             )}
+
+                            <Button variant="link" size="sm" asChild className="h-auto p-0 text-xs font-medium text-muted-foreground hover:text-primary transition-colors">
+                                <Link href="/dashboard/laporan">Lihat Riwayat Lengkap</Link>
+                            </Button>
                         </CardFooter>
                     </Card>
 
@@ -228,11 +238,9 @@ export default function DashboardPage() {
                             </div>
                         </CardHeader>
                         <CardContent className="pt-4">
-                            <div className="h-48 w-full">
+                            <div className="h-44 w-full">
                                 {isPersonalSummaryLoading ? (
-                                    <div className="h-full w-full flex items-center justify-center bg-muted/20 rounded-lg animate-pulse">
-                                        <Skeleton className="h-full w-full" />
-                                    </div>
+                                    <Skeleton className="h-full w-full rounded-lg" />
                                 ) : (
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={chartData} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
@@ -251,11 +259,6 @@ export default function DashboardPage() {
                                         </BarChart>
                                     </ResponsiveContainer>
                                 )}
-                            </div>
-                            <div className="flex justify-center mt-4">
-                                <Button variant="link" size="sm" asChild className="h-auto p-0 text-xs font-bold text-primary">
-                                    <Link href="/dashboard/laporan">Lihat Riwayat Lengkap &rarr;</Link>
-                                </Button>
                             </div>
                         </CardContent>
                     </Card>
