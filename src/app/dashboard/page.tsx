@@ -26,14 +26,14 @@ const LiveClockUI = () => {
         return () => clearInterval(timer);
     }, []);
 
-    if (!time) return <div className="h-20 w-full flex items-center justify-center"><Skeleton className="h-10 w-40" /></div>;
+    if (!time) return <div className="h-16 w-full flex items-center justify-center"><Skeleton className="h-10 w-40" /></div>;
 
     return (
-        <div className="flex flex-col items-center justify-center py-4 w-full">
+        <div className="flex flex-col items-center justify-center pt-0 pb-2 w-full">
             <h2 className="text-5xl font-black tracking-tighter tabular-nums text-foreground leading-none">
                 {format(time, 'HH:mm:ss')}
             </h2>
-            <p className="text-sm font-medium text-muted-foreground mt-3">
+            <p className="text-[10px] font-bold text-muted-foreground mt-1.5 uppercase tracking-widest opacity-70">
                 {format(time, 'eeee, d MMMM yyyy', { locale: id })}
             </p>
         </div>
@@ -179,11 +179,11 @@ export default function DashboardPage() {
                         </div>
                     </CardHeader>
                     
-                    <CardContent className="p-6 space-y-6 pt-8">
+                    <CardContent className="p-6 space-y-4 pt-4">
                         <LiveClockUI />
                         
                         <div className="grid grid-cols-2 gap-4 w-full">
-                            <div className="bg-muted/30 rounded-2xl p-4 text-center border border-border/40 flex flex-col items-center justify-center">
+                            <div className="bg-muted/30 rounded-2xl p-3 text-center border border-border/40 flex flex-col items-center justify-center">
                                 <div className="flex items-center justify-center gap-2 mb-1.5">
                                     <LogIn className="w-3.5 h-3.5 text-primary" />
                                     <p className="text-[10px] font-black text-primary uppercase tracking-wider">Masuk</p>
@@ -192,7 +192,7 @@ export default function DashboardPage() {
                                     {isAttendanceLoading ? '...' : (todaysAttendance?.[0]?.checkInTime ? format(todaysAttendance[0].checkInTime.toDate(), 'HH:mm') : '--:--')}
                                 </p>
                             </div>
-                            <div className="bg-muted/30 rounded-2xl p-4 text-center border border-border/40 flex flex-col items-center justify-center">
+                            <div className="bg-muted/30 rounded-2xl p-3 text-center border border-border/40 flex flex-col items-center justify-center">
                                 <div className="flex items-center justify-center gap-2 mb-1.5">
                                     <LogOut className="w-3.5 h-3.5 text-primary" />
                                     <p className="text-[10px] font-black text-primary uppercase tracking-wider">Pulang</p>
