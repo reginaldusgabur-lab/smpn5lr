@@ -126,7 +126,7 @@ export default function DashboardPage() {
                 <Card className="w-full border shadow-sm overflow-hidden bg-card">
                     <CardHeader className="p-4 pb-0 flex flex-row items-center gap-2">
                         <Clock className="w-4 h-4 text-primary" />
-                        <CardTitle className="text-xs font-bold text-muted-foreground">
+                        <CardTitle className="text-xs font-bold text-primary/80 uppercase tracking-widest">
                             Kehadiran Anda hari ini
                         </CardTitle>
                     </CardHeader>
@@ -180,7 +180,7 @@ export default function DashboardPage() {
                 <Card className="w-full border shadow-sm overflow-hidden bg-card">
                     <CardHeader className="p-4 pb-0">
                         <div className="flex items-center justify-between">
-                            <h2 className="flex items-center gap-2 text-xs font-bold text-foreground">
+                            <h2 className="flex items-center gap-2 text-xs font-bold text-primary/80 uppercase tracking-widest">
                                 <TrendingUp size={14} className="text-primary" /> Ringkasan bulanan
                             </h2>
                             <p className="text-[10px] text-muted-foreground font-bold">
@@ -222,7 +222,7 @@ export default function DashboardPage() {
                     <Card className="bg-card border shadow-sm border-l-4 border-l-green-500">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between mb-2">
-                                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Hadir</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-green-600">Hadir</p>
                                 <UserCheck className="h-4 w-4 text-green-500" />
                             </div>
                             <div className="text-2xl font-black text-green-700 dark:text-green-400">{isStatsLoading ? '...' : stats.hadir}</div>
@@ -232,7 +232,7 @@ export default function DashboardPage() {
                     <Card className="bg-card border shadow-sm border-l-4 border-l-blue-500">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between mb-2">
-                                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Izin / Sakit</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Izin / Sakit</p>
                                 <BookUser className="h-4 w-4 text-blue-500" />
                             </div>
                             <div className="text-2xl font-black text-blue-700 dark:text-blue-400">{isStatsLoading ? '...' : stats.izin + stats.sakit}</div>
@@ -243,7 +243,7 @@ export default function DashboardPage() {
                         <Card className="bg-card border shadow-sm border-l-4 border-l-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors group">
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between mb-2">
-                                    <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Menunggu</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-600">Menunggu</p>
                                     <MailWarning className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform" />
                                 </div>
                                 <div className="text-2xl font-black text-amber-700 dark:text-amber-400">{isStatsLoading ? '...' : stats.pending}</div>
