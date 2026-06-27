@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -235,7 +236,7 @@ export default function AbsenPage() {
 
   return (
     <div className="w-full space-y-4">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-4 px-1">
           <Button variant="ghost" size="icon" className="-ml-2" onClick={() => router.back()}>
               <ArrowLeft className="h-5 w-5" />
           </Button>

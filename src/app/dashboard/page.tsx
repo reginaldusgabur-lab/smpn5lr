@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -260,16 +261,16 @@ export default function DashboardPage() {
   return (
     <div className="w-full space-y-6">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4">
+            <div className="col-span-full">
                 <WelcomeCard user={user} isLoading={isUserLoading} />
             </div>
 
             {showPersonal && (
                 <>
-                    <div className="col-span-1 md:col-span-2 lg:col-span-2 xl:col-span-2">
+                    <div className="col-span-full">
                         <PersonalAttendanceCardUI attendanceData={todaysAttendance} schoolConfig={schoolConfig} isLoading={isAttendanceLoading || isUserLoading || isConfigLoading} />
                     </div>
-                    <div className="col-span-1 md:col-span-2 lg:col-span-1 xl:col-span-2">
+                    <div className="col-span-full">
                         <MonthlyAttendanceChartUI summaryData={personalSummary} isLoading={isPersonalSummaryLoading || isUserLoading} />
                     </div>
                 </>
@@ -280,13 +281,8 @@ export default function DashboardPage() {
                     <StatCard title="Hadir Hari Ini" value={stats.hadir} icon={UserCheck} isLoading={isStatsLoading || isUserLoading} />
                     <StatCard title="Izin/Sakit" value={stats.izin + stats.sakit} icon={BookUser} description={`${stats.izin} Izin, ${stats.sakit} Sakit`} isLoading={isStatsLoading || isUserLoading} />
                     <StatCard title="Menunggu" value={stats.pending} icon={MailWarning} description="Pengajuan tertunda" isLoading={isStatsLoading || isUserLoading} className="cursor-pointer hover:bg-accent/10 border-accent/20" onClick={() => router.push('/dashboard/izin-kepala-sekolah')} />
-                </>
-            )}
-
-            {showMonitoring && (
-                <>
-                    <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4"><TodaysActivityTable /></div>
-                    <div className="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4"><AbsentUsersTable /></div>
+                    <div className="col-span-full"><TodaysActivityTable /></div>
+                    <div className="col-span-full"><AbsentUsersTable /></div>
                 </>
             )}
         </div>
