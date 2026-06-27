@@ -4,8 +4,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, getDoc, writeBatch, collection, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { format, startOfMonth, isValid, parseISO, startOfDay, endOfDay, addMinutes, isSameDay } from 'date-fns';
+import { doc, getDoc, writeBatch, collection, serverTimestamp, Timestamp, query, where, getDocs } from 'firebase/firestore';
+import { format, startOfMonth, isValid, parseISO, startOfDay, endOfDay, addMinutes, isSameDay, setHours, setMinutes } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -47,10 +47,11 @@ const getRandomTime = (baseDate: Date, startTimeStr: string, endTimeStr: string)
     const endDate = new Date(baseDate.getTime());
     endDate.setHours(endH, endM, 0, 0);
     
-    const startTs = startDate.getTime();
-    const endTs = endDate.getTime();
-    const randomTimestamp = startTs + Math.random() * (endTs - startTs);
+    if (endDate.getTime() <= startDate.getTime()) {
+        endDate.setDate(endDate.getDate() + 1);
+    }
     
+    const randomTimestamp = startDate.getTime() + Math.random() * (endDate.getTime() - startDate.getTime());
     const res = new Date(randomTimestamp);
     res.setSeconds(Math.floor(Math.random() * 60));
     return res;
@@ -110,35 +111,36 @@ export default function UserReportDetailPage() {
             
             if (newStatus === 'Pulang Cepat') {
                 const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
-                const newDocRef = doc(attendanceRef);
-                const inStart = schoolConfigData?.checkInStartTime || '07:00';
-                const inEnd = schoolConfigData?.checkInEndTime || '07:30';
-                const realInTime = getRandomTime(targetDate, inStart, inEnd);
-
-                batch.set(newDocRef, {
-                    userId,
-                    date: dateStr,
-                    checkInTime: Timestamp.fromDate(realInTime),
-                    checkOutTime: null,
-                    manualEntry: true,
-                    reasonForUpdate: 'Pulang Cepat',
-                    updatedBy: currentUser.uid,
-                    updatedAt: serverTimestamp()
-                });
+                const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
+                const snap = await getDocs(q);
+                
+                if (!snap.empty) {
+                    batch.update(snap.docs[0].ref, {
+                        checkOutTime: null,
+                        manualEntry: true,
+                        reasonForUpdate: 'Pulang Cepat',
+                        updatedBy: currentUser.uid,
+                        updatedAt: serverTimestamp()
+                    });
+                } else {
+                    const inStart = schoolConfigData?.checkInStartTime || '07:00';
+                    const inEnd = schoolConfigData?.checkInEndTime || '07:30';
+                    const realInTime = getRandomTime(targetDate, inStart, inEnd);
+                    batch.set(doc(attendanceRef), {
+                        userId, date: format(targetDate, 'yyyy-MM-dd'),
+                        checkInTime: Timestamp.fromDate(realInTime), checkOutTime: null,
+                        manualEntry: true, reasonForUpdate: 'Pulang Cepat',
+                        updatedBy: currentUser.uid, updatedAt: serverTimestamp()
+                    });
+                }
             } else {
                 const leaveRef = collection(firestore, 'users', userId, 'leaveRequests');
                 const newLeaveDoc = doc(leaveRef);
                 batch.set(newLeaveDoc, {
-                    userId,
-                    type: newStatus === 'Izin Pribadi' ? 'Izin' : newStatus,
-                    status: 'approved',
-                    reason: reason,
-                    startDate: Timestamp.fromDate(startOfDay(targetDate)),
-                    endDate: Timestamp.fromDate(endOfDay(targetDate)),
-                    createdAt: serverTimestamp(),
-                    approvedBy: currentUser.uid,
-                    approvedAt: serverTimestamp(),
-                    createdBy: currentUser.uid,
+                    userId, type: newStatus === 'Izin Pribadi' ? 'Izin' : newStatus, status: 'approved',
+                    reason: reason, startDate: Timestamp.fromDate(startOfDay(targetDate)),
+                    endDate: Timestamp.fromDate(endOfDay(targetDate)), createdAt: serverTimestamp(),
+                    approvedBy: currentUser.uid, approvedAt: serverTimestamp(), createdBy: currentUser.uid,
                 });
             }
 
@@ -158,33 +160,31 @@ export default function UserReportDetailPage() {
         try {
             const targetDate = parseISO(dateStr);
             const inEnd = schoolConfigData.checkInEndTime || '08:00';
-            
             const [endH, endM] = inEnd.split(':').map(Number);
             const baseLateTime = new Date(targetDate);
             baseLateTime.setHours(endH, endM, 0);
             const realInTime = addMinutes(baseLateTime, Math.floor(Math.random() * 10) + 1);
 
-            const outStart = schoolConfigData.checkOutStartTime || '14:00';
-            const outEnd = schoolConfigData.checkOutEndTime || '15:00';
-            const realOutTime = isSameDay(targetDate, new Date()) ? null : getRandomTime(targetDate, outStart, outEnd);
-
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
-            const newDocRef = doc(attendanceRef);
-            
-            await writeBatch(firestore)
-                .set(newDocRef, {
-                    userId,
-                    date: dateStr,
-                    checkInTime: Timestamp.fromDate(realInTime),
-                    checkOutTime: realOutTime ? Timestamp.fromDate(realOutTime) : null,
-                    manualEntry: true,
-                    reasonForUpdate: 'Terlambat',
-                    updatedBy: currentUser.uid,
-                    updatedAt: serverTimestamp()
-                })
-                .commit();
+            const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
+            const snap = await getDocs(q);
 
-            toast({ title: 'Berhasil', description: 'Kehadiran ditandai sebagai terlambat.' });
+            if (!snap.empty) {
+                await writeBatch(firestore).update(snap.docs[0].ref, {
+                    checkInTime: Timestamp.fromDate(realInTime),
+                    manualEntry: true, reasonForUpdate: 'Terlambat',
+                    updatedBy: currentUser.uid, updatedAt: serverTimestamp()
+                }).commit();
+            } else {
+                await writeBatch(firestore).set(doc(attendanceRef), {
+                    userId, date: format(targetDate, 'yyyy-MM-dd'),
+                    checkInTime: Timestamp.fromDate(realInTime), checkOutTime: null,
+                    manualEntry: true, reasonForUpdate: 'Terlambat',
+                    updatedBy: currentUser.uid, updatedAt: serverTimestamp()
+                }).commit();
+            }
+
+            toast({ title: 'Berhasil', description: 'Kehadiran ditandai sebagai Terlambat.' });
             fetchData();
         } catch (err) {
             toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal memperbarui data.' });
@@ -198,30 +198,55 @@ export default function UserReportDetailPage() {
         setIsMutating(true);
         try {
             const targetDate = parseISO(dateStr);
+            const now = new Date();
+            const isToday = isSameDay(targetDate, now);
+
             const inStart = schoolConfigData.checkInStartTime || '07:00';
             const inEnd = schoolConfigData.checkInEndTime || '07:30';
+            const checkInTime = getRandomTime(targetDate, inStart, inEnd);
+
             const outStart = schoolConfigData.checkOutStartTime || '14:00';
             const outEnd = schoolConfigData.checkOutEndTime || '15:00';
+            
+            // Logic Flexible: Jika hari ini dan belum masuk jam pulang, jam pulang kosong dulu agar user bisa absen sendiri
+            let checkOutTime: Date | null = null;
+            const [outH, outM] = outStart.split(':').map(Number);
+            const checkOutLimit = setMinutes(setHours(new Date(now), outH), outM);
 
-            const checkInTime = getRandomTime(targetDate, inStart, inEnd);
-            const checkOutTime = isSameDay(targetDate, new Date()) ? null : getRandomTime(targetDate, outStart, outEnd);
+            if (!isToday || (isToday && now >= checkOutLimit)) {
+                checkOutTime = getRandomTime(targetDate, outStart, outEnd);
+                if (checkOutTime.getTime() <= checkInTime.getTime()) {
+                    checkOutTime = addMinutes(checkInTime, 240);
+                }
+            }
 
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
-            const newDocRef = doc(attendanceRef);
-            
-            await writeBatch(firestore)
-                .set(newDocRef, {
-                    userId,
-                    date: dateStr,
+            const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
+            const snap = await getDocs(q);
+
+            const batch = writeBatch(firestore);
+            const dataToSave = {
+                manualEntry: true,
+                reasonForUpdate: 'Kehadiran Penuh',
+                updatedBy: currentUser.uid,
+                updatedAt: serverTimestamp()
+            } as any;
+
+            if (!snap.empty) {
+                const existingData = snap.docs[0].data();
+                if (!existingData.checkInTime) dataToSave.checkInTime = Timestamp.fromDate(checkInTime);
+                if (!existingData.checkOutTime && checkOutTime) dataToSave.checkOutTime = Timestamp.fromDate(checkOutTime);
+                batch.update(snap.docs[0].ref, dataToSave);
+            } else {
+                batch.set(doc(attendanceRef), {
+                    userId, date: format(targetDate, 'yyyy-MM-dd'),
                     checkInTime: Timestamp.fromDate(checkInTime),
                     checkOutTime: checkOutTime ? Timestamp.fromDate(checkOutTime) : null,
-                    manualEntry: true,
-                    reasonForUpdate: 'Kehadiran Penuh',
-                    updatedBy: currentUser.uid,
-                    updatedAt: serverTimestamp()
-                })
-                .commit();
+                    ...dataToSave
+                });
+            }
 
+            await batch.commit();
             toast({ title: 'Berhasil', description: 'Kehadiran ditandai sebagai Hadir.' });
             fetchData();
         } catch (err) {
@@ -256,11 +281,8 @@ export default function UserReportDetailPage() {
         ]);
 
         autoTable(doc, {
-            startY: 60,
-            head: [['No', 'Tanggal', 'Masuk', 'Pulang', 'Status', 'Keterangan']],
-            body: tableRows,
-            theme: 'grid',
-            headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+            startY: 60, head: [['No', 'Tanggal', 'Masuk', 'Pulang', 'Status', 'Keterangan']],
+            body: tableRows, theme: 'grid', headStyles: { fillColor: [41, 128, 185], textColor: 255 },
             styles: { font: 'times', fontSize: 9 }
         });
         doc.save(`Laporan_${userData.name}_${monthName}.pdf`);
@@ -347,17 +369,17 @@ export default function UserReportDetailPage() {
                                                     <TableCell className='text-center font-mono text-sm'>{safeFormat(item.checkInTime, 'HH:mm:ss')}</TableCell>
                                                     <TableCell className='text-center font-mono text-sm'>{safeFormat(item.checkOutTime, 'HH:mm:ss')}</TableCell>
                                                     <TableCell className="text-center">
-                                                        {isAdmin && item.status === 'Alpa' ? (
+                                                        {isAdmin && (item.status === 'Alpa' || item.description === 'Tidak Absen Pulang') ? (
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger asChild>
-                                                                    <Button variant="outline" size="sm" className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100 font-bold">
-                                                                        Alpa <MoreVertical className="h-3 w-3 ml-1" />
+                                                                    <Button variant="outline" size="sm" className={`${item.status === 'Alpa' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200'} hover:bg-muted font-bold`}>
+                                                                        {item.status === 'Alpa' ? 'Alpa' : 'Hadir'} <MoreVertical className="h-3 w-3 ml-1" />
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end" className="w-48">
-                                                                    <DropdownMenuLabel>Ubah Kehadiran</DropdownMenuLabel>
+                                                                    <DropdownMenuLabel>Perbaikan Kehadiran</DropdownMenuLabel>
                                                                     <DropdownMenuSeparator />
-                                                                    <DropdownMenuItem onClick={() => handleSetHadir(item.date)}>Hadir (Full)</DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => handleSetHadir(item.date)}>Jadikan Hadir</DropdownMenuItem>
                                                                     <DropdownMenuItem onClick={() => handleSetLate(item.date)}>Set Terlambat</DropdownMenuItem>
                                                                     <DropdownMenuItem onClick={() => handleStatusChange(item.date, 'Pulang Cepat', 'Pulang Cepat')}>Pulang Cepat</DropdownMenuItem>
                                                                     <DropdownMenuSeparator />

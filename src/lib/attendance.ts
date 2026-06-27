@@ -25,7 +25,6 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const startOfToday = startOfDay(today);
     const endOfToday = endOfDay(today);
 
-    // 1. Fetch Configs to check for Holiday
     const schoolConfigRef = doc(firestore, 'schoolConfig', 'default');
     const monthlyConfigId = format(today, 'yyyy-MM');
     const monthlyConfigRef = doc(firestore, 'monthlyConfigs', monthlyConfigId);
@@ -59,7 +58,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const attendanceSnap = await getDocs(attendanceQuery);
     const presentUserIds = new Set<string>();
     attendanceSnap.forEach(doc => {
-        const userId = doc.ref.parent.parent?.id;
+        const userId = doc.data().userId || doc.ref.parent.parent?.id;
         if (userId) presentUserIds.add(userId);
     });
 
@@ -72,7 +71,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
         const endDate = leave.endDate?.toDate();
 
         if (startDate && endDate && isWithinInterval(today, { start: startDate, end: endDate })) {
-            const userId = doc.ref.parent.parent?.id;
+            const userId = leave.userId || doc.ref.parent.parent?.id;
             if (userId) {
                 if (!leaveStatusByUserId.has(userId) || leave.status === 'approved') {
                     leaveStatusByUserId.set(userId, { status: leave.status, type: leave.type || 'Izin' });
@@ -93,22 +92,13 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
         if (leaveInfo) {
             if (leaveInfo.status === 'approved') {
                 if (leaveInfo.type === 'Pulang Cepat') return;
-                
-                if (leaveInfo.type === 'Sakit') {
-                    sakitCount++;
-                } else { 
-                    izinCount++;
-                }
+                if (leaveInfo.type === 'Sakit') sakitCount++;
+                else izinCount++;
             } else if (leaveInfo.status === 'pending') {
-                 if (leaveInfo.type !== 'Pulang Cepat') {
-                    pendingCount++;
-                 }
+                 if (leaveInfo.type !== 'Pulang Cepat') pendingCount++;
             }
         } else {
-            // Only count as Alpa if it's NOT a holiday
-            if (!isHoliday) {
-                alpaCount++;
-            }
+            if (!isHoliday) alpaCount++;
         }
     });
 
@@ -174,9 +164,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         if (att.checkInTime && att.checkOutTime) {
             return total + 1;
         } else if (att.checkInTime) {
-            if (approvedEarlyLeaveDates.has(attDateStr)) {
-                return total + 1;
-            }
+            if (approvedEarlyLeaveDates.has(attDateStr)) return total + 1;
             return total + 0.5;
         }
         return total;
@@ -312,16 +300,14 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
             };
         }
 
-        // Logic Change: If it is today and we are past the check-in time, or it is a past day, mark as Alpa
         let shouldMarkAsAlpa = false;
         if (isWorkingDay) {
             if (isBefore(day, todayStart)) {
                 shouldMarkAsAlpa = true;
             } else if (isToday) {
-                // Check if we are past checkInEndTime
                 if (schoolConfig.checkInEndTime) {
                     const [endH, endM] = schoolConfig.checkInEndTime.split(':').map(Number);
-                    const deadline = setHours(setMinutes(todayStart, endM), endH);
+                    const deadline = setMinutes(setHours(todayStart, endH), endM);
                     if (now > deadline) {
                         shouldMarkAsAlpa = true;
                     }

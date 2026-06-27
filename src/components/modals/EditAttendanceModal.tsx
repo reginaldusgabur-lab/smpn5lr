@@ -20,7 +20,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { format, parseISO, isValid, startOfDay, endOfDay, addMinutes } from 'date-fns';
+import { format, parseISO, isValid, startOfDay, endOfDay, addMinutes, isSameDay, setHours, setMinutes } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { MoreVertical } from 'lucide-react';
 
@@ -97,6 +97,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 startDate: Timestamp.fromDate(startOfDay(targetDate)),
                 endDate: Timestamp.fromDate(endOfDay(targetDate)),
                 createdAt: serverTimestamp(), approvedBy: currentUser.uid, approvedAt: serverTimestamp(), createdBy: currentUser.uid,
+                reason: newStatus
             });
             await batch.commit();
             setProblematicDays(prev => prev.filter(p => p.id !== day.id));
@@ -114,17 +115,19 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
         try {
             const batch = writeBatch(firestore);
             const recordDate = parseISO(day.date);
+            const now = new Date();
+            const isToday = isSameDay(recordDate, now);
+
             const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', day.id);
 
             let checkInTime: Date;
-            let checkOutTime: Date;
+            let checkOutTime: Date | null = null;
             let reasonForUpdate: string;
 
             if (type === 'hadir') {
                 checkInTime = getRandomTime(recordDate, checkInStartTime || '07:00', checkInEndTime);
                 reasonForUpdate = 'Kehadiran Penuh';
-            } else { // 'terlambat'
-                // Logic: checkInEndTime + random 1-10 minutes
+            } else {
                 const [endH, endM] = checkInEndTime.split(':').map(Number);
                 const baseLateTime = new Date(recordDate);
                 baseLateTime.setHours(endH, endM, 0);
@@ -132,16 +135,20 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 reasonForUpdate = 'Terlambat';
             }
             
-            checkOutTime = getRandomTime(recordDate, checkOutStartTime, checkOutEndTime);
-            
-            // Validation to ensure checkout is after check-in
-            if (checkOutTime.getTime() <= checkInTime.getTime()) {
-                checkOutTime = new Date(checkInTime.getTime() + (4 * 60 * 60 * 1000));
+            const [outStartH, outStartM] = checkOutStartTime.split(':').map(Number);
+            const checkOutLimit = setMinutes(setHours(new Date(now), outStartH), outStartM);
+
+            if (!isToday || (isToday && now >= checkOutLimit)) {
+                checkOutTime = getRandomTime(recordDate, checkOutStartTime, checkOutEndTime);
+                if (checkOutTime.getTime() <= checkInTime.getTime()) {
+                    checkOutTime = addMinutes(checkInTime, 240);
+                }
             }
 
             batch.set(recordRef, {
                 userId: user.uid, date: format(recordDate, 'yyyy-MM-dd'),
-                checkInTime: Timestamp.fromDate(checkInTime), checkOutTime: Timestamp.fromDate(checkOutTime),
+                checkInTime: Timestamp.fromDate(checkInTime), 
+                checkOutTime: checkOutTime ? Timestamp.fromDate(checkOutTime) : null,
                 updatedBy: currentUser.uid, updatedAt: Timestamp.now(), reasonForUpdate: reasonForUpdate, manualEntry: true
             });
 
@@ -169,10 +176,8 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     if (!originalCheckInTime || !isValid(originalCheckInTime)) continue;
                     
                     let checkOutTime = getRandomTime(parseISO(day.date), checkOutStartTime, checkOutEndTime);
-                    
-                    // Safety check
                     if (checkOutTime.getTime() <= originalCheckInTime.getTime()) {
-                        checkOutTime = new Date(originalCheckInTime.getTime() + (4 * 60 * 60 * 1000));
+                        checkOutTime = addMinutes(originalCheckInTime, 60);
                     }
                     
                     batch.update(recordRef, { 

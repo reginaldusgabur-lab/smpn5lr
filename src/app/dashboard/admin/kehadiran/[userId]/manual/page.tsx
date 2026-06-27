@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { parse, format, startOfDay, endOfDay, addMinutes } from 'date-fns';
+import { parse, format, startOfDay, endOfDay, addMinutes, isSameDay, setHours, setMinutes } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 
@@ -58,57 +58,35 @@ export default function ManualAttendancePage() {
     useEffect(() => {
         const checkAuthAndFetchData = async () => {
             if (isAuthLoading) return;
-            if (!authUser) {
-                router.replace('/');
-                return;
-            }
+            if (!authUser) { router.replace('/'); return; }
 
             try {
                 const adminDocRef = doc(firestore, 'users', authUser.uid);
                 const adminDocSnap = await getDoc(adminDocRef);
                 if (!adminDocSnap.exists() || adminDocSnap.data().role !== 'admin') {
-                    router.replace('/dashboard');
-                    return;
+                    router.replace('/dashboard'); return;
                 }
 
                 const userDocRef = doc(firestore, 'users', userId);
                 const userDocSnap = await getDoc(userDocRef);
-                if (userDocSnap.exists()) {
-                    setUserData(userDocSnap.data());
-                } else {
-                    setError('Pengguna tidak ditemukan.');
-                    setIsLoading(false);
-                    return;
-                }
+                if (userDocSnap.exists()) setUserData(userDocSnap.data());
+                else { setError('Pengguna tidak ditemukan.'); setIsLoading(false); return; }
 
                 const schoolConfigRef = doc(firestore, 'schoolConfig', 'default');
                 const schoolConfigSnap = await getDoc(schoolConfigRef);
-                if (schoolConfigSnap.exists()) {
-                    setSchoolConfig(schoolConfigSnap.data());
-                }
+                if (schoolConfigSnap.exists()) setSchoolConfig(schoolConfigSnap.data());
 
                 const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
-                const q = query(attendanceRef, 
-                    where('date', '==', format(date, 'yyyy-MM-dd'))
-                );
+                const q = query(attendanceRef, where('date', '==', format(date, 'yyyy-MM-dd')));
                 const querySnapshot = await getDocs(q);
                 if (!querySnapshot.empty) {
                     const record = querySnapshot.docs[0].data();
-                    const recordId = querySnapshot.docs[0].id;
-                    setExistingRecord({ ...record, id: recordId });
-                    if (record.checkInTime) {
-                        setCheckIn(format(record.checkInTime.toDate(), 'HH:mm'));
-                    }
-                    if (record.checkOutTime) {
-                        setCheckOut(format(record.checkOutTime.toDate(), 'HH:mm'));
-                    }
+                    setExistingRecord({ ...record, id: querySnapshot.docs[0].id });
+                    if (record.checkInTime) setCheckIn(format(record.checkInTime.toDate(), 'HH:mm'));
+                    if (record.checkOutTime) setCheckOut(format(record.checkOutTime.toDate(), 'HH:mm'));
                 }
-            } catch (err) {
-                console.error(err);
-                setError('Gagal memuat data.');
-            } finally {
-                setIsLoading(false);
-            }
+            } catch (err) { console.error(err); setError('Gagal memuat data.'); }
+            finally { setIsLoading(false); }
         };
         checkAuthAndFetchData();
     }, [authUser, isAuthLoading, firestore, userId, date, router]);
@@ -118,43 +96,31 @@ export default function ManualAttendancePage() {
         setIsSubmitting(true);
         try {
             const recordDate = startOfDay(date);
+            const now = new Date();
+            const isToday = isSameDay(recordDate, now);
+
             const inEnd = schoolConfig.checkInEndTime || '08:00';
-            
-            // Logic: checkInEndTime + random 1-10 mins
             const [endH, endM] = inEnd.split(':').map(Number);
             const baseLateTime = new Date(recordDate);
             baseLateTime.setHours(endH, endM, 0);
             const checkInTime = addMinutes(baseLateTime, Math.floor(Math.random() * 10) + 1);
 
-            const outStart = schoolConfig.checkOutStartTime || '14:00';
-            const outEnd = schoolConfig.checkOutEndTime || '15:00';
-            const checkOutTime = getRandomTime(recordDate, outStart, outEnd);
-
-            const attendanceData = {
-                userId,
-                date: format(date, 'yyyy-MM-dd'),
+            const attendanceData: any = {
+                userId, date: format(date, 'yyyy-MM-dd'),
                 checkInTime: Timestamp.fromDate(checkInTime),
-                checkOutTime: Timestamp.fromDate(checkOutTime),
-                manualEntry: true,
-                reasonForUpdate: 'Terlambat',
-                lastModifiedBy: authUser?.uid,
-                lastModifiedAt: serverTimestamp()
+                manualEntry: true, reasonForUpdate: 'Terlambat',
+                lastModifiedBy: authUser?.uid, lastModifiedAt: serverTimestamp()
             };
 
             if (existingRecord) {
-                const recordRef = doc(firestore, 'users', userId, 'attendanceRecords', existingRecord.id);
-                await updateDoc(recordRef, attendanceData);
+                await updateDoc(doc(firestore, 'users', userId, 'attendanceRecords', existingRecord.id), attendanceData);
             } else {
-                const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
-                await addDoc(attendanceRef, { ...attendanceData, createdAt: serverTimestamp(), createdBy: authUser?.uid });
+                await addDoc(collection(firestore, 'users', userId, 'attendanceRecords'), { ...attendanceData, createdAt: serverTimestamp() });
             }
-            toast({ title: 'Sukses', description: `Status Terlambat telah disimpan untuk ${userData.name}.` });
+            toast({ title: 'Sukses', description: `Status Terlambat telah disimpan.` });
             router.back();
-        } catch (err) {
-            setError('Gagal memproses keterlambatan.');
-        } finally {
-            setIsSubmitting(false);
-        }
+        } catch (err) { setError('Gagal memproses keterlambatan.'); }
+        finally { setIsSubmitting(false); }
     };
 
     const handleSetHadir = async () => {
@@ -162,129 +128,92 @@ export default function ManualAttendancePage() {
         setIsSubmitting(true);
         try {
             const recordDate = startOfDay(date);
+            const now = new Date();
+            const isToday = isSameDay(recordDate, now);
+
             const inStart = schoolConfig.checkInStartTime || '07:00';
             const inEnd = schoolConfig.checkInEndTime || '07:30';
+            const checkInTime = getRandomTime(recordDate, inStart, inEnd);
+
             const outStart = schoolConfig.checkOutStartTime || '14:00';
             const outEnd = schoolConfig.checkOutEndTime || '15:00';
+            
+            let checkOutTime: Date | null = null;
+            const [outH, outM] = outStart.split(':').map(Number);
+            const checkOutLimit = setMinutes(setHours(new Date(now), outH), outM);
 
-            const checkInTime = getRandomTime(recordDate, inStart, inEnd);
-            const checkOutTime = getRandomTime(recordDate, outStart, outEnd);
+            if (!isToday || (isToday && now >= checkOutLimit)) {
+                checkOutTime = getRandomTime(recordDate, outStart, outEnd);
+                if (checkOutTime.getTime() <= checkInTime.getTime()) {
+                    checkOutTime = addMinutes(checkInTime, 240);
+                }
+            }
 
-            const attendanceData = {
-                userId,
-                date: format(date, 'yyyy-MM-dd'),
+            const attendanceData: any = {
+                userId, date: format(date, 'yyyy-MM-dd'),
                 checkInTime: Timestamp.fromDate(checkInTime),
-                checkOutTime: Timestamp.fromDate(checkOutTime),
-                manualEntry: true,
-                reasonForUpdate: 'Kehadiran Penuh',
-                lastModifiedBy: authUser?.uid,
-                lastModifiedAt: serverTimestamp()
+                checkOutTime: checkOutTime ? Timestamp.fromDate(checkOutTime) : null,
+                manualEntry: true, reasonForUpdate: 'Kehadiran Penuh',
+                lastModifiedBy: authUser?.uid, lastModifiedAt: serverTimestamp()
             };
 
             if (existingRecord) {
-                const recordRef = doc(firestore, 'users', userId, 'attendanceRecords', existingRecord.id);
-                await updateDoc(recordRef, attendanceData);
+                await updateDoc(doc(firestore, 'users', userId, 'attendanceRecords', existingRecord.id), attendanceData);
             } else {
-                const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
-                await addDoc(attendanceRef, { ...attendanceData, createdAt: serverTimestamp(), createdBy: authUser?.uid });
+                await addDoc(collection(firestore, 'users', userId, 'attendanceRecords'), { ...attendanceData, createdAt: serverTimestamp() });
             }
-            toast({ title: 'Sukses', description: `Status Hadir penuh telah disimpan untuk ${userData.name}.` });
+            toast({ title: 'Sukses', description: `Kehadiran penuh telah disimpan.` });
             router.back();
-        } catch (err) {
-            setError('Gagal memproses kehadiran otomatis.');
-        } finally {
-            setIsSubmitting(false);
-        }
+        } catch (err) { setError('Gagal memproses kehadiran otomatis.'); }
+        finally { setIsSubmitting(false); }
     };
 
     const handleCreateLeave = async (type: 'Sakit' | 'Izin' | 'Dinas', reason: string) => {
-        setIsSubmitting(true);
-        setError(null);
+        setIsSubmitting(true); setError(null);
         try {
             const batch = writeBatch(firestore);
+            const q = query(collection(firestore, 'users', userId, 'attendanceRecords'), where('date', '==', format(date, 'yyyy-MM-dd')));
+            const snap = await getDocs(q);
+            if (!snap.empty) batch.delete(snap.docs[0].ref);
 
-            const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
-            const q = query(attendanceRef, where('date', '==', format(date, 'yyyy-MM-dd')));
-            const attendanceSnapshot = await getDocs(q);
-            if (!attendanceSnapshot.empty) {
-                const recordToDelete = doc(firestore, 'users', userId, 'attendanceRecords', attendanceSnapshot.docs[0].id);
-                batch.delete(recordToDelete);
-            }
-
-            const leaveRef = collection(firestore, 'users', userId, 'leaveRequests');
-            const newLeaveDoc = doc(leaveRef);
-            batch.set(newLeaveDoc, {
-                userId,
-                type,
-                status: 'approved',
-                reason,
+            batch.set(doc(collection(firestore, 'users', userId, 'leaveRequests')), {
+                userId, type, status: 'approved', reason,
                 startDate: Timestamp.fromDate(startOfDay(date)),
                 endDate: Timestamp.fromDate(endOfDay(date)),
-                createdAt: serverTimestamp(),
-                approvedBy: authUser?.uid,
-                approvedAt: serverTimestamp(),
-                createdBy: authUser?.uid,
+                createdAt: serverTimestamp(), approvedBy: authUser?.uid, approvedAt: serverTimestamp()
             });
 
             await batch.commit();
-            toast({ title: 'Sukses', description: `Kehadiran untuk ${userData.name} telah diubah menjadi ${reason}.` });
+            toast({ title: 'Sukses', description: `Kehadiran telah diubah menjadi ${reason}.` });
             router.back();
-
-        } catch (err) {
-            console.error("Error creating leave:", err);
-            setError('Gagal menyimpan perubahan. Silakan coba lagi.');
-        } finally {
-            setIsSubmitting(false);
-        }
+        } catch (err) { setError('Gagal menyimpan perubahan.'); }
+        finally { setIsSubmitting(false); }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!checkIn && !checkOut) {
-            setError('Setidaknya jam masuk atau jam pulang harus diisi.');
-            return;
-        }
-
-        setIsSubmitting(true);
-        setError(null);
-
+        if (!checkIn && !checkOut) { setError('Setidaknya jam masuk atau jam pulang harus diisi.'); return; }
+        setIsSubmitting(true); setError(null);
         try {
-            const [inHours, inMinutes] = checkIn ? checkIn.split(':').map(Number) : [null, null];
-            const [outHours, outMinutes] = checkOut ? checkOut.split(':').map(Number) : [null, null];
-
-            const checkInTimestamp = inHours !== null && inMinutes !== null ? Timestamp.fromDate(new Date(new Date(date).setHours(inHours, inMinutes, 0))) : null;
-            const checkOutTimestamp = outHours !== null && outMinutes !== null ? Timestamp.fromDate(new Date(new Date(date).setHours(outHours, outMinutes, 0))) : null;
+            const [inH, inM] = checkIn ? checkIn.split(':').map(Number) : [null, null];
+            const [outH, outM] = checkOut ? checkOut.split(':').map(Number) : [null, null];
+            const checkInTs = inH !== null ? Timestamp.fromDate(new Date(new Date(date).setHours(inH, inM!, 0))) : null;
+            const checkOutTs = outH !== null ? Timestamp.fromDate(new Date(new Date(date).setHours(outH, outM!, 0))) : null;
             
-            const attendanceData = {
-                userId,
-                date: format(date, 'yyyy-MM-dd'),
-                checkInTime: checkInTimestamp,
-                checkOutTime: checkOutTimestamp,
-                manualEntry: true,
-                lastModifiedBy: authUser?.uid,
-                lastModifiedAt: serverTimestamp()
+            const data = {
+                userId, date: format(date, 'yyyy-MM-dd'),
+                checkInTime: checkInTs, checkOutTime: checkOutTs,
+                manualEntry: true, lastModifiedBy: authUser?.uid, lastModifiedAt: serverTimestamp()
             };
-
-            if (existingRecord) {
-                const recordRef = doc(firestore, 'users', userId, 'attendanceRecords', existingRecord.id);
-                await updateDoc(recordRef, attendanceData);
-            } else {
-                const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
-                await addDoc(attendanceRef, { ...attendanceData, createdAt: serverTimestamp(), createdBy: authUser?.uid });
-            }
-            toast({ title: 'Sukses', description: `Kehadiran untuk ${userData.name} telah disimpan.` });
+            if (existingRecord) await updateDoc(doc(firestore, 'users', userId, 'attendanceRecords', existingRecord.id), data);
+            else await addDoc(collection(firestore, 'users', userId, 'attendanceRecords'), { ...data, createdAt: serverTimestamp() });
+            toast({ title: 'Sukses', description: `Kehadiran telah disimpan.` });
             router.back();
-        } catch (err) {
-            console.error("Error submitting attendance:", err);
-            setError('Gagal menyimpan perubahan. Silakan coba lagi.');
-        } finally {
-            setIsSubmitting(false);
-        }
+        } catch (err) { setError('Gagal menyimpan perubahan.'); }
+        finally { setIsSubmitting(false); }
     };
 
-    if (isLoading) {
-        return <div className="flex items-center justify-center h-screen"><Loader2 className="h-12 w-12 animate-spin" /></div>;
-    }
+    if (isLoading) return <div className="flex items-center justify-center h-screen"><Loader2 className="h-12 w-12 animate-spin" /></div>;
 
     return (
         <div className="max-w-2xl mx-auto p-4">
@@ -326,17 +255,8 @@ export default function ManualAttendancePage() {
                                 <Input id="checkOut" type="time" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
                             </div>
                         </div>
-                        
-                        <p className="text-sm text-muted-foreground">
-                           Atur jam secara manual dan klik simpan. Mengisi jam akan menimpa status izin/sakit/dinas.
-                        </p>
-                        
-                        <div className="flex justify-end">
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Simpan Jam Kehadiran
-                            </Button>
-                        </div>
+                        <p className="text-sm text-muted-foreground">Isi jam masuk/pulang secara manual dan klik simpan.</p>
+                        <div className="flex justify-end"><Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Simpan Jam Kehadiran</Button></div>
                     </form>
                 </CardContent>
             </Card>
