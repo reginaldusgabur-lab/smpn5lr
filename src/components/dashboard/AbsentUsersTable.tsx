@@ -180,7 +180,7 @@ const AbsentUsersTable = () => {
   return (
     <div className="w-full space-y-4">
       <div className="px-1">
-        <h3 className="font-black text-lg tracking-tight text-destructive uppercase tracking-widest">Daftar Tidak Hadir</h3>
+        <h3 className="font-black text-lg tracking-tight text-destructive uppercase tracking-widest">DAFTAR KETIDAKHADIRAN</h3>
         <p className="text-[10px] font-bold text-muted-foreground">Staf tanpa absensi & izin hari ini</p>
       </div>
       <div className="bg-card/30 border rounded-2xl overflow-hidden shadow-sm">
