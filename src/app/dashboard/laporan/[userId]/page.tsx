@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { fetchUserMonthlyReportData, type MonthlyReportData } from '@/lib/attendance';
-import { Download, ChevronLeft, ChevronRight, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 
 // Helper to safely format dates that might be Timestamps or ISO strings
 const safeFormat = (dateInput: any, formatString: string): string => {
@@ -144,26 +144,24 @@ export default function UserReportDetailPage() {
             <div className="max-w-7xl mx-auto space-y-6">
                 
                 {/* --- HEADER SECTION --- */}
-                <div className="px-4 md:px-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={() => router.back()}>
-                                <ArrowLeft className="h-5 w-5" />
-                            </Button>
-                            <h1 className="text-3xl font-bold tracking-tight">Detail Laporan Kehadiran</h1>
-                        </div>
-                        {pageIsLoading && !userData ? (
-                             <Skeleton className="h-4 w-64 ml-8 sm:ml-0 mt-1" />
-                        ) : (
-                            <p className="text-muted-foreground ml-8 sm:ml-0">
-                                Laporan kehadiran harian untuk <span className='font-semibold text-foreground'>{userData?.name || 'Pengguna'}</span>.
-                            </p>
-                        )}
+                <div className="px-4 md:px-0">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={() => router.back()}>
+                            <ArrowLeft className="h-5 w-5" />
+                        </Button>
+                        <h1 className="text-3xl font-bold tracking-tight">Detail Laporan Kehadiran</h1>
                     </div>
+                    {pageIsLoading && !userData ? (
+                         <Skeleton className="h-4 w-64 ml-8 sm:ml-0 mt-1" />
+                    ) : (
+                        <p className="text-muted-foreground ml-8 sm:ml-0">
+                            Laporan kehadiran harian untuk <span className='font-semibold text-foreground'>{userData?.name || 'Pengguna'}</span>.
+                        </p>
+                    )}
                 </div>
 
                 {/* --- MAIN CARD --- */}
-                <Card className="overflow-hidden">
+                <Card className="overflow-hidden border shadow-sm">
                     <CardContent className="p-0 sm:p-6">
                         
                         {/* Navigasi Bulan & Divider */}
