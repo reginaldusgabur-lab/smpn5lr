@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -264,7 +263,7 @@ export default function AbsenPage() {
                         )}
 
                         <div className="absolute inset-0 z-10 flex items-center justify-center p-4 pointer-events-none">
-                            <div className="relative w-full h-full max-w-sm aspect-square mx-auto">
+                            <div className="relative w-full h-full aspect-square mx-auto">
                                 <div className={cn("absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 rounded-tl-xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
                                 <div className={cn("absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 rounded-tr-xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
                                 <div className={cn("absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 rounded-bl-xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />

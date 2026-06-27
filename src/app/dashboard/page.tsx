@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -102,29 +101,32 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
     const hasFinished = !!(checkInTime && checkOutTime);
 
     return (
-        <Card className="w-full flex flex-col overflow-hidden bg-card border-border shadow-sm">
+        <Card className="w-full bg-card border-border shadow-sm overflow-hidden">
             <CardHeader className="pb-2">
                 <CardTitle className="text-lg font-bold">Kehadiran Anda Hari Ini</CardTitle>
                 <CardDescription>Status kehadiran dan jam absensi Anda.</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col items-stretch space-y-8 pb-8 pt-6 w-full">
+            <CardContent className="space-y-8 pb-8 pt-6 w-full">
                 {isLoading ? (
                     <div className="w-full space-y-6">
                         <div className="flex flex-col items-center gap-2">
-                            <Skeleton className="h-12 w-48" />
-                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-12 w-full max-w-[200px]" />
+                            <Skeleton className="h-4 w-full max-w-[150px]" />
                         </div>
                         <div className="grid grid-cols-2 gap-4 w-full">
                             <Skeleton className="h-20 w-full" />
                             <Skeleton className="h-20 w-full" />
                         </div>
-                        <Skeleton className="h-12 w-full" />
                     </div>
                 ) : (
                     <>
                         <div className="text-center w-full">
-                            <p className="text-6xl font-bold tracking-tighter tabular-nums text-primary">{format(currentTime, 'HH:mm:ss')}</p>
-                            <p className="text-sm font-medium text-muted-foreground mt-2">{format(currentTime, 'eeee, d MMMM yyyy', { locale: id })}</p>
+                            <p className="text-6xl font-bold tracking-tighter tabular-nums text-primary">
+                                {format(currentTime, 'HH:mm:ss')}
+                            </p>
+                            <p className="text-sm font-medium text-muted-foreground mt-2">
+                                {format(currentTime, 'eeee, d MMMM yyyy', { locale: id })}
+                            </p>
                         </div>
                         <div className="grid grid-cols-2 gap-4 w-full">
                             <div className="flex flex-col items-center p-4 rounded-xl bg-muted/30 border shadow-sm">
@@ -169,13 +171,11 @@ const PersonalAttendanceCardUI = ({ attendanceData, schoolConfig, isLoading }: {
 const MonthlyAttendanceChartUI = ({ summaryData, isLoading }: { summaryData: any, isLoading: boolean }) => {
     const now = new Date();
     return (
-        <Card className="w-full flex flex-col border-border shadow-sm">
+        <Card className="w-full border-border shadow-sm">
             <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><TrendingUp size={18} className="text-primary" /> Riwayat Bulan {format(now, 'MMMM', { locale: id })}</CardTitle><CardDescription>Persentase kehadiran: {isLoading ? '...' : `${summaryData.percentage}%`}</CardDescription></CardHeader>
-            <CardContent className="flex-grow pt-4 w-full h-[350px]">
+            <CardContent className="pt-4 w-full h-[350px]">
                 {isLoading ? 
-                    <div className="flex flex-col gap-4 h-full w-full">
-                        <Skeleton className="h-full w-full" />
-                    </div> : 
+                    <Skeleton className="h-full w-full" /> : 
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={[
                             { name: 'Hadir', jumlah: summaryData.attendanceCount || 0, fill: 'hsl(var(--primary))' },
@@ -198,7 +198,7 @@ const MonthlyAttendanceChartUI = ({ summaryData, isLoading }: { summaryData: any
 
 function useMonthlyAttendanceSummary(user: any) {
     const firestore = useFirestore();
-    const cacheKey = useMemo(() => user ? `monthlySummary_v5_${user.uid}` : null, [user]);
+    const cacheKey = useMemo(() => user ? `monthlySummary_v6_${user.uid}` : null, [user]);
     const [summary, setSummary] = useState<any>(() => cacheKey ? getFromCache(cacheKey) || null : null);
     const [isLoading, setIsLoading] = useState(summary === null);
 
@@ -232,7 +232,7 @@ function useMonthlyAttendanceSummary(user: any) {
 }
 
 function useStaffDashboardStats(firestore: any, user: any) {
-  const cacheKey = 'staffDashboardStats_v4';
+  const cacheKey = 'staffDashboardStats_v5';
   const [stats, setStats] = useState<any>(() => getFromCache(cacheKey) || null);
   const [isLoading, setIsLoading] = useState(stats === null);
 
@@ -272,52 +272,54 @@ export default function DashboardPage() {
 
   return (
     <PageWrapper>
-        <WelcomeCard user={user} isLoading={isUserLoading} />
+        <div className="w-full">
+            <WelcomeCard user={user} isLoading={isUserLoading} />
 
-        {isGuruOrPegawai && (
-            <div className="w-full space-y-6">
-                <PersonalAttendanceCardUI 
-                    attendanceData={todaysAttendance} 
-                    schoolConfig={schoolConfig} 
-                    isLoading={isAttendanceLoading || isUserLoading || isConfigLoading} 
-                />
-                <MonthlyAttendanceChartUI 
-                    summaryData={personalSummary} 
-                    isLoading={isPersonalSummaryLoading || isUserLoading} 
-                />
-            </div>
-        )}
-
-        {isAdminOrKepsek && (
-            <div className="w-full space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
-                    <StatCard 
-                        title="Hadir Hari Ini" 
-                        value={stats.hadir} 
-                        icon={UserCheck} 
-                        isLoading={isStatsLoading || isUserLoading} 
+            {isGuruOrPegawai && (
+                <div className="w-full space-y-6">
+                    <PersonalAttendanceCardUI 
+                        attendanceData={todaysAttendance} 
+                        schoolConfig={schoolConfig} 
+                        isLoading={isAttendanceLoading || isUserLoading || isConfigLoading} 
                     />
-                    <StatCard 
-                        title="Izin/Sakit" 
-                        value={stats.izin + stats.sakit} 
-                        icon={BookUser} 
-                        description={`${stats.izin} Izin, ${stats.sakit} Sakit`} 
-                        isLoading={isStatsLoading || isUserLoading} 
-                    />
-                    <StatCard 
-                        title="Menunggu" 
-                        value={stats.pending} 
-                        icon={MailWarning} 
-                        description="Pengajuan tertunda" 
-                        isLoading={isStatsLoading || isUserLoading} 
-                        className="cursor-pointer hover:bg-accent/10 border-accent/20" 
-                        onClick={() => router.push('/dashboard/izin-kepala-sekolah')} 
+                    <MonthlyAttendanceChartUI 
+                        summaryData={personalSummary} 
+                        isLoading={isPersonalSummaryLoading || isUserLoading} 
                     />
                 </div>
-                <div className="w-full"><TodaysActivityTable /></div>
-                <div className="w-full"><AbsentUsersTable /></div>
-            </div>
-        )}
+            )}
+
+            {isAdminOrKepsek && (
+                <div className="w-full space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+                        <StatCard 
+                            title="Hadir Hari Ini" 
+                            value={stats.hadir} 
+                            icon={UserCheck} 
+                            isLoading={isStatsLoading || isUserLoading} 
+                        />
+                        <StatCard 
+                            title="Izin/Sakit" 
+                            value={stats.izin + stats.sakit} 
+                            icon={BookUser} 
+                            description={`${stats.izin} Izin, ${stats.sakit} Sakit`} 
+                            isLoading={isStatsLoading || isUserLoading} 
+                        />
+                        <StatCard 
+                            title="Menunggu" 
+                            value={stats.pending} 
+                            icon={MailWarning} 
+                            description="Pengajuan tertunda" 
+                            isLoading={isStatsLoading || isUserLoading} 
+                            className="cursor-pointer hover:bg-accent/10 border-accent/20" 
+                            onClick={() => router.push('/dashboard/izin-kepala-sekolah')} 
+                        />
+                    </div>
+                    <div className="w-full"><TodaysActivityTable /></div>
+                    <div className="w-full"><AbsentUsersTable /></div>
+                </div>
+            )}
+        </div>
     </PageWrapper>
   );
 }
