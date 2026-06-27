@@ -64,7 +64,6 @@ export default function SchoolReportPage() {
             setIsReportLoading(true);
             setError(null);
             try {
-                // FILTER: Hanya ambil personil AKTIF
                 const usersQuery = query(
                     collection(firestore, 'users'), 
                     where('role', 'in', ['guru', 'pegawai', 'kepala_sekolah']),
@@ -91,7 +90,6 @@ export default function SchoolReportPage() {
                 });
 
                 const results = await Promise.all(reportPromises);
-                // SORT: Utamakan sequenceNumber
                 results.sort((a, b) => (a.sequenceNumber ?? 999) - (b.sequenceNumber ?? 999));
 
                 if (isMounted) setReportData(results.map((r, i) => ({ ...r, no: i + 1 })));
@@ -119,14 +117,12 @@ export default function SchoolReportPage() {
             const margin = 14;
             let finalY = 20;
 
-            // Header Config
             const config = schoolConfigData || {};
             const instansi = (config.governmentAgency || 'PEMERINTAH KABUPATEN MANGGARAI').toUpperCase();
             const dinas = (config.educationAgency || 'DINAS PENDIDIKAN, KEPEMUDAAN DAN OLAHRAGA').toUpperCase();
             const sekolah = (config.schoolName || 'SMP NEGERI 5 LANGKE REMBONG').toUpperCase();
             const alamat = config.address || 'Alamat Sekolah';
 
-            // Draw Header
             doc.setFont('times', 'bold').setFontSize(12);
             doc.text(instansi, centerX, finalY, { align: 'center' });
             finalY += 6;
@@ -141,47 +137,47 @@ export default function SchoolReportPage() {
             doc.setLineWidth(0.5).line(margin, finalY, pageWidth - margin, finalY);
             finalY += 10;
 
-            // Title
             doc.setFont('times', 'bold').setFontSize(12);
-            doc.text('REKAPITULASI KEHADIRAN PERSONIL', centerX, finalY, { align: 'center' });
+            doc.text('LAPORAN KEHADIRAN', centerX, finalY, { align: 'center' });
             finalY += 6;
             doc.setFont('times', 'normal');
             doc.text(`Periode: ${monthName}`, centerX, finalY, { align: 'center' });
             finalY += 10;
 
-            // Table Data
             const tableRows = filteredReports.map((item, index) => [
                 index + 1,
                 item.name,
                 item.nip,
                 item.position,
                 Math.ceil(item.totalHadir),
-                item.totalIzin + item.totalSakit,
+                item.totalIzin,
+                item.totalSakit,
                 item.totalAlpa,
                 item.persentase
             ]);
 
             autoTable(doc, {
                 startY: finalY,
-                head: [['No', 'Nama Personil', 'NIP', 'Status', 'H', 'I/S', 'A', '%']],
+                head: [['No', 'Nama', 'NIP', 'Status', 'Hadir', 'Izin', 'Sakit', 'Alpa', 'Persen']],
                 body: tableRows,
                 theme: 'grid',
                 styles: { font: 'times', fontSize: 8, cellPadding: 2 },
-                headStyles: { fillColor: [45, 55, 72], textColor: 255, halign: 'center' },
+                headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
                 columnStyles: {
                     0: { halign: 'center', cellWidth: 8 },
                     1: { cellWidth: 45 },
-                    2: { cellWidth: 30 },
-                    4: { halign: 'center', cellWidth: 10 },
+                    2: { cellWidth: 32 },
+                    3: { halign: 'center', cellWidth: 15 },
+                    4: { halign: 'center', cellWidth: 12 },
                     5: { halign: 'center', cellWidth: 10 },
                     6: { halign: 'center', cellWidth: 10 },
-                    7: { halign: 'center', cellWidth: 15 },
+                    7: { halign: 'center', cellWidth: 10 },
+                    8: { halign: 'center', cellWidth: 15 },
                 }
             });
 
-            // Signature
             const finalTableY = (doc as any).lastAutoTable.finalY + 15;
-            const signatureX = pageWidth - 70;
+            const signatureX = pageWidth - 75;
             const kota = config.reportCity || 'Mando';
             const tgl = format(new Date(), 'd MMMM yyyy', { locale: id });
 
@@ -194,6 +190,15 @@ export default function SchoolReportPage() {
             doc.text(config.headmasterName || 'Kepala Sekolah', signatureX, finalTableY + 35);
             doc.setFont('times', 'normal');
             doc.text(`NIP. ${config.headmasterNip || '-'}`, signatureX, finalTableY + 40);
+
+            // Add simple footer
+            const pageCount = (doc as any).internal.getNumberOfPages();
+            for(let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8).setFont('times', 'italic');
+                doc.text('Dokumen absensi ini adalah dokumen resmi yang dibuat secara otomatis oleh aplikasi.', margin, doc.internal.pageSize.getHeight() - 10);
+                doc.text(`Halaman ${i} dari ${pageCount}`, pageWidth - margin - 20, doc.internal.pageSize.getHeight() - 10);
+            }
 
             doc.save(`Laporan_Sekolah_${monthName.replace(' ', '_')}.pdf`);
             toast({ title: "Berhasil", description: "Laporan PDF berhasil diunduh." });
@@ -225,31 +230,34 @@ export default function SchoolReportPage() {
                                 <div className="w-full h-px bg-border/60" />
                             </div>
                             
-                            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-                                <div className="w-full md:w-[160px] lg:w-[200px] relative">
-                                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
-                                    <Select value={roleFilter} onValueChange={setRoleFilter}>
-                                        <SelectTrigger className="pl-10 h-11 rounded-xl bg-muted/30 border-muted-foreground/10"><SelectValue placeholder="Peran" /></SelectTrigger>
-                                        <SelectContent className="rounded-xl">
-                                            <SelectItem value="all">Semua Peran</SelectItem>
-                                            <SelectItem value="guru">Guru</SelectItem>
-                                            <SelectItem value="pegawai">Pegawai</SelectItem>
-                                            <SelectItem value="kepala_sekolah">Kepala Sekolah</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                            {/* Panel Kontrol Responsif */}
+                            <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
+                                <div className="flex flex-col sm:flex-row gap-3 flex-1">
+                                    <div className="w-full sm:w-[180px] relative">
+                                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
+                                        <Select value={roleFilter} onValueChange={setRoleFilter}>
+                                            <SelectTrigger className="pl-10 h-11 rounded-xl bg-muted/30 border-muted-foreground/10 focus:ring-primary"><SelectValue placeholder="Peran" /></SelectTrigger>
+                                            <SelectContent className="rounded-xl">
+                                                <SelectItem value="all">Semua Peran</SelectItem>
+                                                <SelectItem value="guru">Guru</SelectItem>
+                                                <SelectItem value="pegawai">Pegawai</SelectItem>
+                                                <SelectItem value="kepala_sekolah">Kepala Sekolah</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex-1 relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
+                                        <Input placeholder="Cari nama personil..." className="pl-10 h-11 rounded-xl bg-muted/30 border-muted-foreground/10 focus:ring-primary" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                                    </div>
                                 </div>
-                                <div className="flex-1 relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
-                                    <Input placeholder="Cari nama personil..." className="pl-10 h-11 rounded-xl bg-muted/30 border-muted-foreground/10" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                                </div>
-                                <div className="w-full md:w-auto">
+                                <div className="w-full lg:w-auto">
                                     <Button 
-                                        className="w-full md:w-auto h-11 rounded-xl font-bold shadow-md active:scale-95 transition-all px-6" 
+                                        className="w-full h-11 rounded-xl font-bold shadow-md active:scale-95 transition-all px-6 bg-primary hover:bg-primary/90" 
                                         disabled={isReportLoading || !filteredReports.length || isExporting}
                                         onClick={handleDownloadPdf}
                                     >
                                         {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                                        <span className="whitespace-nowrap">Unduh Laporan</span>
+                                        <span className="whitespace-nowrap">Unduh Laporan PDF</span>
                                     </Button>
                                 </div>
                             </div>
@@ -263,7 +271,8 @@ export default function SchoolReportPage() {
                                             <TableHead className="w-[60px] text-center font-bold text-xs">No</TableHead>
                                             <TableHead className="font-bold text-xs">Nama & NIP</TableHead>
                                             <TableHead className="text-center font-bold text-xs">H</TableHead>
-                                            <TableHead className="text-center font-bold text-xs">I/S</TableHead>
+                                            <TableHead className="text-center font-bold text-xs">I</TableHead>
+                                            <TableHead className="text-center font-bold text-xs">S</TableHead>
                                             <TableHead className="text-center font-bold text-xs">A</TableHead>
                                             <TableHead className="text-center font-bold text-xs">%</TableHead>
                                             <TableHead className="w-[80px] text-center font-bold text-xs">Aksi</TableHead>
@@ -275,6 +284,7 @@ export default function SchoolReportPage() {
                                                 <TableRow key={i} className="border-muted-foreground/5">
                                                     <TableCell><Skeleton className="h-4 w-4 mx-auto" /></TableCell>
                                                     <TableCell><Skeleton className="h-10 w-48 rounded-lg" /></TableCell>
+                                                    <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
                                                     <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
                                                     <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
                                                     <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
@@ -292,27 +302,28 @@ export default function SchoolReportPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-center font-bold text-green-600">{Math.ceil(item.totalHadir)}</TableCell>
-                                                <TableCell className="text-center font-bold text-orange-500">{item.totalIzin + item.totalSakit}</TableCell>
+                                                <TableCell className="text-center font-bold text-blue-500">{item.totalIzin}</TableCell>
+                                                <TableCell className="text-center font-bold text-orange-500">{item.totalSakit}</TableCell>
                                                 <TableCell className="text-center font-bold text-destructive">{item.totalAlpa}</TableCell>
                                                 <TableCell className="text-center font-black text-primary">{item.persentase}</TableCell>
                                                 <TableCell className="text-center">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-muted-foreground/10">
-                                                                <Search className="h-4 w-4" />
+                                                                <Eye className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end" className="w-52 rounded-2xl p-2 shadow-2xl">
                                                             <DropdownMenuItem asChild className="rounded-xl cursor-pointer py-2.5 px-3 focus:bg-primary/5">
                                                                 <Link href={`/dashboard/laporan/${item.uid}`} className="flex items-center">
-                                                                    <Eye className="mr-3 h-4 w-4 text-primary" />
+                                                                    <Search className="mr-3 h-4 w-4 text-primary" />
                                                                     <span className="text-xs font-bold">Detail Kehadiran</span>
                                                                 </Link>
                                                             </DropdownMenuItem>
                                                             <DropdownMenuSeparator className="my-1.5 opacity-50" />
                                                             <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 focus:bg-destructive/5">
                                                                 <FileText className="mr-3 h-4 w-4 text-destructive" />
-                                                                <span className="text-xs font-bold text-destructive">Unduh Personal</span>
+                                                                <span className="text-xs font-bold text-destructive">Laporan Personal</span>
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
@@ -320,7 +331,7 @@ export default function SchoolReportPage() {
                                             </TableRow>
                                         )) : (
                                             <TableRow>
-                                                <TableCell colSpan={7} className="h-48 text-center text-muted-foreground font-medium">
+                                                <TableCell colSpan={8} className="h-48 text-center text-muted-foreground font-medium">
                                                     {error || "Tidak ada data kehadiran ditemukan."}
                                                 </TableCell>
                                             </TableRow>
