@@ -218,15 +218,15 @@ export default function SchoolReportPage() {
                         <div className="p-4 space-y-6">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
                                 <div className="flex items-center gap-6">
-                                    <Button variant="outline" size="icon" className="rounded-full" onClick={() => setCurrentMonth(prev => subMonths(prev, 1))}><ChevronLeft className="h-4 w-4" /></Button>
+                                    <Button variant="outline" size="icon" className="rounded-full shrink-0" onClick={() => setCurrentMonth(prev => subMonths(prev, 1))}><ChevronLeft className="h-4 w-4" /></Button>
                                     <span className="w-48 text-center font-black text-2xl text-primary">{monthName}</span>
-                                    <Button variant="outline" size="icon" className="rounded-full" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isSameMonth(currentMonth, new Date())}><ChevronRight className="h-4 w-4" /></Button>
+                                    <Button variant="outline" size="icon" className="rounded-full shrink-0" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isSameMonth(currentMonth, new Date())}><ChevronRight className="h-4 w-4" /></Button>
                                 </div>
                                 <div className="w-full h-px bg-border/60" />
                             </div>
                             
-                            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-                                <div className="sm:col-span-3 relative">
+                            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+                                <div className="w-full md:w-[160px] lg:w-[200px] relative">
                                     <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
                                     <Select value={roleFilter} onValueChange={setRoleFilter}>
                                         <SelectTrigger className="pl-10 h-11 rounded-xl bg-muted/30 border-muted-foreground/10"><SelectValue placeholder="Peran" /></SelectTrigger>
@@ -238,18 +238,18 @@ export default function SchoolReportPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="sm:col-span-6 relative">
+                                <div className="flex-1 relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
                                     <Input placeholder="Cari nama personil..." className="pl-10 h-11 rounded-xl bg-muted/30 border-muted-foreground/10" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                                 </div>
-                                <div className="sm:col-span-3">
+                                <div className="w-full md:w-auto">
                                     <Button 
-                                        className="w-full h-11 rounded-xl font-bold shadow-md active:scale-95 transition-all" 
+                                        className="w-full md:w-auto h-11 rounded-xl font-bold shadow-md active:scale-95 transition-all px-6" 
                                         disabled={isReportLoading || !filteredReports.length || isExporting}
                                         onClick={handleDownloadPdf}
                                     >
                                         {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                                        Unduh Laporan
+                                        <span className="whitespace-nowrap">Unduh Laporan</span>
                                     </Button>
                                 </div>
                             </div>
