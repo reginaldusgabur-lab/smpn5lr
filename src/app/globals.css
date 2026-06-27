@@ -4,47 +4,47 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%; /* Pure White for the new design */
-    --foreground: 240 10% 3.9%;
+    --background: 0 0% 100%; /* Pure White */
+    --foreground: 231 48% 15%; /* Deep Indigo/Blue instead of black */
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 231 48% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 231 48% 48%; /* Indigo from README */
+    --popover-foreground: 231 48% 15%;
+    --primary: 231 48% 48%; /* Indigo */
     --primary-foreground: 210 40% 98%;
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
     --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 174 100% 29%; /* Teal from README */
+    --muted-foreground: 231 15% 45%; /* Blue-tinted grey */
+    --accent: 174 100% 29%; /* Teal */
     --accent-foreground: 210 40% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 231 48% 48%; /* Indigo from README */
+    --ring: 231 48% 48%;
     --radius: 0.75rem;
   }
   .dark {
     --background: 222 47% 11%; /* Dark Slate Blue */
-    --foreground: 210 40% 98%;
-    --card: 222 47% 14%; /* Lighter Slate Blue for cards */
-    --card-foreground: 210 40% 98%;
+    --foreground: 0 0% 100%; /* Pure White instead of off-white */
+    --card: 222 47% 14%;
+    --card-foreground: 0 0% 100%;
     --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 231 48% 48%; /* Indigo from README */
+    --popover-foreground: 0 0% 100%;
+    --primary: 231 48% 48%;
     --primary-foreground: 210 40% 98%;
     --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 174 100% 29%; /* Teal from README */
+    --muted-foreground: 222 20% 70%;
+    --accent: 174 100% 29%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
     --border: 217 33% 22%;
     --input: 217 33% 22%;
-    --ring: 231 48% 48%; /* Indigo from README */
+    --ring: 231 48% 48%;
   }
 }
 

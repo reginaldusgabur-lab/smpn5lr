@@ -128,7 +128,7 @@ export default function DashboardPage() {
                 <Card className="w-full border shadow-sm overflow-hidden bg-card border-t-4 border-t-primary">
                     <CardHeader className="p-4 pb-0 flex flex-row items-center gap-2">
                         <Clock className="w-4 h-4 text-primary" />
-                        <CardTitle className="text-xs font-bold text-primary/80 uppercase tracking-widest">
+                        <CardTitle className="text-xs font-bold text-primary uppercase tracking-widest">
                             Kehadiran Anda hari ini
                         </CardTitle>
                     </CardHeader>
@@ -142,7 +142,7 @@ export default function DashboardPage() {
                                     <LogIn className="w-3 h-3 text-primary" />
                                     <p className="text-[10px] font-bold text-muted-foreground">Masuk</p>
                                 </div>
-                                <p className="text-lg font-black tabular-nums">
+                                <p className="text-lg font-black tabular-nums text-foreground">
                                     {isAttendanceLoading ? '...' : (todaysAttendance?.[0]?.checkInTime ? format(todaysAttendance[0].checkInTime.toDate(), 'HH:mm') : '--:--')}
                                 </p>
                             </div>
@@ -151,7 +151,7 @@ export default function DashboardPage() {
                                     <LogOut className="w-3 h-3 text-primary" />
                                     <p className="text-[10px] font-bold text-muted-foreground">Pulang</p>
                                 </div>
-                                <p className="text-lg font-black tabular-nums">
+                                <p className="text-lg font-black tabular-nums text-foreground">
                                     {isAttendanceLoading ? '...' : (todaysAttendance?.[0]?.checkOutTime ? format(todaysAttendance[0].checkOutTime.toDate(), 'HH:mm') : '--:--')}
                                 </p>
                             </div>
@@ -182,7 +182,7 @@ export default function DashboardPage() {
                 <Card className="w-full border shadow-sm overflow-hidden bg-card border-t-4 border-t-primary">
                     <CardHeader className="p-4 pb-0">
                         <div className="flex items-center justify-between">
-                            <h2 className="flex items-center gap-2 text-xs font-bold text-primary/80 uppercase tracking-widest">
+                            <h2 className="flex items-center gap-2 text-xs font-bold text-primary uppercase tracking-widest">
                                 <TrendingUp size={14} className="text-primary" /> Ringkasan bulanan
                             </h2>
                             <p className="text-[10px] text-muted-foreground font-bold">
@@ -198,8 +198,8 @@ export default function DashboardPage() {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={chartData} margin={{ top: 0, right: 0, left: -40, bottom: 0 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 'bold' }} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9 }} allowDecimals={false} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 'bold', fill: 'currentColor' }} className="text-foreground" />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: 'currentColor' }} className="text-foreground" allowDecimals={false} />
                                         <Tooltip 
                                             cursor={{ fill: 'rgba(0,0,0,0.03)' }} 
                                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: 'bold' }}
