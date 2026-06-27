@@ -603,71 +603,70 @@ function UsersView({ isAllowed, canManage }: { isAllowed: boolean, canManage: bo
 
     return (
         <>
-            <Card className="w-full overflow-hidden border-0 md:border shadow-none md:shadow-sm">
-                <CardHeader className="px-4 py-6 md:p-6">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                        <div>
-                            <CardTitle>Manajemen Pengguna</CardTitle>
-                            <CardDescription>Kelola data Guru, Pegawai, dan Kepala Sekolah.</CardDescription>
-                        </div>
-                        {canManage && (
-                            <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
-                                <DialogTrigger asChild><Button><PlusCircle className="mr-2 h-4 w-4" />Tambah Pengguna</Button></DialogTrigger>
-                                <DialogContent className="sm:max-w-[480px]">
-                                    <DialogHeader><DialogTitle>Tambah Pengguna Baru</DialogTitle><DialogDescription>Isi detail di bawah untuk membuat akun baru.</DialogDescription></DialogHeader>
-                                    <Form {...addForm}>
-                                        <form onSubmit={addForm.handleSubmit(handleCreateUser)}>
-                                            <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto pr-4">
-                                                <FormField control={addForm.control} name="role" render={({ field }) => (<FormItem><FormLabel>Peran Pengguna</FormLabel><FormControl><RadioGroup onValueChange={(value) => { field.onChange(value); addForm.setValue('position', ''); }} value={field.value} className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                                    {Object.entries(roleConfig).map(([role, config]) => {
-                                                        const isHeadmasterRole = role === 'kepala_sekolah';
-                                                        const isDisabled = isHeadmasterRole && headmasterExists;
-                                                        const radioItem = <FormItem key={role}><FormControl><RadioGroupItem value={role} id={`add-${role}`} className="sr-only" disabled={isDisabled} /></FormControl><Label htmlFor={`add-${role}`} className={cn('flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-3 text-center hover:bg-accent hover:text-accent-foreground cursor-pointer', selectedRoleForAdd === role && 'border-primary', isDisabled && 'cursor-not-allowed opacity-50')}>{config.icon}<span className="mt-1.5 text-xs">{config.title}</span></Label></FormItem>;
-                                                        if (isDisabled) return <TooltipProvider key={role} delayDuration={100}><Tooltip><TooltipTrigger asChild><div className="w-full h-full">{radioItem}</div></TooltipTrigger><TooltipContent><p>Posisi Kepala Sekolah sudah terisi.</p></TooltipContent></Tooltip></TooltipProvider>;
-                                                        return radioItem;
-                                                    })}
-                                                </RadioGroup></FormControl></FormItem>)} />
-                                                <FormField control={addForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nama Lengkap</FormLabel><FormControl><Input placeholder="Nama lengkap dengan gelar..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                                <FormField control={addForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="email.aktif@contoh.com" {...field} /></FormControl><FormDescription className="text-xs">Pengguna akan menerima email verifikasi.</FormDescription><FormMessage /></FormItem>)}/>
-                                                {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah') && <FormField control={addForm.control} name="sequenceNumber" render={({ field }) => (<FormItem><FormLabel>Nomor Urut</FormLabel><FormControl><Input placeholder="Nomor untuk pengurutan daftar" {...field} /></FormControl><FormDescription className="text-xs">Sesuai nomor urut pada SK.</FormDescription><FormMessage /></FormItem>)}/>}                                                
-                                                {selectedRoleForAdd === 'pegawai' && <FormField control={addForm.control} name="skNumber" render={({ field }) => (<FormItem><FormLabel>Nomor Urut (dari SK)</FormLabel><FormControl><Input placeholder="Masukkan nomor urut dari SK" {...field} /></FormControl><FormMessage /></FormItem>)}/>}
-                                                {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah' || selectedRoleForAdd === 'pegawai') && <FormField control={addForm.control} name="identifier" render={({ field }) => (<FormItem><FormLabel>{roleConfig[selectedRoleForAdd as Role]?.label} <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><Input placeholder={roleConfig[selectedRoleForAdd as Role]?.placeholder} {...field} /></FormControl><FormMessage /></FormItem>)}/>}
-                                                
-                                                {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah' || selectedRoleForAdd === 'pegawai') && (
-                                                    <FormField
-                                                        control={addForm.control}
-                                                        name="position"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel>
-                                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                                    <FormControl><SelectTrigger><SelectValue placeholder="Pilih status..." /></SelectTrigger></FormControl>
-                                                                    <SelectContent>
-                                                                        {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah') && guruPositions.map(pos => (
-                                                                            <SelectItem key={pos} value={pos}>{pos}</SelectItem>
-                                                                        ))}
-                                                                        {selectedRoleForAdd === 'pegawai' && pegawaiPositions.map(pos => (
-                                                                            <SelectItem key={pos} value={pos}>{pos}</SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight">Manajemen Pengguna</h1>
+                    <p className="text-muted-foreground">Kelola data Guru, Pegawai, dan Kepala Sekolah.</p>
+                </div>
+                {canManage && (
+                    <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+                        <DialogTrigger asChild><Button><PlusCircle className="mr-2 h-4 w-4" />Tambah Pengguna</Button></DialogTrigger>
+                        <DialogContent className="sm:max-w-[480px]">
+                            <DialogHeader><DialogTitle>Tambah Pengguna Baru</DialogTitle><DialogDescription>Isi detail di bawah untuk membuat akun baru.</DialogDescription></DialogHeader>
+                            <Form {...addForm}>
+                                <form onSubmit={addForm.handleSubmit(handleCreateUser)}>
+                                    <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto pr-4">
+                                        <FormField control={addForm.control} name="role" render={({ field }) => (<FormItem><FormLabel>Peran Pengguna</FormLabel><FormControl><RadioGroup onValueChange={(value) => { field.onChange(value); addForm.setValue('position', ''); }} value={field.value} className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                            {Object.entries(roleConfig).map(([role, config]) => {
+                                                const isHeadmasterRole = role === 'kepala_sekolah';
+                                                const isDisabled = isHeadmasterRole && headmasterExists;
+                                                const radioItem = <FormItem key={role}><FormControl><RadioGroupItem value={role} id={`add-${role}`} className="sr-only" disabled={isDisabled} /></FormControl><Label htmlFor={`add-${role}`} className={cn('flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-3 text-center hover:bg-accent hover:text-accent-foreground cursor-pointer', selectedRoleForAdd === role && 'border-primary', isDisabled && 'cursor-not-allowed opacity-50')}>{config.icon}<span className="mt-1.5 text-xs">{config.title}</span></Label></FormItem>;
+                                                if (isDisabled) return <TooltipProvider key={role} delayDuration={100}><Tooltip><TooltipTrigger asChild><div className="w-full h-full">{radioItem}</div></TooltipTrigger><TooltipContent><p>Posisi Kepala Sekolah sudah terisi.</p></TooltipContent></Tooltip></TooltipProvider>;
+                                                return radioItem;
+                                            })}
+                                        </RadioGroup></FormControl></FormItem>)} />
+                                        <FormField control={addForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nama Lengkap</FormLabel><FormControl><Input placeholder="Nama lengkap dengan gelar..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField control={addForm.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="email.aktif@contoh.com" {...field} /></FormControl><FormDescription className="text-xs">Pengguna akan menerima email verifikasi.</FormDescription><FormMessage /></FormItem>)}/>
+                                        {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah') && <FormField control={addForm.control} name="sequenceNumber" render={({ field }) => (<FormItem><FormLabel>Nomor Urut</FormLabel><FormControl><Input placeholder="Nomor untuk pengurutan daftar" {...field} /></FormControl><FormDescription className="text-xs">Sesuai nomor urut pada SK.</FormDescription><FormMessage /></FormItem>)}/>}                                                
+                                        {selectedRoleForAdd === 'pegawai' && <FormField control={addForm.control} name="skNumber" render={({ field }) => (<FormItem><FormLabel>Nomor Urut (dari SK)</FormLabel><FormControl><Input placeholder="Masukkan nomor urut dari SK" {...field} /></FormControl><FormMessage /></FormItem>)}/>}
+                                        {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah' || selectedRoleForAdd === 'pegawai') && <FormField control={addForm.control} name="identifier" render={({ field }) => (<FormItem><FormLabel>{roleConfig[selectedRoleForAdd as Role]?.label} <span className="text-muted-foreground">(Opsional)</span></FormLabel><FormControl><Input placeholder={roleConfig[selectedRoleForAdd as Role]?.placeholder} {...field} /></FormControl><FormMessage /></FormItem>)}/>}
+                                        
+                                        {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah' || selectedRoleForAdd === 'pegawai') && (
+                                            <FormField
+                                                control={addForm.control}
+                                                name="position"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Status Kepegawaian <span className="text-muted-foreground">(Opsional)</span></FormLabel>
+                                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                            <FormControl><SelectTrigger><SelectValue placeholder="Pilih status..." /></SelectTrigger></FormControl>
+                                                            <SelectContent>
+                                                                {(selectedRoleForAdd === 'guru' || selectedRoleForAdd === 'kepala_sekolah') && guruPositions.map(pos => (
+                                                                    <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                                                                ))}
+                                                                {selectedRoleForAdd === 'pegawai' && pegawaiPositions.map(pos => (
+                                                                    <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <FormMessage />
+                                                    </FormItem>
                                                 )}
+                                            />
+                                        )}
 
-                                                <FormField control={addForm.control} name="password" render={({ field }) => (<FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Minimal 6 karakter" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                                <FormField control={addForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>Konfirmasi Password</FormLabel><FormControl><Input type="password" placeholder="Ulangi password di atas" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                            </div>
-                                            <DialogFooter><Button type="submit" className="w-full" disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}<span>Buat Akun Pengguna</span></Button></DialogFooter>
-                                        </form>
-                                    </Form>
-                                </DialogContent>
-                            </Dialog>
-                        )}
-                    </div>
-                </CardHeader>
+                                        <FormField control={addForm.control} name="password" render={({ field }) => (<FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Minimal 6 karakter" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField control={addForm.control} name="confirmPassword" render={({ field }) => (<FormItem><FormLabel>Konfirmasi Password</FormLabel><FormControl><Input type="password" placeholder="Ulangi password di atas" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                    </div>
+                                    <DialogFooter><Button type="submit" className="w-full" disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}<span>Buat Akun Pengguna</span></Button></DialogFooter>
+                                </form>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                )}
+            </div>
+
+            <Card className="w-full overflow-hidden border-0 md:border shadow-none md:shadow-sm">
                 <CardContent className="p-4 md:p-6">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex-1">
