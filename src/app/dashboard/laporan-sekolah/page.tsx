@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from "@/components/ui/skeleton";
-import { calculateAttendanceStats } from '@/lib/attendance';
+import { calculateAttendanceStats, fetchUserMonthlyReportData } from '@/lib/attendance';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useToast } from '@/hooks/use-toast';
@@ -48,6 +48,7 @@ export default function SchoolReportPage() {
     const [reportData, setReportData] = useState<ReportRowData[]>([]);
     const [isReportLoading, setIsReportLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
+    const [exportingUserId, setExportingUserId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState("all");
@@ -105,6 +106,113 @@ export default function SchoolReportPage() {
     const filteredReports = useMemo(() => reportData.filter(r => (roleFilter === 'all' || r.role === roleFilter) && r.name.toLowerCase().includes(searchTerm.toLowerCase())), [reportData, roleFilter, searchTerm]);
     const monthName = format(currentMonth, 'MMMM yyyy', { locale: id });
 
+    // Utility to format date safely
+    const safeFormat = (dateInput: any, formatString: string): string => {
+        if (!dateInput) return '-';
+        const date = typeof dateInput === 'string' ? parseISO(dateInput) : dateInput;
+        return isValid(date) ? format(date, formatString, { locale: id }) : '-';
+    };
+
+    const handleDownloadPersonalPdf = async (targetUser: ReportRowData) => {
+        if (isExporting || exportingUserId) return;
+        setExportingUserId(targetUser.uid);
+        setIsExporting(true);
+
+        try {
+            const detailData = await fetchUserMonthlyReportData(firestore, targetUser.uid, currentMonth, schoolConfigData || {});
+            
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const centerX = pageWidth / 2;
+            const margin = 14;
+            let currentY = 20;
+
+            const config = schoolConfigData || {};
+
+            // Kop Surat - HANYA DI HALAMAN PERTAMA
+            doc.setFont('times', 'bold').setFontSize(14);
+            doc.text((config.governmentAgency || 'PEMERINTAH KABUPATEN MANGGARAI').toUpperCase(), centerX, currentY, { align: 'center' });
+            currentY += 7;
+            doc.text((config.educationAgency || 'DINAS PENDIDIKAN, KEPEMUDAAN DAN OLAHRAGA').toUpperCase(), centerX, currentY, { align: 'center' });
+            currentY += 7;
+            doc.setFontSize(12);
+            doc.text((config.schoolName || 'SMP NEGERI 5 LANGKE REMBONG').toUpperCase(), centerX, currentY, { align: 'center' });
+            currentY += 5;
+            doc.setFont('times', 'normal').setFontSize(9);
+            doc.text(`Alamat: ${config.address || 'Alamat Sekolah'}`, centerX, currentY, { align: 'center' });
+            currentY += 4;
+            doc.setLineWidth(0.8).line(margin, currentY, pageWidth - margin, currentY);
+            doc.setLineWidth(0.2).line(margin, currentY + 0.8, pageWidth - margin, currentY + 0.8);
+            currentY += 15;
+
+            // Judul Laporan & Info User
+            doc.setFont('times', 'bold').setFontSize(14);
+            doc.text('LAPORAN KEHADIRAN INDIVIDU', centerX, currentY, { align: 'center' });
+            currentY += 7;
+            doc.setFontSize(12);
+            doc.text(`Periode: ${monthName}`, centerX, currentY, { align: 'center' });
+            currentY += 12;
+
+            doc.setFontSize(10).setFont('times', 'normal');
+            doc.text(`Nama`, margin, currentY);
+            doc.text(`: ${targetUser.name}`, margin + 35, currentY);
+            currentY += 6;
+            doc.text(`NIP`, margin, currentY);
+            doc.text(`: ${targetUser.nip}`, margin + 35, currentY);
+            currentY += 6;
+            doc.text(`Jabatan / Status`, margin, currentY);
+            doc.text(`: ${targetUser.position}`, margin + 35, currentY);
+            currentY += 10;
+
+            const tableRows = detailData.map((item, index) => [
+                index + 1,
+                safeFormat(item.date, 'eeee, dd MMM yyyy'),
+                safeFormat(item.checkInTime, 'HH:mm:ss'),
+                safeFormat(item.checkOutTime, 'HH:mm:ss'),
+                item.status,
+                item.description || '-'
+            ]);
+
+            autoTable(doc, {
+                startY: currentY,
+                head: [['No', 'Tanggal', 'Masuk', 'Pulang', 'Status', 'Keterangan']],
+                body: tableRows,
+                theme: 'grid',
+                styles: { font: 'times', fontSize: 9, cellPadding: 3, valign: 'middle' },
+                headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center', fontStyle: 'bold', lineWidth: 0 },
+                columnStyles: {
+                    0: { halign: 'center', cellWidth: 10 },
+                    1: { halign: 'left', cellWidth: 45 },
+                    2: { halign: 'center', cellWidth: 22 },
+                    3: { halign: 'center', cellWidth: 22 },
+                    4: { halign: 'center', cellWidth: 25 },
+                }
+            });
+
+            // Footer handling
+            const pageCount = (doc as any).internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setLineWidth(0.2);
+                doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+                doc.setFontSize(8).setFont('times', 'italic');
+                doc.text('Dokumen ini dihasilkan secara otomatis oleh sistem E-SPENLI.', margin, pageHeight - 10);
+                doc.setFontSize(9).setFont('times', 'normal');
+                doc.text(`Halaman ${i} dari ${pageCount}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+            }
+
+            doc.save(`Laporan_Personal_${targetUser.name.replace(/\s+/g, '_')}_${monthName.replace(' ', '_')}.pdf`);
+            toast({ title: "Berhasil", description: "Laporan personal berhasil diunduh." });
+        } catch (err) {
+            console.error("Personal PDF error:", err);
+            toast({ variant: "destructive", title: "Gagal", description: "Gagal memproses PDF personal." });
+        } finally {
+            setIsExporting(false);
+            setExportingUserId(null);
+        }
+    };
+
     const handleDownloadPdf = async () => {
         if (!filteredReports.length || isExporting) return;
         setIsExporting(true);
@@ -129,15 +237,12 @@ export default function SchoolReportPage() {
             finalY += 7;
             doc.text(dinas, centerX, finalY, { align: 'center' });
             finalY += 7;
-            
             doc.setFontSize(12);
             doc.text(sekolah, centerX, finalY, { align: 'center' });
             finalY += 5;
-            
             doc.setFont('times', 'normal').setFontSize(9);
             doc.text(`Alamat: ${alamat}`, centerX, finalY, { align: 'center' });
             finalY += 4;
-            
             doc.setLineWidth(0.8).line(margin, finalY, pageWidth - margin, finalY);
             doc.setLineWidth(0.2).line(margin, finalY + 0.8, pageWidth - margin, finalY + 0.8);
             finalY += 15;
@@ -167,22 +272,8 @@ export default function SchoolReportPage() {
                 head: [['No', 'Nama', 'NIP', 'Status', 'H', 'I', 'S', 'A', 'Persen']],
                 body: tableRows,
                 theme: 'grid',
-                styles: { 
-                    font: 'times', 
-                    fontSize: 9, 
-                    cellPadding: 3, 
-                    lineWidth: 0.1, 
-                    lineColor: [150, 150, 150],
-                    valign: 'middle'
-                },
-                headStyles: { 
-                    fillColor: [41, 128, 185], 
-                    textColor: 255, 
-                    halign: 'center', 
-                    fontStyle: 'bold',
-                    fontSize: 10,
-                    lineWidth: 0
-                },
+                styles: { font: 'times', fontSize: 9, cellPadding: 3, lineWidth: 0.1, lineColor: [150, 150, 150], valign: 'middle' },
+                headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center', fontStyle: 'bold', fontSize: 10, lineWidth: 0 },
                 columnStyles: {
                     0: { halign: 'center', cellWidth: 10 },
                     1: { halign: 'left', cellWidth: 45 },
@@ -197,57 +288,34 @@ export default function SchoolReportPage() {
             });
 
             let finalTableY = (doc as any).lastAutoTable.finalY;
-            
-            // Cek sisa ruang untuk catatan dan tanda tangan agar tidak terpotong
-            if (finalTableY > pageHeight - 60) {
-                doc.addPage();
-                finalTableY = 20; // Mulai dari atas di halaman baru
-            }
+            if (finalTableY > pageHeight - 60) { doc.addPage(); finalTableY = 20; }
 
-            // Bagian Catatan (Legenda)
             let currentY = finalTableY + 10;
             doc.setFontSize(9).setFont('times', 'bold');
             doc.text('Catatan:', margin, currentY);
             doc.setFont('times', 'normal');
             doc.text('H = Hadir, I = Izin, S = Sakit, A = Alpa', margin + 15, currentY);
 
-            // Tanda Tangan
             currentY += 15;
             const signatureX = pageWidth - 75;
-            const kota = config.reportCity || 'Mando';
-            const tgl = format(new Date(), 'd MMMM yyyy', { locale: id });
-
             doc.setFontSize(11).setFont('times', 'normal');
-            doc.text(`${kota}, ${tgl}`, signatureX, currentY);
+            doc.text(`${config.reportCity || 'Mando'}, ${format(new Date(), 'd MMMM yyyy', { locale: id })}`, signatureX, currentY);
             doc.text('Mengetahui,', signatureX, currentY + 6);
             doc.text('Kepala Sekolah', signatureX, currentY + 12);
-            
             doc.setFont('times', 'bold');
             doc.text(config.headmasterName || 'Kepala Sekolah', signatureX, currentY + 38);
             doc.setFont('times', 'normal');
             doc.text(`NIP. ${config.headmasterNip || '-'}`, signatureX, currentY + 44);
 
-            // TAMBAHKAN FOOTER DI SETIAP HALAMAN
             const totalPages = doc.internal.getNumberOfPages();
             for (let i = 1; i <= totalPages; i++) {
                 doc.setPage(i);
                 doc.setLineWidth(0.2);
                 doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
-                
                 doc.setFontSize(8).setFont('times', 'italic');
-                doc.text(
-                    'Dokumen absensi ini adalah dokumen resmi yang dibuat secara otomatis oleh aplikasi.',
-                    margin,
-                    pageHeight - 10
-                );
-                
+                doc.text('Dokumen absensi ini adalah dokumen resmi yang dibuat secara otomatis oleh aplikasi.', margin, pageHeight - 10);
                 doc.setFontSize(9).setFont('times', 'normal');
-                doc.text(
-                    `Halaman ${i} dari ${totalPages}`,
-                    pageWidth - margin,
-                    pageHeight - 10,
-                    { align: 'right' }
-                );
+                doc.text(`Halaman ${i} dari ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
             }
 
             doc.save(`Laporan_Sekolah_${monthName.replace(' ', '_')}.pdf`);
@@ -305,7 +373,7 @@ export default function SchoolReportPage() {
                                         disabled={isReportLoading || !filteredReports.length || isExporting}
                                         onClick={handleDownloadPdf}
                                     >
-                                        {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                                        {isExporting && !exportingUserId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                                         <span className="whitespace-nowrap">Unduh Laporan PDF</span>
                                     </Button>
                                 </div>
@@ -370,8 +438,16 @@ export default function SchoolReportPage() {
                                                                 </Link>
                                                             </DropdownMenuItem>
                                                             <DropdownMenuSeparator className="my-1.5 opacity-50" />
-                                                            <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 focus:bg-destructive/5">
-                                                                <FileText className="mr-3 h-4 w-4 text-destructive" />
+                                                            <DropdownMenuItem 
+                                                                className="rounded-xl cursor-pointer py-2.5 px-3 focus:bg-destructive/5"
+                                                                disabled={isExporting && exportingUserId === item.uid}
+                                                                onClick={() => handleDownloadPersonalPdf(item)}
+                                                            >
+                                                                {exportingUserId === item.uid ? (
+                                                                    <Loader2 className="mr-3 h-4 w-4 animate-spin text-destructive" />
+                                                                ) : (
+                                                                    <FileText className="mr-3 h-4 w-4 text-destructive" />
+                                                                )}
                                                                 <span className="text-xs font-bold text-destructive">Laporan Personal</span>
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
