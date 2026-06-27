@@ -208,7 +208,7 @@ export default function AbsenPage() {
         )}
 
         <div className="absolute top-8 left-0 right-0 z-50 px-8 text-center pointer-events-none transition-all">
-            <h2 className="text-white text-2xl font-black mb-1 drop-shadow-md">Arahkan Kamera</h2>
+            <h2 className="text-white text-2xl font-black mb-1 drop-shadow-md">Arahkan kamera</h2>
             <p className="text-white/80 text-xs font-bold">Dekatkan QR Code ke area pemindaian</p>
         </div>
 
@@ -217,7 +217,7 @@ export default function AbsenPage() {
                 {/* Garis Pemindai Bercahaya (Glow Scan Line) */}
                 {isScannerReady && (
                     <div className={cn(
-                        "absolute left-2 right-2 h-0.5 transition-all duration-300 animate-scan-line z-20",
+                        "absolute left-2 right-2 h-0.5 transition-all duration-500 animate-scan-line z-20",
                         status === 'idle' 
                             ? "bg-primary shadow-[0_0_20px_rgba(63,81,181,0.8)]" 
                             : "bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.9)]"
