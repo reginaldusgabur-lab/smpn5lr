@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Users,  UserCheck,  UserX,  BookUser,  School, LogIn, LogOut, TrendingUp, MailWarning
+  Users,  UserCheck,  BookUser,  LogIn, LogOut, TrendingUp, MailWarning
 } from 'lucide-react';
 import {
   Card,  CardContent,  CardDescription,  CardHeader,  CardTitle, CardFooter
@@ -14,7 +14,7 @@ import { useFirestore, useUser, useCollection, useDoc, useMemoFirebase } from '@
 import {
   collection,  query,  where,  limit, doc
 } from 'firebase/firestore';
-import { startOfMonth, endOfMonth, startOfDay, format, isBefore } from 'date-fns';
+import { startOfMonth, endOfMonth, startOfDay, format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useRouter } from 'next/navigation';

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Html5Qrcode, Html5QrcodeCameraScanConfig } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { MapPin, CheckCircle, Clock, X, Loader2, AlertTriangle, CameraOff, CalendarOff, ArrowLeft } from 'lucide-react';
+import { MapPin, CheckCircle, Clock, X, Loader2, AlertTriangle, CameraOff, CalendarOff, ArrowLeft, Sparkles } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, addDoc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -248,41 +248,46 @@ export default function AbsenPage() {
               <CardDescription className="text-center">Pastikan QR Code berada di dalam kotak pemindaian.</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-              <div className="relative aspect-video w-full bg-black sm:aspect-square">
-                  {(showScanner || isCameraInitializing) && (
-                    <div className="absolute inset-0 z-0">
-                      <div id={readerId} className="w-full h-full" />
-                      <style>{`
-                          #${readerId} > video { width: 100% !important; height: 100% !important; object-fit: cover !important; opacity: ${isScannerReady ? 1 : 0.5}; transition: opacity 0.5s ease-in-out; }
-                          #${readerId}__scan_region, #${readerId}__dashboard_section_csr { display: none !important; }
-                      `}</style>
+              {/* Camera Container with proper aspect ratio and centered max-width */}
+              <div className="bg-black w-full flex items-center justify-center overflow-hidden">
+                <div className="relative aspect-video w-full max-w-md sm:aspect-square">
+                    {(showScanner || isCameraInitializing) && (
+                        <div className="absolute inset-0 z-0">
+                        <div id={readerId} className="w-full h-full" />
+                        <style>{`
+                            #${readerId} > video { width: 100% !important; height: 100% !important; object-fit: cover !important; opacity: ${isScannerReady ? 1 : 0.5}; transition: opacity 0.5s ease-in-out; }
+                            #${readerId}__scan_region, #${readerId}__dashboard_section_csr { display: none !important; }
+                        `}</style>
+                        </div>
+                    )}
+
+                    <div className="absolute inset-0 z-10 flex items-center justify-center p-8 pointer-events-none">
+                        <div className="relative w-full h-full aspect-square">
+                            {/* Corner Borders */}
+                            <div className={cn("absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 rounded-tl-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
+                            <div className={cn("absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 rounded-tr-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
+                            <div className={cn("absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 rounded-bl-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
+                            <div className={cn("absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 rounded-br-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
+
+                            {showLoader && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-xl">
+                                <Loader2 className="h-10 w-10 animate-spin text-white" />
+                                <p className="mt-4 text-sm font-medium text-white">{isDataLoading ? 'Memuat data...' : 'Menyiapkan kamera...'}</p>
+                                </div>
+                            )}
+
+                            {isScannerReady && !showLoader && (
+                                <div className="absolute top-1/2 -translate-y-1/2 left-4 right-4 h-0.5 bg-primary shadow-[0_0_15px_2px_theme(colors.primary.DEFAULT)] animate-scan-line" />
+                            )}
+                        </div>
                     </div>
-                  )}
-
-                  <div className="absolute inset-0 z-10 flex items-center justify-center p-8 pointer-events-none">
-                      <div className="relative w-full h-full max-w-md aspect-square">
-                          {/* Corner Borders */}
-                          <div className={cn("absolute top-0 left-0 w-12 h-12 border-t-4 border-l-4 rounded-tl-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
-                          <div className={cn("absolute top-0 right-0 w-12 h-12 border-t-4 border-r-4 rounded-tr-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
-                          <div className={cn("absolute bottom-0 left-0 w-12 h-12 border-b-4 border-l-4 rounded-bl-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
-                          <div className={cn("absolute bottom-0 right-0 w-12 h-12 border-b-4 border-r-4 rounded-br-2xl transition-colors", isScannerReady ? 'border-primary' : 'border-white/50')} />
-
-                          {showLoader && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-xl">
-                              <Loader2 className="h-10 w-10 animate-spin text-white" />
-                              <p className="mt-4 text-sm font-medium text-white">{isDataLoading ? 'Memuat data...' : 'Menyiapkan kamera...'}</p>
-                            </div>
-                          )}
-
-                          {isScannerReady && !showLoader && (
-                              <div className="absolute top-1/2 -translate-y-1/2 left-4 right-4 h-0.5 bg-primary shadow-[0_0_15px_2px_theme(colors.primary.DEFAULT)] animate-scan-line" />
-                          )}
-                      </div>
-                  </div>
+                </div>
               </div>
           </CardContent>
           <CardFooter className="bg-muted/30 p-6 flex flex-col items-center gap-2">
-               <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest italic">E-SPENLI Digital Attendance</p>
+               <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest italic flex items-center gap-2">
+                 <Sparkles className="w-3 h-3" /> E-SPENLI Digital Attendance
+               </p>
           </CardFooter>
       </Card>
 
