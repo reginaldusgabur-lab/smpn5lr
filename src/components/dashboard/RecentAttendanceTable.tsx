@@ -156,12 +156,12 @@ const RecentAttendanceTable = () => {
   return (
     <div className="w-full space-y-4">
       <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
-        <CardHeader className="bg-green-500/10 p-6 flex flex-row items-center justify-between gap-1 text-green-700 border-b border-green-500/5">
+        <CardHeader className="p-6 flex flex-row items-center justify-between gap-1 text-green-700 border-b border-muted-foreground/5">
           <div className="flex items-center gap-3">
             <History className="h-5 w-5" />
             <CardTitle className="font-black text-sm tracking-tight uppercase tracking-widest">AKTIVITAS KEHADIRAN</CardTitle>
           </div>
-          <p className="text-[11px] font-black uppercase opacity-80 tracking-widest bg-green-500/20 px-3 py-1 rounded-full">{todayFormatted}</p>
+          <p className="text-[11px] font-black uppercase opacity-80 tracking-widest bg-green-500/10 px-3 py-1 rounded-full">{todayFormatted}</p>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (

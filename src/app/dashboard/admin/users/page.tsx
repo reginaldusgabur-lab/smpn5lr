@@ -223,9 +223,9 @@ export default function AdminUsersPage() {
                 </div>
 
                 <Card className="w-full border shadow-xl rounded-3xl overflow-hidden bg-card">
-                    <CardHeader className="bg-primary/10 p-6 border-b border-primary/5 text-primary">
+                    <CardHeader className="p-6 border-b border-muted-foreground/5 text-primary">
                         <CardTitle className="font-black text-xs uppercase tracking-widest">DAFTAR PENGGUNA</CardTitle>
-                        <CardDescription className="text-primary/70 font-medium">Informasi akun dan hak akses pengguna sistem.</CardDescription>
+                        <CardDescription className="text-muted-foreground font-medium">Informasi akun dan hak akses pengguna sistem.</CardDescription>
                     </CardHeader>
                     <CardContent className="py-6 min-h-[400px]">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8 px-2 sm:px-0">
@@ -346,11 +346,11 @@ export default function AdminUsersPage() {
             {/* Dialog Tambah/Edit User */}
             <Dialog open={isUserDialogOpen} onOpenChange={(open) => { setIsUserDialogOpen(open); if (!open) setEditingUser(null); }}>
                 <DialogContent className="rounded-3xl border-none max-w-lg p-0 overflow-hidden flex flex-col max-h-[90vh]">
-                    <DialogHeader className="p-6 pb-2 bg-primary/10 border-b border-primary/5">
+                    <DialogHeader className="p-6 pb-2 border-b border-muted-foreground/5">
                         <DialogTitle className="text-xl font-black uppercase tracking-widest text-primary">
                             {editingUser ? 'Perbarui Data' : 'Tambah Personil'}
                         </DialogTitle>
-                        <DialogDescription className="text-xs font-medium text-primary/70">
+                        <DialogDescription className="text-xs font-medium text-muted-foreground">
                             {editingUser ? `Mengubah informasi data untuk ${editingUser.name}.` : 'Masukkan detail akun untuk personil baru sekolah.'}
                         </DialogDescription>
                     </DialogHeader>
