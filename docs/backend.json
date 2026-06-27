@@ -256,6 +256,22 @@
         "qrCodeValue": {
           "type": "string",
           "description": "The secret value embedded in the QR code for attendance validation."
+        },
+        "notificationTitle": {
+          "type": "string",
+          "description": "Title for the system-wide announcement notification."
+        },
+        "notificationContent": {
+          "type": "string",
+          "description": "Content for the system-wide announcement notification."
+        },
+        "isNotificationActive": {
+          "type": "boolean",
+          "description": "Toggles the system-wide announcement notification."
+        },
+        "notificationInterval": {
+          "type": "number",
+          "description": "Delay in seconds before the notification appears after page load."
         }
       },
       "required": [

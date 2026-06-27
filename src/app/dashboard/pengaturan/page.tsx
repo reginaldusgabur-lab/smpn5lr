@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button'
@@ -11,9 +12,11 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
 import { useUser, useDoc, useFirestore, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-import { Loader2, Camera, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Camera, Eye, EyeOff, BellRing } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { updatePassword, updateProfile } from 'firebase/auth';
@@ -48,6 +51,13 @@ export default function PengaturanPage() {
   const [reportCity, setReportCity] = useState('');
   const [academicYear, setAcademicYear] = useState('');
 
+  // State for system notification settings
+  const [isNotificationSaving, setIsNotificationSaving] = useState(false);
+  const [notificationTitle, setNotificationTitle] = useState('');
+  const [notificationContent, setNotificationContent] = useState('');
+  const [isNotificationActive, setIsNotificationActive] = useState(false);
+  const [notificationInterval, setNotificationInterval] = useState(3);
+
   // Firestore refs
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -78,6 +88,10 @@ export default function PengaturanPage() {
       headmasterNip: string;
       reportCity: string;
       academicYear: string;
+      notificationTitle?: string;
+      notificationContent?: string;
+      isNotificationActive?: boolean;
+      notificationInterval?: number;
   }>(user, schoolConfigRef);
 
   // Populate state from fetched data
@@ -97,6 +111,12 @@ export default function PengaturanPage() {
       setHeadmasterNip(schoolConfigData.headmasterNip ?? '196805121994121004');
       setReportCity(schoolConfigData.reportCity ?? 'Mando');
       setAcademicYear(schoolConfigData.academicYear ?? '');
+      
+      // Notification settings
+      setNotificationTitle(schoolConfigData.notificationTitle ?? '');
+      setNotificationContent(schoolConfigData.notificationContent ?? '');
+      setIsNotificationActive(schoolConfigData.isNotificationActive ?? false);
+      setNotificationInterval(schoolConfigData.notificationInterval ?? 3);
     }
   }, [schoolConfigData]);
 
@@ -226,6 +246,22 @@ export default function PengaturanPage() {
     setIsReportSaving(false);
   };
 
+  const handleNotificationSettingsSave = () => {
+    if (!schoolConfigRef) return;
+    setIsNotificationSaving(true);
+    setDocumentNonBlocking(schoolConfigRef, {
+      notificationTitle,
+      notificationContent,
+      isNotificationActive,
+      notificationInterval: Number(notificationInterval),
+    }, { merge: true });
+    toast({
+      title: 'Disimpan',
+      description: 'Pemberitahuan sistem telah diperbarui.',
+    });
+    setIsNotificationSaving(false);
+  };
+
   const getInitials = (name: string | undefined | null) => {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
@@ -322,6 +358,7 @@ export default function PengaturanPage() {
       </form>
       
       {isAdmin && (
+        <>
          <Card className="overflow-hidden bg-card border shadow-sm rounded-3xl">
             <CardHeader className="p-6 text-primary border-b border-muted-foreground/10">
                 <CardTitle className="font-bold text-sm tracking-tight">Pengaturan Laporan PDF</CardTitle>
@@ -374,6 +411,48 @@ export default function PengaturanPage() {
                 </Button>
             </CardFooter>
         </Card>
+
+        {/* System Notification Settings Card */}
+        <Card className="overflow-hidden bg-card border shadow-sm rounded-3xl">
+            <CardHeader className="p-6 text-primary border-b border-muted-foreground/10">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="font-bold text-sm tracking-tight">Pemberitahuan Sistem</CardTitle>
+                        <CardDescription className="text-muted-foreground font-medium">Buat pengumuman pop-up yang akan muncul di layar semua pengguna.</CardDescription>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Label htmlFor="notification-active" className="text-xs font-bold">Aktifkan</Label>
+                        <Switch id="notification-active" checked={isNotificationActive} onCheckedChange={setIsNotificationActive} />
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="grid gap-4 pt-6">
+                <div className="space-y-2">
+                    <Label htmlFor="notif-title" className="text-xs font-bold ml-1">Judul Pemberitahuan</Label>
+                    <Input id="notif-title" className="h-11 rounded-xl bg-muted/30" value={notificationTitle} onChange={e => setNotificationTitle(e.target.value)} placeholder="Contoh: Pengumuman Rapat Dinas" />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="notif-content" className="text-xs font-bold ml-1">Isi Pemberitahuan</Label>
+                    <Textarea id="notif-content" className="rounded-xl bg-muted/30 min-h-[100px]" value={notificationContent} onChange={e => setNotificationContent(e.target.value)} placeholder="Tuliskan isi pengumuman di sini..." />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="notif-interval" className="text-xs font-bold ml-1">Jeda Muncul (Detik)</Label>
+                    <div className="flex items-center gap-4">
+                        <Input id="notif-interval" type="number" min="0" max="60" className="h-11 rounded-xl bg-muted/30 w-32" value={notificationInterval} onChange={e => setNotificationInterval(Number(e.target.value))} />
+                        <p className="text-[10px] text-muted-foreground font-medium italic">Waktu tunggu notifikasi muncul setelah pengguna masuk ke dashboard.</p>
+                    </div>
+                </div>
+            </CardContent>
+            <CardFooter className="border-t px-6 py-4 bg-muted/5">
+                <Button onClick={handleNotificationSettingsSave} className="font-bold rounded-xl h-11 shadow-sm" disabled={isNotificationSaving}>
+                  <span className="flex items-center justify-center">
+                    {isNotificationSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Simpan Pemberitahuan
+                  </span>
+                </Button>
+            </CardFooter>
+        </Card>
+        </>
       )}
 
       <Card className="overflow-hidden bg-card border shadow-sm rounded-3xl">

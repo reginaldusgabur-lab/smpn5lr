@@ -12,6 +12,7 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 import { DesktopLayout } from '@/components/layout/DesktopLayout';
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { OnboardingTour } from '@/components/OnboardingTour';
+import { SystemNotification } from '@/components/layout/SystemNotification';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -87,6 +88,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <CacheProvider>
       <SidebarProvider>
+        <SystemNotification />
         {isMobile ? (
           <MobileLayout>{children}</MobileLayout>
         ) : (
