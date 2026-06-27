@@ -187,23 +187,23 @@ const AbsentUsersTable = () => {
         {!isHoliday && absentUsers.length > 0 ? (
           <div className="overflow-x-auto">
             <Table>
-                <TableHeader className="bg-muted/30">
-                <TableRow>
-                    <TableHead className="w-[50px] text-center font-bold">No</TableHead>
-                    <TableHead className="font-bold text-xs">Nama</TableHead>
-                    <TableHead className="text-center font-bold text-xs">Status</TableHead>
+                <TableHeader className="bg-destructive/5">
+                <TableRow className="border-none">
+                    <TableHead className="w-[50px] text-center font-black text-[10px] uppercase tracking-widest text-destructive">No</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-destructive">Nama</TableHead>
+                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-destructive">Status</TableHead>
                 </TableRow>
                 </TableHeader>
                 <TableBody>
                 {absentUsers.map((user, index) => (
-                    <TableRow key={index}>
-                    <TableCell className="text-center font-bold text-xs">{index + 1}</TableCell>
+                    <TableRow key={index} className="border-muted-foreground/5">
+                    <TableCell className="text-center font-bold text-xs text-muted-foreground">{index + 1}</TableCell>
                     <TableCell>
                         <div className="font-black text-sm">{user.name}</div>
                         <div className="text-[10px] text-muted-foreground font-bold">{user.position}</div>
                     </TableCell>
                     <TableCell className="text-center">
-                        <Badge variant={getBadgeVariant(user.status)} className="text-[9px] font-black">
+                        <Badge variant={getBadgeVariant(user.status)} className="text-[9px] font-black uppercase">
                             {user.status}
                         </Badge>
                     </TableCell>

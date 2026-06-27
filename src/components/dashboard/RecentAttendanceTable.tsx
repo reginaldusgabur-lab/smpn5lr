@@ -173,27 +173,27 @@ const RecentAttendanceTable = () => {
         ) : activities.length > 0 ? (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-muted/30">
-                <TableRow>
-                  <TableHead className="w-[50px] text-center font-bold">No</TableHead>
-                  <TableHead className="font-bold text-xs">Nama</TableHead>
-                  <TableHead className="text-center font-bold text-xs">Masuk</TableHead>
-                  <TableHead className="text-center font-bold text-xs">Pulang</TableHead>
-                  <TableHead className="text-center font-bold text-xs">Status</TableHead>
+              <TableHeader className="bg-green-500/10">
+                <TableRow className="border-none">
+                  <TableHead className="w-[50px] text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">No</TableHead>
+                  <TableHead className="font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Nama</TableHead>
+                  <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Masuk</TableHead>
+                  <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Pulang</TableHead>
+                  <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {activities.map((activity, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="text-center font-bold text-xs">{index + 1}</TableCell>
+                  <TableRow key={index} className="border-muted-foreground/5">
+                    <TableCell className="text-center font-bold text-xs text-muted-foreground">{activity.no}</TableCell>
                     <TableCell>
                        <div className="font-black text-sm">{activity.name}</div>
                       <div className="text-[10px] text-muted-foreground font-bold">{activity.nip}</div>
                     </TableCell>
-                    <TableCell className="text-center font-mono text-xs">{activity.checkInTime}</TableCell>
-                    <TableCell className="text-center font-mono text-xs">{activity.checkOutTime}</TableCell>
+                    <TableCell className="text-center font-mono text-xs font-bold">{activity.checkInTime}</TableCell>
+                    <TableCell className="text-center font-mono text-xs font-bold">{activity.checkOutTime}</TableCell>
                      <TableCell className="text-center">
-                      <Badge variant={activity.status === 'Hadir' ? 'default' : 'secondary'} className="text-[9px] font-black">
+                      <Badge variant={activity.status === 'Hadir' ? 'default' : 'secondary'} className="text-[9px] font-black uppercase">
                           {activity.status}
                       </Badge>
                     </TableCell>
