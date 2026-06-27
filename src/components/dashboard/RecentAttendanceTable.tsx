@@ -155,24 +155,24 @@ const RecentAttendanceTable = () => {
 
   return (
     <div className="w-full space-y-4">
-      <Card className="border-none shadow-sm rounded-2xl overflow-hidden border-t-4 border-t-green-600">
-        <CardHeader className="bg-green-500/10 p-4 flex flex-row items-center justify-between gap-1 text-green-700 border-b border-green-500/5">
-          <div className="flex items-center gap-2">
-            <History className="h-4 w-4" />
+      <Card className="border-none shadow-xl rounded-3xl overflow-hidden border-t-4 border-t-green-600">
+        <CardHeader className="bg-green-500/10 p-6 flex flex-row items-center justify-between gap-1 text-green-700 border-b border-green-500/5">
+          <div className="flex items-center gap-3">
+            <History className="h-5 w-5" />
             <CardTitle className="font-black text-sm tracking-tight uppercase tracking-widest">AKTIVITAS KEHADIRAN</CardTitle>
           </div>
-          <p className="text-[11px] font-black uppercase opacity-80">{todayFormatted}</p>
+          <p className="text-[11px] font-black uppercase opacity-80 tracking-widest bg-green-500/20 px-3 py-1 rounded-full">{todayFormatted}</p>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center h-40 text-muted-foreground">
               <Loader2 className="h-8 w-8 animate-spin mr-3" />
-              <span className="text-xs font-bold">Memuat aktivitas...</span>
+              <span className="text-xs font-bold uppercase tracking-widest">Memuat aktivitas...</span>
             </div>
           ) : error ? (
                <div className="flex flex-col items-center justify-center h-40 text-destructive text-center px-4">
                   <AlertCircle className="w-8 h-8 mb-3" />
-                  <span className='font-bold text-xs'>Terjadi kesalahan</span>
+                  <span className='font-bold text-xs uppercase tracking-widest'>Terjadi kesalahan</span>
                   <span className="text-[10px]">{error}</span>
               </div>
           ) : activities.length > 0 ? (
@@ -180,25 +180,25 @@ const RecentAttendanceTable = () => {
               <Table>
                 <TableHeader className="bg-green-500/5">
                   <TableRow className="border-none">
-                    <TableHead className="w-[50px] text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">No</TableHead>
-                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Nama</TableHead>
-                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Masuk</TableHead>
-                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Pulang</TableHead>
-                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700 dark:text-green-400">Status</TableHead>
+                    <TableHead className="w-[60px] text-center font-black text-[10px] uppercase tracking-widest text-green-700">No</TableHead>
+                    <TableHead className="font-black text-[10px] uppercase tracking-widest text-green-700">Nama & NIP</TableHead>
+                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700">Masuk</TableHead>
+                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700">Pulang</TableHead>
+                    <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-green-700">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {activities.map((activity, index) => (
-                    <TableRow key={index} className="border-muted-foreground/5">
+                    <TableRow key={index} className="border-muted-foreground/5 hover:bg-green-500/5 transition-colors">
                       <TableCell className="text-center font-bold text-xs text-muted-foreground">{activity.no}</TableCell>
                       <TableCell>
-                         <div className="font-black text-sm">{activity.name}</div>
-                        <div className="text-[10px] text-muted-foreground font-bold">{activity.nip}</div>
+                         <div className="font-black text-sm text-foreground">{activity.name}</div>
+                        <div className="text-[10px] text-muted-foreground font-bold tracking-tight">{activity.nip}</div>
                       </TableCell>
-                      <TableCell className="text-center font-mono text-xs font-bold">{activity.checkInTime}</TableCell>
-                      <TableCell className="text-center font-mono text-xs font-bold">{activity.checkOutTime}</TableCell>
+                      <TableCell className="text-center font-mono text-xs font-bold text-foreground">{activity.checkInTime}</TableCell>
+                      <TableCell className="text-center font-mono text-xs font-bold text-foreground">{activity.checkOutTime}</TableCell>
                        <TableCell className="text-center">
-                        <Badge variant={activity.status === 'Hadir' ? 'default' : 'secondary'} className="text-[9px] font-black uppercase">
+                        <Badge variant={activity.status === 'Hadir' ? 'default' : 'secondary'} className="text-[9px] font-black uppercase px-3">
                             {activity.status}
                         </Badge>
                       </TableCell>

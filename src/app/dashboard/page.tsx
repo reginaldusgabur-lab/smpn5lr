@@ -126,33 +126,35 @@ export default function DashboardPage() {
 
         {isGuruOrPegawai && (
             <div className="w-full space-y-6 flex flex-col items-stretch">
-                <Card className="w-full border shadow-sm overflow-hidden bg-card border-t-4 border-t-primary">
-                    <CardHeader className="p-4 flex flex-row items-center gap-2 bg-primary/10 text-primary border-b border-primary/5">
-                        <Clock className="w-4 h-4" />
-                        <CardTitle className="text-xs font-black uppercase tracking-widest">
-                            Kehadiran Anda hari ini
-                        </CardTitle>
+                <Card className="w-full border shadow-xl rounded-3xl overflow-hidden bg-card border-t-4 border-t-primary">
+                    <CardHeader className="p-6 bg-primary/10 text-primary border-b border-primary/5">
+                        <div className="flex items-center gap-3">
+                            <Clock className="w-5 h-5" />
+                            <CardTitle className="text-xs font-black uppercase tracking-widest">
+                                Kehadiran Anda hari ini
+                            </CardTitle>
+                        </div>
                     </CardHeader>
                     
-                    <CardContent className="p-4 space-y-6 pt-6">
+                    <CardContent className="p-6 space-y-6 pt-8">
                         <LiveClockUI />
                         
-                        <div className="grid grid-cols-2 gap-3 w-full">
-                            <div className="bg-muted/30 rounded-xl p-3 text-center border border-border/40 flex flex-col items-center justify-center">
-                                <div className="flex items-center justify-center gap-1.5 mb-1 opacity-70">
-                                    <LogIn className="w-3 h-3 text-primary" />
-                                    <p className="text-[10px] font-bold text-muted-foreground">Masuk</p>
+                        <div className="grid grid-cols-2 gap-4 w-full">
+                            <div className="bg-muted/30 rounded-2xl p-4 text-center border border-border/40 flex flex-col items-center justify-center">
+                                <div className="flex items-center justify-center gap-2 mb-1.5 opacity-70">
+                                    <LogIn className="w-3.5 h-3.5 text-primary" />
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Masuk</p>
                                 </div>
-                                <p className="text-lg font-black tabular-nums text-foreground">
+                                <p className="text-2xl font-black tabular-nums text-foreground">
                                     {isAttendanceLoading ? '...' : (todaysAttendance?.[0]?.checkInTime ? format(todaysAttendance[0].checkInTime.toDate(), 'HH:mm') : '--:--')}
                                 </p>
                             </div>
-                            <div className="bg-muted/30 rounded-xl p-3 text-center border border-border/40 flex flex-col items-center justify-center">
-                                <div className="flex items-center justify-center gap-1.5 mb-1 opacity-70">
-                                    <LogOut className="w-3 h-3 text-primary" />
-                                    <p className="text-[10px] font-bold text-muted-foreground">Pulang</p>
+                            <div className="bg-muted/30 rounded-2xl p-4 text-center border border-border/40 flex flex-col items-center justify-center">
+                                <div className="flex items-center justify-center gap-2 mb-1.5 opacity-70">
+                                    <LogOut className="w-3.5 h-3.5 text-primary" />
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Pulang</p>
                                 </div>
-                                <p className="text-lg font-black tabular-nums text-foreground">
+                                <p className="text-2xl font-black tabular-nums text-foreground">
                                     {isAttendanceLoading ? '...' : (todaysAttendance?.[0]?.checkOutTime ? format(todaysAttendance[0].checkOutTime.toDate(), 'HH:mm') : '--:--')}
                                 </p>
                             </div>
@@ -160,52 +162,55 @@ export default function DashboardPage() {
 
                         <div className="flex flex-col items-stretch gap-3">
                             {todaysAttendance?.[0]?.checkInTime && !todaysAttendance?.[0]?.checkOutTime ? (
-                                <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-sm">
+                                <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-lg active:scale-95 transition-all">
                                     <Link href="/dashboard/absen">Absen pulang sekarang</Link>
                                 </Button>
                             ) : !todaysAttendance?.[0]?.checkInTime ? (
-                                <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-sm">
+                                <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-lg active:scale-95 transition-all">
                                     <Link href="/dashboard/absen">Absen masuk sekarang</Link>
                                 </Button>
                             ) : (
-                                <div className="w-full bg-green-500/10 text-green-600 border border-green-500/20 font-bold rounded-xl h-12 flex items-center justify-center text-sm">
+                                <div className="w-full bg-green-500/10 text-green-600 border border-green-500/20 font-black rounded-xl h-12 flex items-center justify-center text-sm uppercase tracking-wide">
                                     <Sparkles className="mr-2 w-4 h-4" /> Absensi selesai
                                 </div>
                             )}
 
-                            <Button variant="link" size="sm" asChild className="h-auto p-0 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors">
+                            <Button variant="link" size="sm" asChild className="h-auto p-0 text-xs font-bold text-muted-foreground hover:text-primary transition-colors">
                                 <Link href="/dashboard/laporan">Lihat riwayat lengkap</Link>
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="w-full border shadow-sm overflow-hidden bg-card border-t-4 border-t-primary">
-                    <CardHeader className="p-4 bg-primary/10 text-primary border-b border-primary/5">
+                <Card className="w-full border shadow-xl rounded-3xl overflow-hidden bg-card border-t-4 border-t-primary">
+                    <CardHeader className="p-6 bg-primary/10 text-primary border-b border-primary/5">
                         <div className="flex items-center justify-between">
-                            <h2 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest">
-                                <TrendingUp size={14} /> Ringkasan bulanan
-                            </h2>
-                            <p className="text-[10px] font-black uppercase tracking-widest opacity-80">
+                            <div className="flex items-center gap-3">
+                                <TrendingUp className="w-5 h-5" />
+                                <h2 className="text-xs font-black uppercase tracking-widest">
+                                    Ringkasan bulanan
+                                </h2>
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-80 bg-primary/20 px-2 py-1 rounded-lg">
                                 Skor: {isPersonalSummaryLoading ? '...' : `${personalSummary.percentage}%`}
                             </p>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-4 pt-6">
-                        <div className="w-full h-40">
+                    <CardContent className="p-6 pt-8">
+                        <div className="w-full h-44">
                             {isPersonalSummaryLoading ? (
-                                <Skeleton className="h-full w-full rounded-xl" />
+                                <Skeleton className="h-full w-full rounded-2xl" />
                             ) : (
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={chartData} margin={{ top: 0, right: 0, left: -40, bottom: 0 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 'bold', fill: 'currentColor' }} className="text-foreground" />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: 'currentColor' }} className="text-foreground" allowDecimals={false} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: 'currentColor' }} className="text-foreground" />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'currentColor' }} className="text-foreground" allowDecimals={false} />
                                         <Tooltip 
                                             cursor={{ fill: 'rgba(0,0,0,0.03)' }} 
-                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: 'bold' }}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', fontSize: '11px', fontWeight: 'bold' }}
                                         />
-                                        <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={35}>
+                                        <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
                                             {chartData.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.color} />
                                             ))}
@@ -222,40 +227,40 @@ export default function DashboardPage() {
         {isAdminOrKepsek && (
             <div className="w-full space-y-8 pt-4 border-t border-dashed border-border/50 flex flex-col items-stretch">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-                    <Card className="bg-card border-none shadow-sm overflow-hidden border-t-4 border-t-green-600">
-                        <CardHeader className="p-3 bg-green-500/10 text-green-700 border-b border-green-500/5">
+                    <Card className="bg-card border-none shadow-xl rounded-3xl overflow-hidden border-t-4 border-t-green-600">
+                        <CardHeader className="p-4 bg-green-500/10 text-green-700 border-b border-green-500/5">
                             <div className="flex items-center justify-between">
                                 <p className="text-[10px] font-black uppercase tracking-widest">Hadir</p>
                                 <UserCheck className="h-4 w-4" />
                             </div>
                         </CardHeader>
-                        <CardContent className="p-4">
-                            <div className="text-2xl font-black text-green-700 dark:text-green-400">{isStatsLoading ? '...' : stats.hadir}</div>
+                        <CardContent className="p-6">
+                            <div className="text-3xl font-black text-green-700 dark:text-green-400">{isStatsLoading ? '...' : stats.hadir}</div>
                         </CardContent>
                     </Card>
                     
-                    <Card className="bg-card border-none shadow-sm overflow-hidden border-t-4 border-t-blue-600">
-                        <CardHeader className="p-3 bg-blue-500/10 text-blue-700 border-b border-blue-500/5">
+                    <Card className="bg-card border-none shadow-xl rounded-3xl overflow-hidden border-t-4 border-t-blue-600">
+                        <CardHeader className="p-4 bg-blue-500/10 text-blue-700 border-b border-blue-500/5">
                             <div className="flex items-center justify-between">
                                 <p className="text-[10px] font-black uppercase tracking-widest">Izin / Sakit</p>
                                 <BookUser className="h-4 w-4" />
                             </div>
                         </CardHeader>
-                        <CardContent className="p-4">
-                            <div className="text-2xl font-black text-blue-700 dark:text-blue-400">{isStatsLoading ? '...' : stats.izin + stats.sakit}</div>
+                        <CardContent className="p-6">
+                            <div className="text-3xl font-black text-blue-700 dark:text-blue-400">{isStatsLoading ? '...' : stats.izin + stats.sakit}</div>
                         </CardContent>
                     </Card>
 
                     <Link href="/dashboard/izin-kepala-sekolah" className="block">
-                        <Card className="bg-card border-none shadow-sm hover:opacity-90 transition-all group overflow-hidden border-t-4 border-t-amber-500">
-                            <CardHeader className="p-3 bg-amber-500/10 text-amber-700 border-b border-amber-500/5">
+                        <Card className="bg-card border-none shadow-xl rounded-3xl hover:opacity-95 transition-all group overflow-hidden border-t-4 border-t-amber-500">
+                            <CardHeader className="p-4 bg-amber-500/10 text-amber-700 border-b border-amber-500/5">
                                 <div className="flex items-center justify-between">
                                     <p className="text-[10px] font-black uppercase tracking-widest">Menunggu</p>
                                     <MailWarning className="h-4 w-4 group-hover:scale-110 transition-transform" />
                                 </div>
-                            </Header>
-                            <CardContent className="p-4">
-                                <div className="text-2xl font-black text-amber-700 dark:text-amber-400">{isStatsLoading ? '...' : stats.pending}</div>
+                            </CardHeader>
+                            <CardContent className="p-6">
+                                <div className="text-3xl font-black text-amber-700 dark:text-amber-400">{isStatsLoading ? '...' : stats.pending}</div>
                             </CardContent>
                         </Card>
                     </Link>

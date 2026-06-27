@@ -171,7 +171,7 @@ export default function SchoolReportPage() {
 
             const tableRows = detailData.map((item, index) => [
                 index + 1,
-                safeFormat(item.date, 'eeee, dd MMM yyyy'),
+                safeFormat(item.date, 'eeee, dd MMMM yyyy'),
                 safeFormat(item.checkInTime, 'HH:mm:ss'),
                 safeFormat(item.checkOutTime, 'HH:mm:ss'),
                 item.status,
@@ -352,9 +352,9 @@ export default function SchoolReportPage() {
                 </div>
 
                 <Card className="overflow-hidden border shadow-xl rounded-3xl bg-card border-t-4 border-t-primary">
-                    <CardHeader className="bg-primary/5 p-6 border-b border-primary/5">
-                        <CardTitle className="text-primary font-black">REKAPITULASI KEHADIRAN</CardTitle>
-                        <CardDescription>Data kehadiran akumulatif seluruh personil bulan {monthName}.</CardDescription>
+                    <CardHeader className="bg-primary/10 p-6 border-b border-primary/5 text-primary">
+                        <CardTitle className="font-black">REKAPITULASI KEHADIRAN</CardTitle>
+                        <CardDescription className="text-primary/70 font-medium">Data kehadiran akumulatif seluruh personil bulan {monthName}.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-0 sm:p-6 min-h-[500px]">
                         <div className="p-6 space-y-6">

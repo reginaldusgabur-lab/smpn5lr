@@ -179,13 +179,13 @@ const AbsentUsersTable = () => {
 
   return (
     <div className="w-full space-y-4">
-      <Card className="bg-card border-none rounded-2xl overflow-hidden shadow-sm border-t-4 border-t-destructive">
-        <CardHeader className="bg-destructive/10 p-4 flex flex-row items-center justify-between gap-1 text-destructive border-b border-destructive/5">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
+      <Card className="bg-card border-none rounded-3xl overflow-hidden shadow-xl border-t-4 border-t-destructive">
+        <CardHeader className="bg-destructive/10 p-6 flex flex-row items-center justify-between gap-1 text-destructive border-b border-destructive/5">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5" />
             <CardTitle className="font-black text-lg tracking-tight uppercase tracking-widest">DAFTAR KETIDAKHADIRAN</CardTitle>
           </div>
-          <p className="text-[10px] font-black uppercase opacity-80">Staf tanpa absen & izin</p>
+          <p className="text-[10px] font-black uppercase opacity-80 tracking-widest bg-destructive/20 px-3 py-1 rounded-lg">Staf tanpa absen & izin</p>
         </CardHeader>
         <CardContent className="p-0">
           {!isHoliday && absentUsers.length > 0 ? (
@@ -193,21 +193,21 @@ const AbsentUsersTable = () => {
               <Table>
                   <TableHeader className="bg-destructive/5">
                   <TableRow className="border-none">
-                      <TableHead className="w-[50px] text-center font-black text-[10px] uppercase tracking-widest text-destructive">No</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-destructive">Nama</TableHead>
+                      <TableHead className="w-[60px] text-center font-black text-[10px] uppercase tracking-widest text-destructive">No</TableHead>
+                      <TableHead className="font-black text-[10px] uppercase tracking-widest text-destructive">Nama & Posisi</TableHead>
                       <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-destructive">Status</TableHead>
                   </TableRow>
                   </TableHeader>
                   <TableBody>
                   {absentUsers.map((user, index) => (
-                      <TableRow key={index} className="border-muted-foreground/5">
+                      <TableRow key={index} className="border-muted-foreground/5 hover:bg-destructive/5 transition-colors">
                       <TableCell className="text-center font-bold text-xs text-muted-foreground">{index + 1}</TableCell>
                       <TableCell>
-                          <div className="font-black text-sm">{user.name}</div>
-                          <div className="text-[10px] text-muted-foreground font-bold">{user.position}</div>
+                          <div className="font-black text-sm text-foreground">{user.name}</div>
+                          <div className="text-[10px] text-muted-foreground font-bold tracking-tight uppercase">{user.position}</div>
                       </TableCell>
                       <TableCell className="text-center">
-                          <Badge variant={getBadgeVariant(user.status)} className="text-[9px] font-black uppercase">
+                          <Badge variant={getBadgeVariant(user.status)} className="text-[9px] font-black uppercase px-3">
                               {user.status}
                           </Badge>
                       </TableCell>
