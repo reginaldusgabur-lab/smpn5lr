@@ -170,9 +170,8 @@ export default function DashboardPage() {
             <div className="w-full space-y-6 flex flex-col items-stretch">
                 <Card className="w-full border shadow-xl rounded-3xl overflow-hidden bg-card">
                     <CardHeader className="p-6 text-primary border-b border-muted-foreground/5">
-                        <div className="flex items-center justify-center gap-3">
-                            <Clock className="w-6 h-6" />
-                            <CardTitle className="text-base font-black tracking-tight">
+                        <div className="flex items-center justify-center">
+                            <CardTitle className="text-2xl sm:text-3xl font-black tracking-tight text-center">
                                 Kehadiran Anda hari ini
                             </CardTitle>
                         </div>
