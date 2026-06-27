@@ -214,13 +214,13 @@ export default function AbsenPage() {
 
         <div className="absolute inset-0 z-10 flex items-center justify-center p-6 pointer-events-none pb-20">
             <div className="relative w-full aspect-square max-w-[280px]">
-                {/* Garis Pemindai Bercahaya (Glow Scan Line) */}
+                {/* Gelombang Pemindai Gradasi Lembut (Soft Gradient Scan Wave) */}
                 {isScannerReady && (
                     <div className={cn(
-                        "absolute left-2 right-2 h-0.5 transition-all duration-500 animate-scan-line z-20",
+                        "absolute left-1 right-1 h-20 transition-all duration-700 animate-scan-line z-20 pointer-events-none",
                         status === 'idle' 
-                            ? "bg-primary shadow-[0_0_20px_rgba(63,81,181,0.8)]" 
-                            : "bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.9)]"
+                            ? "bg-gradient-to-b from-transparent via-primary/40 to-transparent shadow-[0_0_15px_rgba(63,81,181,0.2)]" 
+                            : "bg-gradient-to-b from-transparent via-green-500/40 to-transparent shadow-[0_0_15px_rgba(34,197,94,0.3)]"
                     )} />
                 )}
 

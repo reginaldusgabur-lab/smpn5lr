@@ -90,7 +90,7 @@ export default {
         },
         'scan-line': {
           '0%': { top: '0' },
-          '100%': { top: 'calc(100% - 2px)' },
+          '100%': { top: 'calc(100% - 5rem)' },
         },
       },
       animation: {
