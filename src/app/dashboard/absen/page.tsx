@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -96,12 +97,16 @@ export default function AbsenPage() {
     let isCheckInTime = false, isCheckOutTime = false;
     if (schoolConfig.useTimeValidation) {
         const now = new Date(), currentTime = now.getHours() * 60 + now.getMinutes();
+        const dayOfWeek = now.getDay().toString();
         
-        // --- FIX: Added safety checks for undefined properties to prevent crash ---
+        // --- Schedule Windows ---
         const inStart = schoolConfig.checkInStartTime || '00:00';
         const inEnd = schoolConfig.checkInEndTime || '23:59';
-        const outStart = schoolConfig.checkOutStartTime || '00:00';
-        const outEnd = schoolConfig.checkOutEndTime || '23:59';
+        
+        // Use daily check-out time if available, otherwise global default
+        const dailyOut = schoolConfig.dailyCheckOutTimes?.[dayOfWeek];
+        const outStart = dailyOut?.start || schoolConfig.checkOutStartTime || '00:00';
+        const outEnd = dailyOut?.end || schoolConfig.checkOutEndTime || '23:59';
 
         const [inStartH, inStartM] = inStart.split(':').map(Number);
         const checkInStartTime = inStartH * 60 + inStartM;

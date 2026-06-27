@@ -206,13 +206,24 @@
         },
         "checkOutStartTime": {
           "type": "string",
-          "description": "Start time for check-out.",
+          "description": "Start time for check-out (global default).",
           "format": "time"
         },
         "checkOutEndTime": {
           "type": "string",
-          "description": "End time for check-out.",
+          "description": "End time for check-out (global default).",
           "format": "time"
+        },
+        "dailyCheckOutTimes": {
+          "type": "object",
+          "description": "Specific check-out windows for each day of the week (0-6).",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "start": { "type": "string", "format": "time" },
+              "end": { "type": "string", "format": "time" }
+            }
+          }
         },
         "schoolName": {
           "type": "string",

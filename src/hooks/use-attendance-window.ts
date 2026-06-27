@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from "react";
@@ -18,6 +19,7 @@ export interface SchoolConfig {
   checkInEndTime?: string;
   checkOutStartTime?: string;
   checkOutEndTime?: string;
+  dailyCheckOutTimes?: Record<string, { start: string, end: string }>;
 }
 
 export type AttendanceWindowStatus =
@@ -69,6 +71,7 @@ export const useAttendanceWindow = () => {
 
     const checkStatus = () => {
         const now = new Date();
+        const dayOfWeek = now.getDay().toString();
 
         // Kasus 3: Admin mematikan validasi waktu. Sesi dianggap selalu terbuka.
         if (config.useTimeValidation === false) {
@@ -77,20 +80,26 @@ export const useAttendanceWindow = () => {
         }
 
         // Kasus 4: Validasi waktu aktif. Periksa jadwal.
+        // Pick daily check-out time if available, otherwise global default
+        const dailyOut = config.dailyCheckOutTimes?.[dayOfWeek];
+        const checkinStartStr = config.checkInStartTime;
+        const checkinEndStr = config.checkInEndTime;
+        const checkoutStartStr = dailyOut?.start || config.checkOutStartTime;
+        const checkoutEndStr = dailyOut?.end || config.checkOutEndTime;
+
         if (
-            !config.checkInStartTime || !config.checkInEndTime ||
-            !config.checkOutStartTime || !config.checkOutEndTime
+            !checkinStartStr || !checkinEndStr ||
+            !checkoutStartStr || !checkoutEndStr
         ) {
             setStatus("CLOSED");
-            // Menggunakan warn agar tidak memicu overlay error di Next.js
             console.warn("Konfigurasi jam absen (schoolConfig) belum lengkap di database.");
             return;
         }
 
-        const checkinStart = parseTime(config.checkInStartTime);
-        const checkinEnd = parseTime(config.checkInEndTime);
-        const checkoutStart = parseTime(config.checkOutStartTime);
-        const checkoutEnd = parseTime(config.checkOutEndTime);
+        const checkinStart = parseTime(checkinStartStr);
+        const checkinEnd = parseTime(checkinEndStr);
+        const checkoutStart = parseTime(checkoutStartStr);
+        const checkoutEnd = parseTime(checkoutEndStr);
 
         if (now >= checkinStart && now <= checkinEnd) {
             setStatus("CHECK_IN_OPEN");

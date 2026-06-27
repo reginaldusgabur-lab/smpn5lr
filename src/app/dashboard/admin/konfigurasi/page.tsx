@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import QRCode from 'qrcode';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -23,10 +24,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Download, Loader2, RefreshCw, LocateFixed, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Loader2, RefreshCw, LocateFixed, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useDoc, useMemoFirebase, useUser, setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
@@ -144,7 +151,7 @@ function MonthlyConfigCalendar({ user, schoolConfig }: { user: any, schoolConfig
   return (
     <Card className="lg:col-span-3 overflow-hidden shadow-sm">
         <CardHeader className="p-4 sm:p-6 text-primary border-b border-muted-foreground/10">
-            <CardTitle className="font-bold text-sm tracking-tight">Hari Kerja & Libur Bulanan</CardTitle>
+            <CardTitle className="font-bold text-sm tracking-tight">Hari kerja & libur bulanan</CardTitle>
             <CardDescription className="text-muted-foreground font-medium">
                 Tandai hari libur spesifik atau tentukan jumlah hari kerja efektif.
             </CardDescription>
@@ -208,12 +215,12 @@ function MonthlyConfigCalendar({ user, schoolConfig }: { user: any, schoolConfig
                 )}
             </div>
             <div className="md:col-span-1 space-y-4 border-l-0 md:border-l md:pl-6 border-muted-foreground/10">
-                <h3 className="font-bold text-sm tracking-tight text-primary">Status Bulan Ini</h3>
+                <h3 className="font-bold text-sm tracking-tight text-primary">Status bulan ini</h3>
                  <p className="text-xs text-muted-foreground leading-relaxed">
                     Jumlah hari kerja efektif di bulan <span className="font-bold">{format(currentMonth, 'MMMM', { locale: id })}</span> digunakan untuk hitung persentase kehadiran.
                 </p>
                 <div className="space-y-2">
-                    <Label htmlFor="manualWorkDays" className="text-xs font-bold">Jumlah Hari Kerja (Manual)</Label>
+                    <Label htmlFor="manualWorkDays" className="text-xs font-bold">Jumlah hari kerja (Manual)</Label>
                     <Input
                         id="manualWorkDays"
                         type="number"
@@ -231,7 +238,7 @@ function MonthlyConfigCalendar({ user, schoolConfig }: { user: any, schoolConfig
          <CardFooter className="border-t p-4 sm:p-6 bg-muted/5">
             <Button onClick={handleSave} className="w-full sm:w-auto font-bold rounded-xl h-11 shadow-sm" disabled={isSaving}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Simpan Pengaturan Bulan Ini
+                Simpan pengaturan bulan ini
             </Button>
         </CardFooter>
     </Card>
@@ -265,6 +272,17 @@ export default function KonfigurasiAbsenPage() {
   const [checkOutStart, setCheckOutStart] = useState('14:00');
   const [checkOutEnd, setCheckOutEnd] = useState('16:00');
   const [qrCodeValue, setQrCodeValue] = useState('');
+  
+  // Daily check-out times state
+  const [dailyCheckOutTimes, setDailyCheckOutTimes] = useState<Record<string, { start: string, end: string }>>({
+      "0": { start: '14:00', end: '16:00' },
+      "1": { start: '14:00', end: '16:00' },
+      "2": { start: '14:00', end: '16:00' },
+      "3": { start: '14:00', end: '16:00' },
+      "4": { start: '14:00', end: '16:00' },
+      "5": { start: '14:00', end: '16:00' },
+      "6": { start: '14:00', end: '16:00' },
+  });
   
   const schoolConfigRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -303,6 +321,10 @@ export default function KonfigurasiAbsenPage() {
       setLateTolerance(schoolConfigData.lateTolerance ?? 15);
       setCheckOutStart(schoolConfigData.checkOutStartTime ?? '14:00');
       setCheckOutEnd(schoolConfigData.checkOutEndTime ?? '16:00');
+      
+      if (schoolConfigData.dailyCheckOutTimes) {
+          setDailyCheckOutTimes(schoolConfigData.dailyCheckOutTimes);
+      }
 
       if (schoolConfigData.qrCodeValue) {
         setQrCodeValue(schoolConfigData.qrCodeValue);
@@ -432,6 +454,7 @@ export default function KonfigurasiAbsenPage() {
       lateTolerance: Number(lateTolerance),
       checkOutStartTime: checkOutStart,
       checkOutEndTime: checkOutEnd,
+      dailyCheckOutTimes: dailyCheckOutTimes,
     }, { merge: true });
     toast({
       title: 'Pengaturan disimpan',
@@ -448,6 +471,16 @@ export default function KonfigurasiAbsenPage() {
     }
   };
   
+  const handleDailyCheckOutChange = (dayIndex: string, field: 'start' | 'end', value: string) => {
+      setDailyCheckOutTimes(prev => ({
+          ...prev,
+          [dayIndex]: {
+              ...prev[dayIndex],
+              [field]: value
+          }
+      }));
+  };
+
   if (isLoading || !isAdmin) {
     return <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
@@ -456,8 +489,8 @@ export default function KonfigurasiAbsenPage() {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <Card className="lg:col-span-1 overflow-hidden shadow-sm">
         <CardHeader className="p-4 sm:p-6 text-primary border-b border-muted-foreground/10">
-          <CardTitle className="font-bold text-sm tracking-tight">Kode QR Absensi</CardTitle>
-          <CardDescription className="text-muted-foreground font-medium">Gunakan Kode QR ini untuk absensi harian.</CardDescription>
+          <CardTitle className="font-bold text-sm tracking-tight">Kode QR absensi</CardTitle>
+          <CardDescription className="text-muted-foreground font-medium">Gunakan kode QR ini untuk absensi harian.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center gap-4 p-4 sm:p-6">
           <div className="p-4 border rounded-2xl bg-white aspect-square w-full max-w-[256px] relative shadow-inner">
@@ -474,19 +507,19 @@ export default function KonfigurasiAbsenPage() {
             <AlertDialogTrigger asChild>
                 <Button variant="outline" className="w-full max-w-[256px] rounded-xl font-bold" disabled={isQrLoading}>
                     {isQrLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                    Buat QR Baru
+                    Buat QR baru
                 </Button>
             </AlertDialogTrigger>
             <AlertDialogContent className="rounded-3xl border-none">
                 <AlertDialogHeader>
-                    <AlertDialogTitle className="font-bold text-xl">Perbarui Kode QR?</AlertDialogTitle>
+                    <AlertDialogTitle className="font-bold text-xl">Perbarui kode QR?</AlertDialogTitle>
                     <AlertDialogDescription className="font-medium text-sm">
                         Kode QR lama tidak akan bisa digunakan lagi setelah Anda membuat yang baru. Apakah Anda yakin ingin membuat kode QR baru?
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="gap-2">
                     <AlertDialogCancel className="rounded-xl font-bold">Batal</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleGenerateNewQr} className="rounded-xl font-bold bg-primary hover:bg-primary/90">Ya, Buat Baru</AlertDialogAction>
+                    <AlertDialogAction onClick={handleGenerateNewQr} className="rounded-xl font-bold bg-primary hover:bg-primary/90">Ya, buat baru</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -498,14 +531,14 @@ export default function KonfigurasiAbsenPage() {
 
       <Card className="lg:col-span-2 overflow-hidden shadow-sm">
         <CardHeader className="p-4 sm:p-6 text-primary border-b border-muted-foreground/10">
-          <CardTitle className="font-bold text-sm tracking-tight">Pengaturan Umum</CardTitle>
+          <CardTitle className="font-bold text-sm tracking-tight">Pengaturan umum</CardTitle>
           <CardDescription className="text-muted-foreground font-medium">Atur parameter sistem absensi sekolah.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 p-4 sm:p-6">
           <div className="rounded-2xl border p-4 space-y-4 bg-muted/5">
               <div className="flex items-center justify-between">
                   <div>
-                      <Label htmlFor="holiday-mode" className="font-bold text-sm">Nonaktifkan Absensi</Label>
+                      <Label htmlFor="holiday-mode" className="font-bold text-sm">Nonaktifkan absensi</Label>
                       <p className="text-xs text-muted-foreground">Sistem absensi akan dinonaktifkan sementara untuk semua.</p>
                   </div>
                   <Switch
@@ -515,7 +548,7 @@ export default function KonfigurasiAbsenPage() {
                   />
               </div>
               <div className="space-y-4 pt-4 border-t border-muted-foreground/10">
-                  <Label className='text-xs font-bold opacity-70'>Hari Libur Rutin</Label>
+                  <Label className='text-xs font-bold opacity-70'>Hari libur rutin</Label>
                   <p className="text-xs text-muted-foreground">
                     Pilih hari libur mingguan tetap.
                   </p>
@@ -538,7 +571,7 @@ export default function KonfigurasiAbsenPage() {
           <div className="rounded-2xl border p-4 space-y-4 bg-muted/5">
             <div className="flex items-center justify-between">
               <div>
-                <Label htmlFor="use-location" className="font-bold text-sm">Validasi Lokasi (GPS)</Label>
+                <Label htmlFor="use-location" className="font-bold text-sm">Validasi lokasi (GPS)</Label>
                 <p className="text-xs text-muted-foreground">Wajibkan pengguna berada di area sekolah.</p>
               </div>
               <Switch id="use-location" checked={useLocationValidation} onCheckedChange={setUseLocationValidation} disabled={holidayMode} />
@@ -547,10 +580,10 @@ export default function KonfigurasiAbsenPage() {
               <div className="space-y-4 pt-4 border-t border-muted-foreground/10">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-4">
-                    <Label className="text-xs font-bold">Koordinat Sekolah</Label>
+                    <Label className="text-xs font-bold">Koordinat sekolah</Label>
                     <Button type="button" variant="outline" size="sm" className="h-8 rounded-lg text-[10px] font-bold" onClick={handleGetCurrentLocation} disabled={isLocating || holidayMode}>
                       {isLocating ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <LocateFixed className="mr-2 h-3 w-3" />}
-                      Dapatkan Lokasi
+                      Dapatkan lokasi
                     </Button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -565,7 +598,7 @@ export default function KonfigurasiAbsenPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="radius" className="text-xs font-bold">Radius Sekolah (Meter)</Label>
+                  <Label htmlFor="radius" className="text-xs font-bold">Radius sekolah (Meter)</Label>
                   <Input id="radius" type="number" className="h-10 rounded-xl bg-muted/30" value={radius} onChange={(e) => setRadius(Number(e.target.value))} placeholder="100" disabled={holidayMode} />
                 </div>
                 <div className="aspect-video w-full overflow-hidden rounded-2xl border shadow-inner">
@@ -575,7 +608,7 @@ export default function KonfigurasiAbsenPage() {
                       height="100%"
                       loading="lazy"
                       src={`https://maps.google.com/maps?q=${latitude},${longitude}&hl=id&z=15&output=embed`}
-                      title="Pratinjau Lokasi"
+                      title="Pratinjau lokasi"
                     ></iframe>
                 </div>
               </div>
@@ -585,36 +618,76 @@ export default function KonfigurasiAbsenPage() {
           <div className="rounded-2xl border p-4 space-y-4 bg-muted/5">
               <div className="flex items-center justify-between">
                   <div>
-                      <Label htmlFor="use-time" className="font-bold text-sm">Validasi Jam Kerja</Label>
+                      <Label htmlFor="use-time" className="font-bold text-sm">Validasi jam kerja</Label>
                       <p className="text-xs text-muted-foreground">Wajibkan pengguna absen sesuai jadwal.</p>
                   </div>
                   <Switch id="use-time" checked={useTimeValidation} onCheckedChange={setUseTimeValidation} disabled={holidayMode} />
               </div>
               {useTimeValidation && (
-                  <div className="space-y-4 pt-4 border-t border-muted-foreground/10">
-                      <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
-                              <Label htmlFor="checkin-start" className="text-[10px] font-bold">Mulai Masuk</Label>
-                              <Input id="checkin-start" type="time" className="rounded-xl h-10 bg-muted/30" value={checkInStart} onChange={e => setCheckInStart(e.target.value)} disabled={holidayMode} />
+                  <div className="space-y-6 pt-4 border-t border-muted-foreground/10">
+                      <div className="space-y-4">
+                          <Label className="text-xs font-black uppercase tracking-wider text-primary">Jadwal Masuk (Global)</Label>
+                          <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-1.5">
+                                  <Label htmlFor="checkin-start" className="text-[10px] font-bold">Mulai masuk</Label>
+                                  <Input id="checkin-start" type="time" className="rounded-xl h-10 bg-muted/30" value={checkInStart} onChange={e => setCheckInStart(e.target.value)} disabled={holidayMode} />
+                              </div>
+                              <div className="space-y-1.5">
+                                  <Label htmlFor="checkin-end" className="text-[10px] font-bold">Selesai masuk</Label>
+                                  <Input id="checkin-end" type="time" className="rounded-xl h-10 bg-muted/30" value={checkInEnd} onChange={e => setCheckInEnd(e.target.value)} disabled={holidayMode} />
+                              </div>
                           </div>
-                          <div className="space-y-1.5">
-                              <Label htmlFor="checkin-end" className="text-[10px] font-bold">Selesai Masuk</Label>
-                              <Input id="checkin-end" type="time" className="rounded-xl h-10 bg-muted/30" value={checkInEnd} onChange={e => setCheckInEnd(e.target.value)} disabled={holidayMode} />
+                          <div className="space-y-2">
+                              <Label htmlFor="late-tolerance" className="text-xs font-bold">Toleransi terlambat (Menit)</Label>
+                              <Input id="late-tolerance" type="number" className="rounded-xl h-10 bg-muted/30" value={lateTolerance} onChange={e => setLateTolerance(Number(e.target.value))} placeholder="15" disabled={holidayMode} />
                           </div>
                       </div>
-                      <div className="space-y-2">
-                          <Label htmlFor="late-tolerance" className="text-xs font-bold">Toleransi Terlambat (Menit)</Label>
-                          <Input id="late-tolerance" type="number" className="rounded-xl h-10 bg-muted/30" value={lateTolerance} onChange={e => setLateTolerance(Number(e.target.value))} placeholder="15" disabled={holidayMode} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-muted-foreground/10">
-                          <div className="space-y-1.5">
-                              <Label htmlFor="checkout-start" className="text-[10px] font-bold">Mulai Pulang</Label>
-                              <Input id="checkout-start" type="time" className="rounded-xl h-10 bg-muted/30" value={checkOutStart} onChange={e => setCheckOutStart(e.target.value)} disabled={holidayMode} />
+
+                      <div className="space-y-4 pt-4 border-t border-muted-foreground/10">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs font-black uppercase tracking-wider text-primary">Jadwal Pulang Spesifik</Label>
+                            <Clock className="h-4 w-4 text-primary opacity-50" />
                           </div>
-                          <div className="space-y-1.5">
-                              <Label htmlFor="checkout-end" className="text-[10px] font-bold">Selesai Pulang</Label>
-                              <Input id="checkout-end" type="time" className="rounded-xl h-10 bg-muted/30" value={checkOutEnd} onChange={e => setCheckOutEnd(e.target.value)} disabled={holidayMode} />
-                          </div>
+                          <p className="text-[10px] text-muted-foreground font-medium">Atur jam pulang berbeda untuk setiap hari.</p>
+                          
+                          <Accordion type="single" collapsible className="w-full">
+                              {daysOfWeek.map((day) => (
+                                  <AccordionItem key={day.value} value={day.value.toString()} className="border-muted-foreground/10">
+                                      <AccordionTrigger className="hover:no-underline py-3 px-1">
+                                          <div className="flex items-center gap-3">
+                                              <div className={cn("w-2 h-2 rounded-full", offDays.includes(day.value) ? "bg-muted-foreground/30" : "bg-primary")} />
+                                              <span className={cn("text-xs font-bold", offDays.includes(day.value) && "text-muted-foreground")}>
+                                                  {day.label} {offDays.includes(day.value) && "(Libur)"}
+                                              </span>
+                                          </div>
+                                      </AccordionTrigger>
+                                      <AccordionContent className="pt-2 pb-4">
+                                          <div className="grid grid-cols-2 gap-4 px-1">
+                                              <div className="space-y-1.5">
+                                                  <Label className="text-[10px] font-bold">Mulai pulang</Label>
+                                                  <Input 
+                                                      type="time" 
+                                                      className="rounded-xl h-10 bg-muted/30" 
+                                                      value={dailyCheckOutTimes[day.value]?.start || checkOutStart} 
+                                                      onChange={e => handleDailyCheckOutChange(day.value.toString(), 'start', e.target.value)}
+                                                      disabled={holidayMode || offDays.includes(day.value)}
+                                                  />
+                                              </div>
+                                              <div className="space-y-1.5">
+                                                  <Label className="text-[10px] font-bold">Selesai pulang</Label>
+                                                  <Input 
+                                                      type="time" 
+                                                      className="rounded-xl h-10 bg-muted/30" 
+                                                      value={dailyCheckOutTimes[day.value]?.end || checkOutEnd} 
+                                                      onChange={e => handleDailyCheckOutChange(day.value.toString(), 'end', e.target.value)}
+                                                      disabled={holidayMode || offDays.includes(day.value)}
+                                                  />
+                                              </div>
+                                          </div>
+                                      </AccordionContent>
+                                  </AccordionItem>
+                              ))}
+                          </Accordion>
                       </div>
                   </div>
               )}
@@ -623,7 +696,7 @@ export default function KonfigurasiAbsenPage() {
          <CardFooter className="border-t p-4 sm:p-6 bg-muted/5">
            <Button onClick={handleSave} className="w-full sm:w-auto font-bold rounded-xl h-11 shadow-sm" disabled={isSaving}>
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Simpan Pengaturan Umum
+              Simpan pengaturan umum
           </Button>
         </CardFooter>
       </Card>
