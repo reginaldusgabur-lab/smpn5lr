@@ -1,3 +1,4 @@
+
 import { type MetadataRoute } from 'next'
  
 export default function manifest(): MetadataRoute.Manifest {
@@ -5,10 +6,12 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'E-SPENLI Absensi',
     short_name: 'E-SPENLI',
     description: 'Aplikasi Absensi Digital untuk SMPN 5 LANGKE REMBONG',
-    start_url: '/dashboard',
+    start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
     theme_color: '#3F51B5',
+    scope: '/',
+    orientation: 'portrait',
     icons: [
       {
         src: '/logo-3d-v2.png',

@@ -1,15 +1,15 @@
 
-// const withPWA = require("@ducanh2912/next-pwa").default({
-//   dest: "public",
-//   cacheOnFrontEndNav: true,
-//   aggressiveFrontEndNavCaching: false, // Dinonaktifkan untuk mencegah crash pada PWA
-//   reloadOnOnline: true,
-//   swcMinify: true,
-//   disable: false,
-//   workboxOptions: {
-//     disableDevLogs: true,
-//   },
-// });
+const withPWA = require("@ducanh2912/next-pwa").default({
+  dest: "public",
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  swcMinify: true,
+  disable: process.env.NODE_ENV === "development",
+  workboxOptions: {
+    disableDevLogs: true,
+  },
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -48,9 +48,7 @@ const nextConfig = {
       },
     ],
   },
-  // Tambahkan konfigurasi webpack berikut
   webpack: (config, { isServer }) => {
-    // Abaikan modul-modul yang tidak tersedia di browser
     if (!isServer) {
       config.resolve.fallback = {
         net: false,
@@ -81,4 +79,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig; // withPWA(nextConfig);
+module.exports = withPWA(nextConfig);
