@@ -154,11 +154,11 @@ export default function DashboardPage() {
   return (
     <div className="w-full space-y-6 pb-10 flex flex-col items-stretch">
         <div className="w-full px-0">
-            <p className="text-base text-muted-foreground font-medium">Selamat datang</p>
+            <p className="text-base text-muted-foreground font-bold">Selamat datang</p>
             <h1 className="text-2xl font-bold tracking-tight text-foreground mt-0.5 leading-tight">
                 {user?.name || 'Pengguna'}
             </h1>
-            <p className="text-sm text-muted-foreground mt-1 font-medium">
+            <p className="text-sm text-muted-foreground mt-1 font-bold">
                 {role === 'admin' 
                   ? 'Pantau aktivitas kehadiran dan kelola data sekolah hari ini.' 
                   : 'Lakukan absensi dan lihat riwayat kehadiran Anda hari ini.'}

@@ -301,16 +301,16 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
         if (attendanceRecord) {
             let checkInTime = attendanceRecord.checkInTime.toDate();
             let checkOutTime = attendanceRecord.checkOutTime?.toDate() || null;
-            let rawDescription = attendanceRecord.reasonForUpdate || 'Kehadiran Penuh';
+            let rawDescription = attendanceRecord.reasonForUpdate || 'Kehadiran penuh';
             
             let description = cleanDesc(rawDescription);
-            if (!description) description = 'Kehadiran Penuh';
+            if (!description) description = 'Kehadiran penuh';
 
             if (description === 'Terlambat') {
                 checkInTime = null; 
             }
 
-            if (description === 'Pulang Cepat') {
+            if (description === 'Pulang cepat') {
                 checkOutTime = null;
             }
 
@@ -321,7 +321,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                     checkInTime: checkInTime,
                     checkOutTime: null,
                     status: 'Alpa',
-                    description: 'Tidak Absen Pulang',
+                    description: 'Tidak absen pulang',
                     manualEntry: attendanceRecord.manualEntry || false,
                 };
             }
@@ -332,7 +332,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                 checkInTime: checkInTime,
                 checkOutTime: checkOutTime,
                 status: 'Hadir',
-                description: !checkOutTime && isToday ? 'Belum Absen Pulang' : description,
+                description: !checkOutTime && isToday ? 'Belum absen pulang' : description,
                 manualEntry: attendanceRecord.manualEntry || false,
             };
         }
@@ -355,7 +355,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                 checkInTime: null,
                 checkOutTime: null,
                 status: 'Alpa',
-                description: isToday ? 'Belum Ada Aktivitas' : 'Tidak Ada Keterangan',
+                description: isToday ? 'Belum ada aktivitas' : 'Tidak ada keterangan',
             };
         }
 

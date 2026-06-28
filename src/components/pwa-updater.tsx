@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, Sparkles } from 'lucide-react';
 
 /**
- * PwaUpdater mendeteksi jika Service Worker baru (versi logo/manifest baru) tersedia.
- * Saat diklik, notifikasi langsung hilang dan pembaruan berjalan di latar belakang.
+ * PwaUpdater mendeteksi jika Service Worker baru tersedia.
+ * Tidak melakukan auto-reload saat dibuka untuk kenyamanan pengguna.
+ * Pembaruan akan diterapkan saat tombol diklik atau pada sesi login berikutnya.
  */
 const PwaUpdater = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -17,23 +18,13 @@ const PwaUpdater = () => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       const sw = navigator.serviceWorker;
 
-      // Event ini terpicu saat SW baru mengambil alih kontrol (setelah skipWaiting)
-      sw.addEventListener('controllerchange', () => {
-        // Melakukan reload hanya jika sudah dipicu oleh tombol
-        if (isHiding) {
-            window.location.reload();
-        }
-      });
-
       const checkUpdate = async () => {
         const registration = await sw.getRegistration();
         if (registration) {
-          // Listen untuk event updatefound
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing;
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
-                // Jika SW baru sudah terinstal dan ada SW lama yang sedang berjalan
                 if (newWorker.state === 'installed' && sw.controller) {
                   setUpdateAvailable(true);
                 }
@@ -41,7 +32,6 @@ const PwaUpdater = () => {
             }
           });
 
-          // Cek juga saat load apakah sudah ada yang waiting
           if (registration.waiting) {
             setUpdateAvailable(true);
           }
@@ -50,27 +40,23 @@ const PwaUpdater = () => {
 
       checkUpdate();
     }
-  }, [isHiding]);
+  }, []);
 
   const handleUpdate = () => {
-    // Langsung sembunyikan UI agar terasa "berjalan di latar belakang"
     setIsHiding(true);
-
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistration().then((reg) => {
         if (reg && reg.waiting) {
-          // Kirim pesan ke SW baru untuk melompati fase waiting (skipWaiting)
-          // Ini akan memastikan manifest dan logo baru diterapkan
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          // Manual reload triggered by user
+          setTimeout(() => window.location.reload(), 200);
         } else {
-            // Jika tidak ada yang waiting, tetap reload untuk memastikan aset segar
-            window.location.reload();
+          window.location.reload();
         }
       });
     }
   };
 
-  // Jangan tampilkan jika tidak ada update, atau sedang diproses di latar belakang
   if (!updateAvailable || isHiding) return null;
 
   return (
@@ -82,11 +68,11 @@ const PwaUpdater = () => {
         
         <div className="flex-1 min-w-0">
             <h4 className="text-sm font-bold tracking-tight flex items-center gap-1.5">
-                Versi Baru Tersedia
+                Versi baru tersedia
                 <Sparkles className="h-3 w-3 text-amber-300" />
             </h4>
-            <p className="text-[10px] opacity-90 font-medium leading-tight mt-0.5">
-                Pembaruan sistem dan logo telah siap. Klik perbarui untuk sinkronisasi.
+            <p className="text-[10px] opacity-90 font-bold leading-tight mt-0.5">
+                Pembaruan sistem dan logo telah siap.
             </p>
         </div>
 

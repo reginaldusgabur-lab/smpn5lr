@@ -26,9 +26,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import {
-  FormLabel,
-} from '@/components/ui/form';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -64,6 +61,18 @@ export default function LoginPage() {
 
   const appLogo = PlaceHolderImages.find(p => p.id === 'app-logo');
 
+  // PWA Update Check: Apply update ONLY on login page to avoid screen flash in dashboard
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg && reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          window.location.reload();
+        }
+      });
+    }
+  }, []);
+
   useEffect(() => {
     if (!isUserLoading && user) {
       router.replace('/dashboard');
@@ -83,14 +92,14 @@ export default function LoginPage() {
   const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     setIsLoginLoading(true);
     if (!auth) {
-      toast({ variant: "destructive", title: "Layanan Belum Siap", description: "Layanan otentikasi belum siap." });
+      toast({ variant: "destructive", title: "Layanan belum siap", description: "Layanan otentikasi belum tersedia." });
       setIsLoginLoading(false);
       return;
     }
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Login Gagal", description: "Email atau password salah." });
+      toast({ variant: "destructive", title: "Login gagal", description: "Email atau kata sandi salah." });
       setIsLoginLoading(false);
     }
   };
@@ -98,23 +107,23 @@ export default function LoginPage() {
   const handlePasswordReset = async (values: z.infer<typeof resetPasswordSchema>) => {
     setIsResetLoading(true);
     if (!auth) {
-      toast({ variant: "destructive", title: "Layanan Belum Siap", description: "Layanan otentikasi belum siap." });
-      setIsResetLoading(false);
+      toast({ variant: "destructive", title: "Layanan belum siap", description: "Layanan otentikasi belum tersedia." });
+      setIsLoginLoading(false);
       return;
     }
     try {
       auth.languageCode = 'id';
       await sendPasswordResetEmail(auth, values.email);
       toast({
-        title: "Link Reset Terkirim",
-        description: `Periksa kotak masuk & spam di ${values.email} untuk instruksi.`
+        title: "Link pemulihan terkirim",
+        description: `Periksa kotak masuk & spam di ${values.email}.`
       });
       setIsResetDialogOpen(false);
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Gagal",
-        description: "Gagal mengirim email reset. Pastikan email terdaftar dan coba lagi."
+        description: "Gagal mengirim email reset. Pastikan email terdaftar."
       });
     } finally {
       setIsResetLoading(false);
@@ -142,7 +151,7 @@ export default function LoginPage() {
               </div>
             </div>
             <CardTitle className="text-4xl font-bold tracking-tighter text-primary">E-SPENLI</CardTitle>
-            <CardDescription className="font-semibold text-muted-foreground/80 tracking-tight">SMPN 5 Langke Rembong</CardDescription>
+            <CardDescription className="font-bold text-muted-foreground/80 tracking-tight">SMPN 5 Langke Rembong</CardDescription>
           </CardHeader>
           <CardContent className="px-10 pb-10">
             <Form {...loginForm}>
@@ -152,7 +161,7 @@ export default function LoginPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem className="space-y-1.5">
-                      <Label className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1">Alamat Email</Label>
+                      <Label className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1">Alamat email</Label>
                       <FormControl>
                         <Input 
                           placeholder="nama@email.com" 
@@ -166,7 +175,7 @@ export default function LoginPage() {
                 />
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between mb-1">
-                    <Label htmlFor="password" className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1">Kata Sandi</Label>
+                    <Label htmlFor="password" className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1">Kata sandi</Label>
                     <DialogTrigger asChild>
                       <button type="button" className="text-[10px] font-bold text-primary hover:opacity-70 transition-opacity tracking-widest">
                         Lupa sandi?
@@ -195,7 +204,7 @@ export default function LoginPage() {
                             onClick={() => setShowLoginPass(!showLoginPass)}
                           >
                             {showLoginPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            <span className="sr-only">Tampilkan password</span>
+                            <span className="sr-only">Tampilkan kata sandi</span>
                           </Button>
                         </div>
                         <FormMessage className="text-[10px] font-bold" />
@@ -211,7 +220,7 @@ export default function LoginPage() {
                   {isLoginLoading ? (
                     <Loader2 className="h-6 w-6 animate-spin" />
                   ) : (
-                    "Masuk Sekarang"
+                    "Masuk sekarang"
                   )}
                 </Button>
               </form>
@@ -226,8 +235,8 @@ export default function LoginPage() {
 
         <DialogContent className="rounded-[2.5rem] border-none p-10">
           <DialogHeader>
-            <DialogTitle className="font-bold text-2xl tracking-tighter">Atur Ulang Sandi</DialogTitle>
-            <DialogDescription className="font-medium text-xs text-muted-foreground mt-2">
+            <DialogTitle className="font-bold text-2xl tracking-tighter">Atur ulang sandi</DialogTitle>
+            <DialogDescription className="font-bold text-xs text-muted-foreground mt-2">
               Masukkan email terdaftar Anda untuk menerima tautan pemulihan.
             </DialogDescription>
           </DialogHeader>
@@ -239,7 +248,7 @@ export default function LoginPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <Label htmlFor="reset-email" className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1">Email Terdaftar</Label>
+                      <Label htmlFor="reset-email" className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1">Email terdaftar</Label>
                       <FormControl>
                         <Input 
                           id="reset-email" 
@@ -262,7 +271,7 @@ export default function LoginPage() {
                   {isResetLoading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    "Kirim Link Pemulihan"
+                    "Kirim link pemulihan"
                   )}
                 </Button>
               </DialogFooter>
