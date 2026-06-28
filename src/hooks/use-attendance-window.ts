@@ -1,14 +1,11 @@
 'use client';
 
-import { useEffect, useState, useMemo } from "react";
-import { useDoc } from "../firebase/firestore/use-doc";
-import { useUser, useFirestore } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { useCache } from "@/context/CacheContext";
 
 /**
- * Hook ini adalah sumber kebenaran tunggal untuk status jendela absensi.
- * Membaca dari dokumen 'schoolConfig/default' dan menghormati pengaturan
- * 'useTimeValidation' yang dikendalikan oleh admin.
+ * Hook useAttendanceWindow sekarang menggunakan data dari CacheContext.
+ * Ini menghemat ribuan pembacaan database karena tidak lagi berlangganan ke dokumen 'schoolConfig' di setiap komponen.
  */
 
 export interface SchoolConfig {
@@ -32,19 +29,8 @@ export type AttendanceWindowStatus =
   | "CLOSED";          // Sesi hari ini berakhir
 
 export const useAttendanceWindow = () => {
+  const { schoolConfig: config, isCacheLoading: configLoading } = useCache();
   const [status, setStatus] = useState<AttendanceWindowStatus>("LOADING");
-  const { user } = useUser();
-  const firestore = useFirestore();
-
-  const configRef = useMemo(() => 
-    firestore ? doc(firestore, "schoolConfig/default") : null,
-    [firestore]
-  );
-
-  const { data: config, isLoading: configLoading } = useDoc<SchoolConfig>(
-    user,
-    configRef
-  );
 
   useEffect(() => {
     if (configLoading) {
@@ -107,5 +93,5 @@ export const useAttendanceWindow = () => {
     
   }, [config, configLoading]);
 
-  return { status, config };
+  return { status, config: config as SchoolConfig | null };
 };

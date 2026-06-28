@@ -56,6 +56,7 @@ export default function DashboardPage() {
         setIsPersonalSummaryLoading(true);
         try {
             const now = new Date();
+            // Kedua fungsi ini sekarang menggunakan caching internal untuk menghemat database reads
             const [dailyStats, personalStats] = await Promise.all([
                 getDailyStaffAttendanceStats(firestore),
                 calculateAttendanceStats(firestore, user.uid, { start: startOfMonth(now), end: endOfMonth(now) })

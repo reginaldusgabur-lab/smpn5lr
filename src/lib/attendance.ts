@@ -1,9 +1,9 @@
 'use client';
 
 import { doc, getDoc, collection, getDocs, query, where, collectionGroup } from 'firebase/firestore';
-import { eachDayOfInterval, isWithinInterval, startOfMonth, endOfMonth, startOfDay, subDays, format, isBefore, endOfDay, parseISO, isValid, isSameDay, setHours, setMinutes } from 'date-fns';
+import { eachDayOfInterval, isWithinInterval, startOfMonth, endOfMonth, startOfDay, format, isBefore, isSameDay, setHours, setMinutes } from 'date-fns';
 import type { Firestore } from 'firebase/firestore';
-import { id } from 'date-fns/locale';
+import { getFromCache, setInCache } from './cache';
 
 export interface MonthlyReportData {
     id: string;
@@ -17,8 +17,18 @@ export interface MonthlyReportData {
 
 const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\)/g, '').replace(/\(✓\)/g, '').trim() : '';
 
+/**
+ * Mengambil statistik kehadiran harian dengan dukungan caching.
+ */
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
+    const todayStr = format(today, 'yyyy-MM-dd');
+    const cacheKey = `daily_stats_${todayStr}`;
+    
+    // Coba ambil dari cache memori terlebih dahulu
+    const cachedData = getFromCache(cacheKey);
+    if (cachedData) return cachedData;
+
     const startOfToday = startOfDay(today);
     const endOfToday = endOfDay(today);
 
@@ -37,13 +47,11 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const isHoliday = (() => {
         if (!schoolConfig) return false;
         if (schoolConfig.isAttendanceActive === false) return true;
-        const todayStr = format(today, 'yyyy-MM-dd');
         if (monthlyConfig?.holidays?.includes(todayStr)) return true;
         const offDays: number[] = schoolConfig.offDays ?? [0, 6];
         return offDays.includes(today.getDay());
     })();
 
-    // ONLY fetch ACTIVE staff
     const usersQuery = query(
         collection(firestore, 'users'), 
         where('role', 'in', ['guru', 'pegawai', 'kepala_sekolah']),
@@ -104,7 +112,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
         }
     });
 
-    return {
+    const result = {
         totalStaff: allStaff.length,
         hadir: presentUserIds.size,
         izin: izinCount,
@@ -113,10 +121,22 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
         pending: pendingCount,
         isHoliday: isHoliday
     };
+
+    // Simpan ke cache untuk penggunaan berikutnya dalam waktu dekat
+    setInCache(cacheKey, result);
+    return result;
 }
 
+/**
+ * Kalkulasi statistik individu dengan caching.
+ */
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
+    const cacheKey = `stats_${userId}_${format(start, 'yyyyMM')}`;
+    
+    const cachedStats = getFromCache(cacheKey);
+    if (cachedStats) return cachedStats;
+
     const schoolConfigRef = doc(firestore, 'schoolConfig', 'default');
     const monthlyConfigId = format(start, 'yyyy-MM');
     const monthlyConfigRef = doc(firestore, 'monthlyConfigs', monthlyConfigId);
@@ -210,13 +230,16 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
     const percentageRaw = adjustedWorkingDays > 0 ? (hadirScore / adjustedWorkingDays) * 100 : 0;
     const finalPercentage = Math.min(percentageRaw, 100);
 
-    return {
+    const result = {
         totalHadir: hadirScore, 
         totalIzin: izinCount,
         totalSakit: sakitCount,
         totalAlpa: alpaCount,
         persentase: finalPercentage.toFixed(1) + '%',
     };
+
+    setInCache(cacheKey, result);
+    return result;
 }
 
 export async function fetchUserMonthlyReportData(firestore: Firestore, userId: string, currentMonth: Date, schoolConfig: any) {
