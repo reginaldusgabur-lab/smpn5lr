@@ -1,4 +1,3 @@
-
 'use server';
 
 import { doc, getDoc, collection, getDocs, query, where, collectionGroup } from 'firebase/firestore';
@@ -66,7 +65,8 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
         const attendanceSnap = await getDocs(attendanceQuery);
         const presentUserIds = new Set<string>();
         attendanceSnap.forEach(doc => {
-            const userId = doc.data().userId || doc.ref.parent.parent?.id;
+            const data = doc.data();
+            const userId = data.userId || doc.ref.parent.parent?.id;
             if (userId) presentUserIds.add(userId);
         });
 
@@ -93,9 +93,9 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
         let alpaCount = 0;
         let pendingCount = 0;
 
-        const notPresentStaff = allStaff.filter(user => !presentUserIds.has(user.id));
+        const notPresentStaff = allStaff.filter((user: any) => !presentUserIds.has(user.id));
 
-        notPresentStaff.forEach(user => {
+        notPresentStaff.forEach((user: any) => {
             const leaveInfo = leaveStatusByUserId.get(user.id);
             if (leaveInfo) {
                 if (leaveInfo.status === 'approved') {
@@ -123,7 +123,6 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
         setInCache(cacheKey, result);
         return result;
     } catch (e) {
-        console.warn("Failed to fetch group stats, possibly rules limit:", e);
         return { totalStaff: 0, hadir: 0, izin: 0, sakit: 0, alpa: 0, pending: 0, isHoliday: false };
     }
 }
@@ -277,7 +276,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
         const offDays = schoolConfig.offDays ?? [0, 6];
         const holidays = monthlyConfig?.holidays ?? [];
 
-        const attendanceMap = new Map(attendanceHistory.map(rec => [format(rec.checkInTime.toDate(), 'yyyy-MM-dd'), rec]));
+        const attendanceMap = new Map(attendanceHistory.map(rec => [format((rec as any).checkInTime.toDate(), 'yyyy-MM-dd'), rec]));
         const leaveMap = new Map<string, any>();
         leaveHistory.forEach(leave => {
             eachDayOfInterval({ start: leave.startDate.toDate(), end: leave.endDate.toDate() }).forEach(day => {
@@ -298,7 +297,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                 return null;
             }
 
-            const attendanceRecord = attendanceMap.get(dayStr);
+            const attendanceRecord = attendanceMap.get(dayStr) as any;
             const leaveRecord = leaveMap.get(dayStr);
 
             if (attendanceRecord) {

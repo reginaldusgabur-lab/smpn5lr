@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
@@ -44,6 +43,7 @@ export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { status: windowStatus } = useAttendanceWindow();
+  const isMounted = useRef(true);
 
   const [stats, setStats] = useState({ hadir: 0, izin: 0, sakit: 0, pending: 0 });
   const [isStatsLoading, setIsStatsLoading] = useState(true);
@@ -60,26 +60,30 @@ export default function DashboardPage() {
             getDailyStaffAttendanceStats(firestore),
             calculateAttendanceStats(firestore, user.uid, { start: startOfMonth(now), end: endOfMonth(now) })
         ]);
-        setStats(dailyStats);
-        setPersonalSummary({
-            percentage: personalStats.persentase.replace('%', ''),
-            hadir: Math.ceil(personalStats.totalHadir),
-            izin: personalStats.totalIzin,
-            sakit: personalStats.totalSakit,
-            alpa: personalStats.totalAlpa
-        });
+        if (isMounted.current) {
+            setStats(dailyStats);
+            setPersonalSummary({
+                percentage: personalStats.persentase.replace('%', ''),
+                hadir: Math.ceil(personalStats.totalHadir),
+                izin: personalStats.totalIzin,
+                sakit: personalStats.totalSakit,
+                alpa: personalStats.totalAlpa
+            });
+        }
     } catch (error) {
-        // Silent error for stability
+        // Silent catch for stability
     } finally {
-        setIsStatsLoading(false);
-        setIsPersonalSummaryLoading(false);
+        if (isMounted.current) {
+            setIsStatsLoading(false);
+            setIsPersonalSummaryLoading(false);
+        }
     }
   }, [firestore, user]);
 
   useEffect(() => {
-    let isMounted = true;
-    if (isMounted) loadDashboardData();
-    return () => { isMounted = false; };
+    isMounted.current = true;
+    loadDashboardData();
+    return () => { isMounted.current = false; };
   }, [loadDashboardData]);
 
   const todaysAttendanceQuery = useMemoFirebase(() => {

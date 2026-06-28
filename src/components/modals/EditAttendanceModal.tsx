@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useFirestore } from '@/firebase';
 import { doc, getDoc, writeBatch, Timestamp, collection, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { fetchUserMonthlyReportData } from '@/lib/attendance';
@@ -61,8 +60,10 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [schoolConfig, setSchoolConfig] = useState<any>(null);
+    const isMounted = useRef(true);
 
     useEffect(() => {
+        isMounted.current = true;
         if (!isOpen || !firestore || !user) return;
         const getProblematicDays = async () => {
             setIsLoading(true);
@@ -71,15 +72,18 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 const schoolConfigRef = doc(firestore, 'schoolConfig', 'default');
                 const schoolConfigSnap = await getDoc(schoolConfigRef);
                 const config = schoolConfigSnap.data() || {};
-                setSchoolConfig(config);
+                if (isMounted.current) setSchoolConfig(config);
                 const reportData = await fetchUserMonthlyReportData(firestore, user.uid, month, config);
                 const problems = reportData.filter(d => (d.status === 'Alpa') || (d.description === 'Tidak absen pulang') || (d.description === 'Belum absen pulang'));
-                setProblematicDays(problems);
-                setSelectedDays({});
+                if (isMounted.current) {
+                    setProblematicDays(problems);
+                    setSelectedDays({});
+                }
             } catch (err) { console.error("Error fetching problematic days:", err); setError('Gagal memuat data.'); }
-            finally { setIsLoading(false); }
+            finally { if (isMounted.current) setIsLoading(false); }
         };
         getProblematicDays();
+        return () => { isMounted.current = false; };
     }, [isOpen, firestore, user, month]);
 
     const handleSelectDay = (dayId: string) => setSelectedDays(prev => ({ ...prev, [dayId]: !prev[dayId] }));
@@ -206,11 +210,12 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl">
-                <DialogHeader>
+            <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
+                <DialogHeader className="p-6 pb-2">
                     <DialogTitle className="text-xl font-bold text-primary">Perbaiki Kehadiran</DialogTitle>
                     {error && <Alert variant="destructive" className="mt-4 rounded-xl"><AlertTitle className="font-bold">Kesalahan</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
                 </DialogHeader>
+                <div className="px-6 pb-6">
                 {isLoading ? (
                     <div className="py-4 space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-3/4" /></div>
                 ) : problematicDays.length > 0 ? (
@@ -254,7 +259,8 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                         <p className="text-sm font-medium text-muted-foreground">Semua data kehadiran sudah rapi.</p>
                     </div>
                 )}
-                <DialogFooter className="pt-4 flex flex-col sm:flex-row gap-2">
+                </div>
+                <DialogFooter className="p-6 pt-0 flex flex-col sm:flex-row gap-2">
                     <DialogClose asChild><Button variant="ghost" className="rounded-xl font-bold" disabled={isSaving}>Batal</Button></DialogClose>
                     <Button onClick={handleSaveChanges} className="rounded-xl font-bold shadow-lg bg-primary" disabled={isLoading || isSaving || !hasSelection}>
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Perbaiki Terpilih'}

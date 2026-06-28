@@ -130,16 +130,16 @@ export default function LoginPage() {
   };
   
   if (isUserLoading || user) {
-      return <div className="h-screen w-full bg-background" />;
+      return <div className="fixed inset-0 bg-background" />;
   }
 
   return (
     <div className="flex flex-col min-h-screen items-center justify-center p-4 bg-background text-foreground">
       <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-        <Card className="w-full max-md bg-card border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
+        <Card className="w-full max-w-md bg-card border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
           <CardHeader className="text-center space-y-2 pt-12 pb-6">
             <div className="flex justify-center mb-6">
-              <div className="relative w-16 h-16 transition-all duration-500 hover:scale-110">
+              <div className="relative w-20 h-20 transition-all duration-500 hover:scale-110">
                 <Image
                   src={appLogo?.imageUrl || "/logo-3d-v2.png"}
                   alt="Logo E-SPENLI"
@@ -234,7 +234,7 @@ export default function LoginPage() {
 
         <DialogContent className="rounded-[2.5rem] border-none p-10">
           <DialogHeader>
-            <DialogTitle className="font-bold text-2xl tracking-tighter">Atur ulang sandi</DialogTitle>
+            <DialogTitle className="font-bold text-2xl tracking-tighter text-primary">Atur ulang sandi</DialogTitle>
             <DialogDescription className="font-bold text-xs text-muted-foreground mt-2">
               Masukkan email terdaftar Anda untuk menerima tautan pemulihan.
             </DialogDescription>

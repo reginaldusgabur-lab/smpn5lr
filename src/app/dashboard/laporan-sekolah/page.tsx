@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, getDocs, doc } from 'firebase/firestore';
@@ -56,14 +55,15 @@ export default function SchoolReportPage() {
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState("all");
+    const isMounted = useRef(true);
 
     const schoolConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'schoolConfig', 'default') : null, [firestore]);
     const { data: schoolConfigData } = useDoc(user, schoolConfigRef);
 
     useEffect(() => {
+        isMounted.current = true;
         if (isUserLoading || !user || !firestore) return;
         
-        let isMounted = true;
         const loadData = async () => {
             setIsReportLoading(true);
             setError(null);
@@ -96,15 +96,15 @@ export default function SchoolReportPage() {
                 const results = await Promise.all(reportPromises);
                 results.sort((a, b) => (a.sequenceNumber ?? 999) - (b.sequenceNumber ?? 999));
 
-                if (isMounted) setReportData(results.map((r, i) => ({ ...r, no: i + 1 })));
+                if (isMounted.current) setReportData(results.map((r, i) => ({ ...r, no: i + 1 })));
             } catch (err) { 
                 console.error("Load report error:", err);
-                if (isMounted) setError("Gagal memuat data laporan."); 
+                if (isMounted.current) setError("Gagal memuat data laporan."); 
             }
-            finally { if (isMounted) setIsReportLoading(false); }
+            finally { if (isMounted.current) setIsReportLoading(false); }
         };
         loadData();
-        return () => { isMounted = false; };
+        return () => { isMounted.current = false; };
     }, [user, isUserLoading, firestore, currentMonth]);
 
     const filteredReports = useMemo(() => reportData.filter(r => (roleFilter === 'all' || r.role === roleFilter) && r.name.toLowerCase().includes(searchTerm.toLowerCase())), [reportData, roleFilter, searchTerm]);
@@ -412,14 +412,14 @@ export default function SchoolReportPage() {
                                 <Table>
                                     <TableHeader className="bg-muted/30">
                                         <TableRow className="border-none">
-                                            <TableHead className="w-[60px] text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">No</TableHead>
-                                            <TableHead className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Nama & NIP</TableHead>
-                                            <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">H</TableHead>
-                                            <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">I</TableHead>
-                                            <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">S</TableHead>
-                                            <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">A</TableHead>
-                                            <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">%</TableHead>
-                                            <TableHead className="w-[80px] text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Aksi</TableHead>
+                                            <TableHead className="w-[60px] text-center font-bold text-[10px] tracking-widest text-muted-foreground">No</TableHead>
+                                            <TableHead className="font-bold text-[10px] tracking-widest text-muted-foreground">Nama & NIP</TableHead>
+                                            <TableHead className="text-center font-bold text-[10px] tracking-widest text-muted-foreground">H</TableHead>
+                                            <TableHead className="text-center font-bold text-[10px] tracking-widest text-muted-foreground">I</TableHead>
+                                            <TableHead className="text-center font-bold text-[10px] tracking-widest text-muted-foreground">S</TableHead>
+                                            <TableHead className="text-center font-bold text-[10px] tracking-widest text-muted-foreground">A</TableHead>
+                                            <TableHead className="text-center font-bold text-[10px] tracking-widest text-muted-foreground">%</TableHead>
+                                            <TableHead className="w-[80px] text-center font-bold text-[10px] tracking-widest text-muted-foreground">Aksi</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>

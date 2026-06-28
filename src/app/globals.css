@@ -5,7 +5,7 @@
 @layer base {
   :root {
     --background: 210 40% 98%; /* Ice White / Very Light Blue */
-    --foreground: 222 47% 11%; /* Deep Navy (Replacing Pure Black) */
+    --foreground: 222 47% 11%; /* Deep Navy */
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
@@ -23,11 +23,11 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221 83% 53%;
-    --radius: 0.75rem;
+    --radius: 1rem;
   }
   .dark {
-    --background: 222 47% 11%; /* Midnight Blue (Replacing Pure Black) */
-    --foreground: 0 0% 100%; /* Pure White */
+    --background: 222 47% 11%; /* Midnight Blue */
+    --foreground: 0 0% 100%;
     --card: 222 47% 11%;
     --card-foreground: 0 0% 100%;
     --popover: 222 47% 11%;
@@ -55,4 +55,13 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@keyframes pulse-custom {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+.animate-logo-pulse {
+  animation: pulse-custom 2s ease-in-out infinite;
 }
