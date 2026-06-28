@@ -23,7 +23,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_v2_${todayStr}`;
+    const cacheKey = `daily_v3_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -131,7 +131,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
  */
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v3_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v4_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -175,36 +175,34 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         const workingDaysSet = new Set(effectiveWorkingDays.map(day => format(day, 'yyyy-MM-dd')));
         const pastWorkingDaysSet = new Set(effectiveWorkingDays.filter(day => isBefore(day, today) || isSameDay(day, today)).map(d => format(d, 'yyyy-MM-dd')));
         
-        const approvedEarlyLeaveDates = new Set<string>();
-        leaveData.forEach(leave => {
-            if (leave.type === 'Pulang Cepat') {
-                approvedEarlyLeaveDates.add(format(leave.startDate.toDate(), 'yyyy-MM-dd'));
+        // Hitung poin kehadiran (Hadir/Dinas/Pulang Cepat = 1.0)
+        let hadirScore = 0;
+        const attDates = new Set<string>();
+
+        attendanceData.forEach((att: any) => {
+            const attDateStr = format(att.checkInTime.toDate(), 'yyyy-MM-dd');
+            if (workingDaysSet.has(attDateStr)) {
+                // Beri poin jika sudah absen masuk (minimal)
+                // Jika sudah lewat hari, pastikan ada jam pulang atau ini record manual
+                const checkOutTime = att.checkOutTime?.toDate();
+                if (checkOutTime || isSameDay(att.checkInTime.toDate(), today) || att.manualEntry) {
+                    hadirScore += 1;
+                } else {
+                    hadirScore += 0.5; // Tanpa absen pulang di hari lewat dihitung setengah (opsional, sesuaikan)
+                }
+                attDates.add(attDateStr);
             }
         });
-
-        // Hitung poin kehadiran (Hadir/Dinas/Pulang Cepat = 1.0)
-        const hadirScore = attendanceData.reduce((total, att: any) => {
-            const attDateStr = format(att.checkInTime.toDate(), 'yyyy-MM-dd');
-            if (!workingDaysSet.has(attDateStr)) return total;
-
-            const isPresent = att.checkInTime && (att.checkOutTime || approvedEarlyLeaveDates.has(attDateStr));
-            if (isPresent || att.reasonForUpdate?.includes('Dinas')) {
-                return total + 1;
-            }
-            return total;
-        }, 0);
-
-        const attDates = new Set(
-            attendanceData
-                .map((att: any) => format(att.checkInTime.toDate(), 'yyyy-MM-dd'))
-        );
 
         let izinCount = 0;
         let sakitCount = 0;
         const leaveDates = new Set<string>();
 
         leaveData.forEach(leave => {
-            if (leave.type === 'Pulang Cepat') return; 
+            if (leave.type === 'Pulang Cepat') {
+                // Pulang cepat tidak dihitung sebagai izin/sakit, tapi kehadirannya tetap dari record attendance
+                return; 
+            }
 
             eachDayOfInterval({ start: leave.startDate.toDate(), end: leave.endDate.toDate() }).forEach(day => {
                 const dayStr = format(day, 'yyyy-MM-dd');
@@ -221,13 +219,14 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         }).length;
         
         const totalPastWorkingDays = pastWorkingDaysSet.size;
+        // Denominator = Total Hari Kerja Lewat - Sakit - Izin
         const denominator = Math.max(1, totalPastWorkingDays - (izinCount + sakitCount));
 
         const percentageRaw = (hadirScore / denominator) * 100;
         const finalPercentage = Math.min(percentageRaw, 100);
 
         const result = {
-            totalHadir: hadirScore, 
+            totalHadir: Math.round(hadirScore), 
             totalIzin: izinCount,
             totalSakit: sakitCount,
             totalAlpa: alpaCount,
