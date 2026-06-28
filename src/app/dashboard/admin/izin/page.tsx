@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -215,7 +214,7 @@ export default function PersetujuanIzinPage() {
 
   return (
     <div className="space-y-8">
-      <Card className="overflow-hidden border shadow-xl rounded-3xl bg-card">
+      <Card className="overflow-hidden border shadow-none rounded-3xl bg-card">
         <CardHeader className="p-4 sm:p-6 text-primary border-b border-muted-foreground/10">
           <CardTitle className="font-bold text-sm tracking-tight">Permintaan Izin Tertunda</CardTitle>
           <CardDescription className="text-muted-foreground font-medium pt-1">Tinjau dan proses permintaan izin atau sakit yang menunggu persetujuan.</CardDescription>
@@ -276,7 +275,7 @@ export default function PersetujuanIzinPage() {
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden border shadow-xl rounded-3xl bg-card">
+      <Card className="overflow-hidden border shadow-none rounded-3xl bg-card">
         <CardHeader className="p-4 sm:p-6 text-primary border-b border-muted-foreground/10">
           <CardTitle className="font-bold text-sm tracking-tight">Riwayat Persetujuan</CardTitle>
           <CardDescription className="text-muted-foreground font-medium pt-1">Riwayat permintaan izin atau sakit yang telah diproses dalam 6 hari terakhir.</CardDescription>

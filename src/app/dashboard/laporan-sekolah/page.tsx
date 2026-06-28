@@ -319,7 +319,7 @@ export default function SchoolReportPage() {
                     <p className="text-muted-foreground mt-1 font-bold">Ringkasan kehadiran bulanan untuk seluruh personil aktif.</p>
                 </div>
 
-                <Card className="overflow-hidden border shadow-xl rounded-3xl bg-card">
+                <Card className="overflow-hidden border shadow-none rounded-3xl bg-card">
                     <CardHeader className="p-6 border-b border-muted-foreground/10 text-primary">
                         <CardTitle className="font-bold text-sm tracking-tight">Rekapitulasi Kehadiran</CardTitle>
                         <CardDescription className="text-muted-foreground font-bold">Data kehadiran akumulatif seluruh personil bulan {monthName}.</CardDescription>
@@ -363,7 +363,7 @@ export default function SchoolReportPage() {
                                 </div>
                                 <div className="w-full lg:w-auto">
                                     <Button 
-                                        className="w-full lg:w-auto h-12 rounded-2xl font-bold shadow-lg active:scale-95 transition-all px-8 bg-primary hover:bg-primary/90 text-sm" 
+                                        className="w-full lg:w-auto h-12 rounded-2xl font-bold shadow-none active:scale-95 transition-all px-8 bg-primary hover:bg-primary/90 text-sm" 
                                         disabled={isReportLoading || !filteredReports.length || isExporting}
                                         onClick={handleDownloadPdf}
                                     >
