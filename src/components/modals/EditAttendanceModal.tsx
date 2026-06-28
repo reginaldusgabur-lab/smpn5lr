@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -148,7 +149,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
             const [outStartH, outStartM] = checkOutStartTime.split(':').map(Number);
             const checkOutLimit = setMinutes(setHours(startOfDay(recordDate), outStartH), outStartM);
 
-            // Jika hari yang diedit adalah hari lampau, atau hari ini sudah lewat jam pulang
+            // Logic to fill check-out for past days
             if (isPast || (isToday && now >= checkOutLimit)) {
                 checkOutTime = getRandomTime(recordDate, checkOutStartTime, checkOutEndTime);
                 if (checkOutTime.getTime() <= checkInTime.getTime()) {
@@ -219,7 +220,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     <div className="py-4 space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-3/4" /></div>
                 ) : problematicDays.length > 0 ? (
                     <div className="py-4">
-                        <DialogDescription className="mb-4 text-sm font-medium">Pilih data untuk diperbaiki atau ubah status Alpa secara langsung.</DialogDescription>
+                        <DialogDescription className="mb-4 text-sm font-medium">Pilih data untuk diperbaiki atau ubah status alpa secara langsung.</DialogDescription>
                         <div className="max-h-[300px] overflow-y-auto -mr-2 pr-2 space-y-2">
                             {problematicDays.map(day => (
                                 <div key={day.id} className="flex items-center gap-3 p-3 rounded-2xl transition-colors hover:bg-muted/50 border border-muted-foreground/5">

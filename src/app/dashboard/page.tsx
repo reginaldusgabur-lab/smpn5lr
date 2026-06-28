@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
-import { format, startOfMonth, endOfMonth, startOfDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { TrendingUp, LogIn, LogOut, Sparkles, UserCheck, BookUser, MailWarning, Clock, Lock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -112,7 +113,7 @@ export default function DashboardPage() {
         return (
             <div className="w-full bg-muted text-muted-foreground border border-border font-bold rounded-xl h-12 flex items-center justify-center text-sm">
                 <Lock className="mr-2 h-4 w-4" /> 
-                Sistem nonaktif / Hari libur
+                Sistem nonaktif / hari libur
             </div>
         );
     }
@@ -312,7 +313,7 @@ export default function DashboardPage() {
                     <Card className="bg-card border-none shadow-xl rounded-3xl overflow-hidden">
                         <CardHeader className="p-4 text-blue-700 border-b border-muted-foreground/5">
                             <div className="flex items-center justify-between">
-                                <p className="text-[10px] font-bold tracking-widest">Izin / Sakit</p>
+                                <p className="text-[10px] font-bold tracking-widest">Izin / sakit</p>
                                 <BookUser className="h-4 w-4" />
                             </div>
                         </CardHeader>

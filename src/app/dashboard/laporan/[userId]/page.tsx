@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, getDoc, writeBatch, collection, serverTimestamp, Timestamp, query, where, getDocs } from 'firebase/firestore';
-import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isSameDay, setHours, setMinutes } from 'date-fns';
+import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isSameDay, setHours, setMinutes, isBefore } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -163,6 +164,11 @@ export default function UserReportDetailPage() {
             baseLateTime.setHours(endH, endM, 0);
             const realInTime = addMinutes(baseLateTime, Math.floor(Math.random() * 10) + 1);
 
+            // Auto-fill check-out for past days
+            const outStart = schoolConfigData.checkOutStartTime || '14:00';
+            const outEnd = schoolConfigData.checkOutEndTime || '15:00';
+            const realOutTime = getRandomTime(targetDate, outStart, outEnd);
+
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
             const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
             const snap = await getDocs(q);
@@ -170,19 +176,21 @@ export default function UserReportDetailPage() {
             if (!snap.empty) {
                 await writeBatch(firestore).update(snap.docs[0].ref, {
                     checkInTime: Timestamp.fromDate(realInTime),
+                    checkOutTime: Timestamp.fromDate(realOutTime),
                     manualEntry: true, reasonForUpdate: 'Terlambat',
                     updatedBy: currentUser.uid, updatedAt: serverTimestamp()
                 }).commit();
             } else {
                 await writeBatch(firestore).set(doc(attendanceRef), {
                     userId, date: format(targetDate, 'yyyy-MM-dd'),
-                    checkInTime: Timestamp.fromDate(realInTime), checkOutTime: null,
+                    checkInTime: Timestamp.fromDate(realInTime),
+                    checkOutTime: Timestamp.fromDate(realOutTime),
                     manualEntry: true, reasonForUpdate: 'Terlambat',
                     updatedBy: currentUser.uid, updatedAt: serverTimestamp()
                 }).commit();
             }
 
-            toast({ title: 'Berhasil', description: 'Kehadiran ditandai sebagai Terlambat.' });
+            toast({ title: 'Berhasil', description: 'Kehadiran ditandai sebagai terlambat.' });
             fetchData();
         } catch (err) {
             toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal memperbarui data.' });
@@ -224,7 +232,7 @@ export default function UserReportDetailPage() {
             const batch = writeBatch(firestore);
             const dataToSave = {
                 manualEntry: true,
-                reasonForUpdate: 'Kehadiran Penuh',
+                reasonForUpdate: 'Kehadiran penuh',
                 updatedBy: currentUser.uid,
                 updatedAt: serverTimestamp()
             } as any;
@@ -244,7 +252,7 @@ export default function UserReportDetailPage() {
             }
 
             await batch.commit();
-            toast({ title: 'Berhasil', description: 'Kehadiran ditandai sebagai Hadir.' });
+            toast({ title: 'Berhasil', description: 'Kehadiran ditandai sebagai hadir.' });
             fetchData();
         } catch (err) {
             toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal memperbarui data.' });
@@ -263,7 +271,7 @@ export default function UserReportDetailPage() {
         const monthName = format(currentMonth, 'MMMM yyyy', { locale: id });
         const config = schoolConfigData || ({} as any);
 
-        // Kop Surat - HANYA DI HALAMAN PERTAMA
+        // Kop Surat
         doc.setFont('times', 'bold').setFontSize(14);
         doc.text((config.governmentAgency || 'PEMERINTAH KABUPATEN MANGGARAI').toUpperCase(), centerX, 20, { align: 'center' });
         doc.text((config.educationAgency || 'DINAS PENDIDIKAN, KEPEMUDAAN DAN OLAHRAGA').toUpperCase(), centerX, 27, { align: 'center' });
@@ -343,7 +351,7 @@ export default function UserReportDetailPage() {
         doc.setFont('times', 'normal');
         doc.text(`NIP. ${config.headmasterNip || '198507272011011020'}`, signatureX, signY + 44);
 
-        // Footer di Setiap Halaman
+        // Footer
         const totalPages = doc.internal.getNumberOfPages();
         for (let i = 1; i <= totalPages; i++) {
             doc.setPage(i);
@@ -375,7 +383,7 @@ export default function UserReportDetailPage() {
                             <Skeleton className="h-4 w-64 ml-8 sm:ml-0" />
                         ) : (
                             <p className="text-muted-foreground ml-8 sm:ml-0">
-                                Laporan harian untuk <span className='font-semibold text-foreground'>{userData?.name || 'Pengguna'}</span>.
+                                Laporan harian untuk <span className='font-bold text-foreground'>{userData?.name || 'Pengguna'}</span>.
                             </p>
                         )}
                     </div>
@@ -386,18 +394,18 @@ export default function UserReportDetailPage() {
                         <div className="p-4 space-y-4">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
                                 <div className="flex items-center gap-4">
-                                    <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={isLoading}>
+                                    <Button variant="outline" size="icon" className="rounded-full" onClick={() => changeMonth(-1)} disabled={isLoading}>
                                         <ChevronLeft className="h-4 w-4" />
                                     </Button>
                                     <span className="w-40 text-center font-bold text-lg">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
-                                    <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={isLoading || (currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear())}>
+                                    <Button variant="outline" size="icon" className="rounded-full" onClick={() => changeMonth(1)} disabled={isLoading || (currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear())}>
                                         <ChevronRight className="h-4 w-4" />
                                     </Button>
                                 </div>
                                 <div className="w-full h-px bg-border mt-2" />
                             </div>
                             <div className="flex justify-center sm:justify-end">
-                                <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-semibold bg-primary hover:bg-primary/90 shadow-md h-11 rounded-xl">
+                                <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-bold bg-primary hover:bg-primary/90 shadow-md h-11 rounded-xl">
                                     {isLoading || isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                                     Unduh Laporan PDF
                                 </Button>
@@ -434,15 +442,15 @@ export default function UserReportDetailPage() {
                                         ) : monthlyReportData.length > 0 ? (
                                             monthlyReportData.map((item, index) => (
                                                 <TableRow key={item.id} className={`${item.status === 'Alpa' ? 'bg-destructive/5' : ''} border-muted-foreground/5 hover:bg-muted/20 transition-colors`}>
-                                                    <TableCell className='text-center font-medium text-muted-foreground text-sm'>{index + 1}</TableCell>
-                                                    <TableCell className="whitespace-nowrap font-medium text-sm">{safeFormat(item.date, 'eeee, dd MMM yyyy')}</TableCell>
+                                                    <TableCell className='text-center font-bold text-muted-foreground text-sm'>{index + 1}</TableCell>
+                                                    <TableCell className="whitespace-nowrap font-bold text-sm">{safeFormat(item.date, 'eeee, dd MMM yyyy')}</TableCell>
                                                     <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkInTime, 'HH:mm:ss')}</TableCell>
                                                     <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkOutTime, 'HH:mm:ss')}</TableCell>
                                                     <TableCell className="text-center">
-                                                        {isAdmin && (item.status === 'Alpa' || item.description === 'Tidak Absen Pulang' || item.description === 'Belum Absen Pulang') ? (
+                                                        {isAdmin && (item.status === 'Alpa' || item.description === 'Tidak absen pulang' || item.description === 'Belum absen pulang') ? (
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger asChild>
-                                                                    <Button variant="outline" size="sm" className={`${item.status === 'Alpa' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200'} hover:bg-muted font-black text-[9px] h-7 rounded-lg`}>
+                                                                    <Button variant="outline" size="sm" className={`${item.status === 'Alpa' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200'} hover:bg-muted font-bold text-[9px] h-7 rounded-lg`}>
                                                                         {item.status === 'Alpa' ? 'Alpa' : 'Hadir'} <MoreVertical className="h-3 w-3 ml-1" />
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
@@ -460,7 +468,7 @@ export default function UserReportDetailPage() {
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
                                                         ) : (
-                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black ${ 
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold ${ 
                                                                 item.status === 'Hadir' ? 'bg-green-100 text-green-700' : 
                                                                 item.status === 'Alpa' ? 'bg-red-100 text-red-700' : 
                                                                 'bg-blue-100 text-blue-700' 
@@ -469,11 +477,11 @@ export default function UserReportDetailPage() {
                                                             </span>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="text-[11px] text-muted-foreground font-medium italic">{item.description || '-'}</TableCell>
+                                                    <TableCell className="text-[11px] text-muted-foreground font-bold italic">{item.description || '-'}</TableCell>
                                                 </TableRow>
                                             ))
                                         ) : (
-                                            <TableRow><TableCell colSpan={6} className="h-48 text-center text-muted-foreground font-medium">Tidak ada data untuk periode ini.</TableCell></TableRow>
+                                            <TableRow><TableCell colSpan={6} className="h-48 text-center text-muted-foreground font-bold">Tidak ada data untuk periode ini.</TableCell></TableRow>
                                         )}
                                     </TableBody>
                                 </Table>

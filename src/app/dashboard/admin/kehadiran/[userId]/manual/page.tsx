@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -130,7 +131,7 @@ export default function ManualAttendancePage() {
             } else {
                 await addDoc(collection(firestore, 'users', userId, 'attendanceRecords'), { ...attendanceData, createdAt: serverTimestamp() });
             }
-            toast({ title: 'Sukses', description: `Status Terlambat telah disimpan.` });
+            toast({ title: 'Sukses', description: `Status terlambat telah disimpan.` });
             router.back();
         } catch (err) { setError('Gagal memproses keterlambatan.'); }
         finally { setIsSubmitting(false); }
@@ -238,42 +239,42 @@ export default function ManualAttendancePage() {
                 <CardHeader className="bg-muted/30 border-b border-muted-foreground/10">
                     <CardTitle className="font-bold text-xl">Entri Kehadiran Manual</CardTitle>
                     {userData && (
-                        <CardDescription className="font-medium">
-                            Ubah kehadiran untuk <span className="font-bold text-foreground">{userData.name}</span> pada <span className="font-bold text-foreground">{format(date, 'EEEE, dd MMMM yyyy', { locale: id })}</span>.
+                        <CardDescription className="font-bold">
+                            Ubah kehadiran untuk <span className="text-foreground">{userData.name}</span> pada <span className="text-foreground">{format(date, 'EEEE, dd MMMM yyyy', { locale: id })}</span>.
                         </CardDescription>
                     )}
                 </CardHeader>
                 <CardContent className="p-6">
                     {error && <p className="text-destructive mb-6 text-sm font-bold text-center bg-destructive/10 p-3 rounded-xl">{error}</p>}
                     <div className="space-y-4 mb-8">
-                        <Label className="text-xs font-bold text-primary tracking-widest uppercase ml-1">Tindakan Cepat</Label>
+                        <Label className="text-xs font-bold text-primary tracking-widest uppercase ml-1">Tindakan cepat</Label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            <Button variant="default" className="rounded-xl font-bold h-11" onClick={handleSetHadir} disabled={isSubmitting}>Jadikan Hadir</Button>
-                            <Button variant="outline" className="rounded-xl font-bold h-11" onClick={handleSetLate} disabled={isSubmitting}>Jadikan Terlambat</Button>
-                            <Button variant="outline" className="rounded-xl font-bold h-11" onClick={() => handleCreateLeave('Sakit', 'Sakit')} disabled={isSubmitting}>Jadikan Sakit</Button>
-                            <Button variant="outline" className="rounded-xl font-bold h-11" onClick={() => handleCreateLeave('Izin', 'Izin Pribadi')} disabled={isSubmitting}>Jadikan Izin</Button>
-                            <Button variant="outline" className="rounded-xl font-bold h-11 text-xs" onClick={() => handleCreateLeave('Dinas', 'Dinas Pagi')} disabled={isSubmitting}>Dinas Pagi</Button>
-                            <Button variant="outline" className="rounded-xl font-bold h-11 text-xs" onClick={() => handleCreateLeave('Dinas', 'Dinas Siang')} disabled={isSubmitting}>Dinas Siang</Button>
+                            <Button variant="default" className="rounded-xl font-bold h-11" onClick={handleSetHadir} disabled={isSubmitting}>Jadikan hadir</Button>
+                            <Button variant="outline" className="rounded-xl font-bold h-11" onClick={handleSetLate} disabled={isSubmitting}>Jadikan terlambat</Button>
+                            <Button variant="outline" className="rounded-xl font-bold h-11" onClick={() => handleCreateLeave('Sakit', 'Sakit')} disabled={isSubmitting}>Jadikan sakit</Button>
+                            <Button variant="outline" className="rounded-xl font-bold h-11" onClick={() => handleCreateLeave('Izin', 'Izin pribadi')} disabled={isSubmitting}>Jadikan izin</Button>
+                            <Button variant="outline" className="rounded-xl font-bold h-11 text-xs" onClick={() => handleCreateLeave('Dinas', 'Dinas pagi')} disabled={isSubmitting}>Dinas pagi</Button>
+                            <Button variant="outline" className="rounded-xl font-bold h-11 text-xs" onClick={() => handleCreateLeave('Dinas', 'Dinas siang')} disabled={isSubmitting}>Dinas siang</Button>
                         </div>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6 border-t border-muted-foreground/10 pt-8">
-                         <Label className="text-xs font-bold text-primary tracking-widest uppercase ml-1">Entri Jam Manual</Label>
+                         <Label className="text-xs font-bold text-primary tracking-widest uppercase ml-1">Entri jam manual</Label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label htmlFor="checkIn" className="text-xs font-bold ml-1">Jam Masuk</Label>
+                                <Label htmlFor="checkIn" className="text-xs font-bold ml-1">Jam masuk</Label>
                                 <Input id="checkIn" type="time" className="h-12 rounded-xl bg-muted/30 border-muted-foreground/10" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="checkOut" className="text-xs font-bold ml-1">Jam Pulang</Label>
+                                <Label htmlFor="checkOut" className="text-xs font-bold ml-1">Jam pulang</Label>
                                 <Input id="checkOut" type="time" className="h-12 rounded-xl bg-muted/30 border-muted-foreground/10" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
                             </div>
                         </div>
-                        <p className="text-[11px] text-muted-foreground font-medium italic">Isi jam masuk/pulang secara manual jika diperlukan dan klik simpan.</p>
+                        <p className="text-[11px] text-muted-foreground font-bold italic">Isi jam masuk/pulang secara manual jika diperlukan dan klik simpan.</p>
                         <div className="flex justify-end pt-4">
                             <Button type="submit" className="w-full sm:w-auto h-12 rounded-xl font-bold px-10 shadow-lg active:scale-95 transition-all" disabled={isSubmitting}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Simpan Kehadiran
+                                Simpan kehadiran
                             </Button>
                         </div>
                     </form>
