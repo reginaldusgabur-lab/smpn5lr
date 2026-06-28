@@ -101,35 +101,40 @@ export default function UserReportDetailPage() {
     };
 
     const handleStatusChange = async (dateStr: string, newStatus: string, reason: string) => {
-        if (!currentUser || !firestore || isMutating) return;
+        if (!currentUser || !firestore || isMutating || !schoolConfigData) return;
         setIsMutating(true);
         try {
             const targetDate = parseISO(dateStr);
             const batch = writeBatch(firestore);
             
-            if (newStatus === 'Pulang Cepat') {
+            // Logika baru: Dinas dan Pulang Cepat harus mengisi AttendanceRecord agar sinkron ke persentase
+            if (newStatus.includes('Dinas') || newStatus === 'Pulang Cepat') {
                 const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
                 const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
                 const snap = await getDocs(q);
                 
+                const inStart = schoolConfigData.checkInStartTime || '07:00';
+                const inEnd = schoolConfigData.checkInEndTime || '07:30';
+                const outStart = schoolConfigData.checkOutStartTime || '14:00';
+                const outEnd = schoolConfigData.checkOutEndTime || '16:00';
+                
+                const realInTime = getRandomTime(targetDate, inStart, inEnd);
+                let realOutTime: Date | null = getRandomTime(targetDate, outStart, outEnd);
+                
+                if (newStatus === 'Pulang Cepat') realOutTime = null;
+
+                const dataToSave = {
+                    userId, date: format(targetDate, 'yyyy-MM-dd'),
+                    checkInTime: Timestamp.fromDate(realInTime), 
+                    checkOutTime: realOutTime ? Timestamp.fromDate(realOutTime) : null,
+                    manualEntry: true, reasonForUpdate: reason,
+                    updatedBy: currentUser.uid, updatedAt: serverTimestamp()
+                };
+
                 if (!snap.empty) {
-                    batch.update(snap.docs[0].ref, {
-                        checkOutTime: null,
-                        manualEntry: true,
-                        reasonForUpdate: 'Pulang Cepat',
-                        updatedBy: currentUser.uid,
-                        updatedAt: serverTimestamp()
-                    });
+                    batch.update(snap.docs[0].ref, dataToSave);
                 } else {
-                    const inStart = schoolConfigData?.checkInStartTime || '07:00';
-                    const inEnd = schoolConfigData?.checkInEndTime || '07:30';
-                    const realInTime = getRandomTime(targetDate, inStart, inEnd);
-                    batch.set(doc(attendanceRef), {
-                        userId, date: format(targetDate, 'yyyy-MM-dd'),
-                        checkInTime: Timestamp.fromDate(realInTime), checkOutTime: null,
-                        manualEntry: true, reasonForUpdate: 'Pulang Cepat',
-                        updatedBy: currentUser.uid, updatedAt: serverTimestamp()
-                    });
+                    batch.set(doc(attendanceRef), dataToSave);
                 }
             } else {
                 const leaveRef = collection(firestore, 'users', userId, 'leaveRequests');
@@ -210,7 +215,7 @@ export default function UserReportDetailPage() {
             const checkInTime = getRandomTime(targetDate, inStart, inEnd);
 
             const outStart = schoolConfigData.checkOutStartTime || '14:00';
-            const outEnd = schoolConfigData.checkOutEndTime || '15:00';
+            const outEnd = schoolConfigData.checkOutEndTime || '16:00';
             
             let checkOutTime: Date | null = null;
             const [outH, outM] = outStart.split(':').map(Number);
@@ -398,7 +403,7 @@ export default function UserReportDetailPage() {
                                 <div className="w-full h-px bg-border mt-2" />
                             </div>
                             <div className="flex justify-center sm:justify-end">
-                                <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-bold bg-primary hover:bg-primary/90 shadow-md h-11 rounded-xl">
+                                <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-bold bg-primary hover:bg-primary/90 shadow-none h-11 rounded-xl">
                                     {isLoading || isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                                     Unduh Laporan PDF
                                 </Button>
@@ -443,11 +448,11 @@ export default function UserReportDetailPage() {
                                                         {isAdmin && (item.status === 'Alpa' || item.description === 'Tidak absen pulang' || item.description === 'Belum absen pulang') ? (
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger asChild>
-                                                                    <Button variant="outline" size="sm" className={`${item.status === 'Alpa' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200'} hover:bg-muted font-bold text-[9px] h-7 rounded-lg`}>
+                                                                    <Button variant="outline" size="sm" className={`${item.status === 'Alpa' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200'} hover:bg-muted font-bold text-[9px] h-7 rounded-lg shadow-none`}>
                                                                         {item.status === 'Alpa' ? 'Alpa' : 'Hadir'} <MoreVertical className="h-3 w-3 ml-1" />
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl">
+                                                                <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-none border border-muted-foreground/10">
                                                                     <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground">Perbaikan Kehadiran</DropdownMenuLabel>
                                                                     <DropdownMenuSeparator />
                                                                     <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleSetHadir(item.date)}>Jadikan Hadir</DropdownMenuItem>
@@ -456,8 +461,8 @@ export default function UserReportDetailPage() {
                                                                     <DropdownMenuSeparator />
                                                                     <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleStatusChange(item.date, 'Sakit', 'Sakit')}>Sakit</DropdownMenuItem>
                                                                     <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleStatusChange(item.date, 'Izin Pribadi', 'Izin Pribadi')}>Izin Pribadi</DropdownMenuItem>
-                                                                    <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleStatusChange(item.date, 'Dinas', 'Dinas Pagi')}>Dinas Pagi</DropdownMenuItem>
-                                                                    <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleStatusChange(item.date, 'Dinas', 'Dinas Siang')}>Dinas Siang</DropdownMenuItem>
+                                                                    <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleStatusChange(item.date, 'Dinas Pagi', 'Dinas Pagi')}>Dinas Pagi</DropdownMenuItem>
+                                                                    <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleStatusChange(item.date, 'Dinas Siang', 'Dinas Siang')}>Dinas Siang</DropdownMenuItem>
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
                                                         ) : (

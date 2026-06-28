@@ -19,12 +19,11 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 
 /**
  * Mendapatkan ringkasan kehadiran harian seluruh staf untuk dashboard.
- * Menggunakan caching untuk efisiensi.
  */
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_${todayStr}`;
+    const cacheKey = `daily_v2_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -94,7 +93,6 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
         let izinCount = 0;
         let sakitCount = 0;
-        let alpaCount = 0;
         let pendingCount = 0;
 
         const notPresentStaff = allStaff.filter((user: any) => !presentUserIds.has(user.id));
@@ -109,8 +107,6 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
                 } else if (leaveInfo.status === 'pending') {
                      if (leaveInfo.type !== 'Pulang Cepat') pendingCount++;
                 }
-            } else {
-                if (!isHoliday) alpaCount++;
             }
         });
 
@@ -119,7 +115,6 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
             hadir: presentUserIds.size,
             izin: izinCount,
             sakit: sakitCount,
-            alpa: alpaCount,
             pending: pendingCount,
             isHoliday: isHoliday
         };
@@ -127,16 +122,16 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
         setInCache(cacheKey, result);
         return result;
     } catch (e) {
-        return { totalStaff: 0, hadir: 0, izin: 0, sakit: 0, alpa: 0, pending: 0, isHoliday: false };
+        return { totalStaff: 0, hadir: 0, izin: 0, sakit: 0, pending: 0, isHoliday: false };
     }
 }
 
 /**
- * Kalkulasi statistik kehadiran individu (SINKRON DENGAN LAPORAN).
+ * Kalkulasi statistik kehadiran individu dengan akurasi tinggi (Sinkron dengan Laporan).
  */
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_sync_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v3_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -166,7 +161,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
 
         const schoolConfig = schoolConfigSnap.data();
         const monthlyConfig = monthlyConfigSnap.data();
-        const attendanceData = attendanceSnap.docs.map(d => d.data());
+        const attendanceData = attendanceSnap.docs.map(d => ({ ...d.data(), id: d.id }));
         const leaveData = leaveSnap.docs.map(d => d.data());
 
         const offDays: number[] = schoolConfig?.offDays ?? [0, 6];
@@ -182,30 +177,26 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         
         const approvedEarlyLeaveDates = new Set<string>();
         leaveData.forEach(leave => {
-            if (leave.type === 'Pulang Cepat' && leave.status === 'approved') {
+            if (leave.type === 'Pulang Cepat') {
                 approvedEarlyLeaveDates.add(format(leave.startDate.toDate(), 'yyyy-MM-dd'));
             }
         });
 
-        const hadirScore = attendanceData.reduce((total, att) => {
+        // Hitung poin kehadiran (Hadir/Dinas/Pulang Cepat = 1.0)
+        const hadirScore = attendanceData.reduce((total, att: any) => {
             const attDateStr = format(att.checkInTime.toDate(), 'yyyy-MM-dd');
             if (!workingDaysSet.has(attDateStr)) return total;
 
-            if (att.checkInTime && att.checkOutTime) {
+            const isPresent = att.checkInTime && (att.checkOutTime || approvedEarlyLeaveDates.has(attDateStr));
+            if (isPresent || att.reasonForUpdate?.includes('Dinas')) {
                 return total + 1;
-            } else if (att.checkInTime) {
-                // Jika ada CheckIn tapi tidak ada CheckOut, cek apakah ada Izin Pulang Cepat
-                if (approvedEarlyLeaveDates.has(attDateStr)) return total + 1;
-                // Jika hari sudah lewat dan tidak ada CheckOut, itu Alpa (0 poin), tapi jika hari ini, dianggap hadir sementara (0.5 atau 1 tergantung kebijakan)
-                return isBefore(att.checkInTime.toDate(), today) ? total : total + 0.5;
             }
             return total;
         }, 0);
 
         const attDates = new Set(
             attendanceData
-                .filter(att => workingDaysSet.has(format(att.checkInTime.toDate(), 'yyyy-MM-dd')))
-                .map(att => format(att.checkInTime.toDate(), 'yyyy-MM-dd'))
+                .map((att: any) => format(att.checkInTime.toDate(), 'yyyy-MM-dd'))
         );
 
         let izinCount = 0;
@@ -213,7 +204,6 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         const leaveDates = new Set<string>();
 
         leaveData.forEach(leave => {
-            if (leave.status !== 'approved') return;
             if (leave.type === 'Pulang Cepat') return; 
 
             eachDayOfInterval({ start: leave.startDate.toDate(), end: leave.endDate.toDate() }).forEach(day => {
@@ -230,8 +220,8 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
             return !attDates.has(dayStr) && !leaveDates.has(dayStr);
         }).length;
         
-        const totalWorkingDays = effectiveWorkingDays.length;
-        const denominator = Math.max(1, totalWorkingDays - (izinCount + sakitCount));
+        const totalPastWorkingDays = pastWorkingDaysSet.size;
+        const denominator = Math.max(1, totalPastWorkingDays - (izinCount + sakitCount));
 
         const percentageRaw = (hadirScore / denominator) * 100;
         const finalPercentage = Math.min(percentageRaw, 100);
@@ -247,7 +237,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         setInCache(cacheKey, result);
         return result;
     } catch (e) {
-        return { totalHadir: 0, totalIzin: 0, totalSakit: 0, totalAlpa: 0, persentase: '0%' };
+        return { totalHadir: 0, totalIzin: 0, totalSakit: 0, totalAlpa: 0, persentase: '0.0%' };
     }
 }
 
