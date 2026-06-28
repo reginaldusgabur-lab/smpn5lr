@@ -1,3 +1,4 @@
+
 'use client';
 
 import { doc, getDoc, collection, getDocs, query, where, collectionGroup } from 'firebase/firestore';
@@ -18,20 +19,20 @@ export interface MonthlyReportData {
 const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\)/g, '').replace(/\(✓\)/g, '').trim() : '';
 
 /**
- * Mengambil statistik kehadiran harian dengan dukungan caching.
+ * Mengambil statistik kehadiran harian dengan dukungan caching hybrid.
  */
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
     const cacheKey = `daily_stats_${todayStr}`;
     
-    // Coba ambil dari cache memori terlebih dahulu
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
 
     const startOfToday = startOfDay(today);
     const endOfToday = endOfDay(today);
 
+    // Ambil data dalam satu batch untuk efisiensi
     const schoolConfigRef = doc(firestore, 'schoolConfig', 'default');
     const monthlyConfigId = format(today, 'yyyy-MM');
     const monthlyConfigRef = doc(firestore, 'monthlyConfigs', monthlyConfigId);
@@ -122,13 +123,12 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
         isHoliday: isHoliday
     };
 
-    // Simpan ke cache untuk penggunaan berikutnya dalam waktu dekat
     setInCache(cacheKey, result);
     return result;
 }
 
 /**
- * Kalkulasi statistik individu dengan caching.
+ * Kalkulasi statistik individu dengan caching hybrid.
  */
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;

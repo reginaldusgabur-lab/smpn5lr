@@ -1,9 +1,10 @@
+
 'use client';
 
 /**
- * Sederhana, cache di memori sisi klien untuk menyimpan hasil query Firestore.
- * Ini membantu mengurangi panggilan database yang tidak perlu untuk data yang tidak sering berubah,
- * membuat navigasi lebih cepat dan lebih hemat biaya.
+ * Hybrid Caching System: In-Memory + Session Storage.
+ * Membantu mengurangi panggilan database Firestore secara drastis dengan menyimpan 
+ * hasil query selama sesi berlangsung.
  */
 
 interface CacheEntry {
@@ -11,52 +12,77 @@ interface CacheEntry {
   timestamp: number;
 }
 
-// Peta untuk menampung entri cache.
-const cache = new Map<string, CacheEntry>();
+const memoryCache = new Map<string, CacheEntry>();
 
-// Time-To-Live (TTL) untuk entri cache dalam milidetik. Data yang lebih tua dari ini akan dianggap usang.
-// Diatur ke 2 menit, keseimbangan yang baik antara kesegaran data dan penghematan panggilan DB.
-const TTL = 2 * 60 * 1000; // 2 Menit
+// TTL (Time-To-Live) dinaikkan menjadi 5 menit untuk stabilitas lebih baik.
+const TTL = 5 * 60 * 1000; 
 
 /**
- * Mengambil data dari cache jika ada dan masih segar.
- * @param key Kunci unik untuk entri cache (misalnya, path koleksi + filter query).
- * @returns Data yang di-cache atau null jika tidak ada atau sudah usang.
+ * Mengambil data dari cache hybrid.
  */
 export const getFromCache = (key: string): any | null => {
-  const entry = cache.get(key);
+  if (typeof window === 'undefined') return null;
 
-  // Periksa apakah entri ada dan apakah belum melewati TTL.
+  // 1. Cek Memori (Sangat Cepat)
+  let entry = memoryCache.get(key);
+
+  // 2. Cek SessionStorage jika di memori tidak ada (Standby/Refresh recovery)
+  if (!entry) {
+    try {
+      const stored = sessionStorage.getItem(`espenli_cache_${key}`);
+      if (stored) {
+        entry = JSON.parse(stored);
+        // Masukkan kembali ke memori untuk akses lebih cepat berikutnya
+        if (entry) memoryCache.set(key, entry);
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Periksa kesegaran data
   if (entry && (Date.now() - entry.timestamp < TTL)) {
-    // console.log(`[CACHE HIT] Mengambil data untuk kunci: ${key}`);
     return entry.data;
   }
 
-  // console.log(`[CACHE MISS] Tidak ada data segar untuk kunci: ${key}`);
+  // Jika usang, hapus
+  if (entry) invalidateCache(key);
   return null;
 };
 
 /**
- * Menyimpan data ke dalam cache.
- * @param key Kunci unik untuk entri cache.
- * @param data Data yang akan disimpan.
+ * Menyimpan data ke dalam cache hybrid.
  */
 export const setInCache = (key: string, data: any): void => {
-  // console.log(`[CACHE SET] Menyimpan data untuk kunci: ${key}`);
-  cache.set(key, { data, timestamp: Date.now() });
+  if (typeof window === 'undefined') return;
+
+  const entry: CacheEntry = { data, timestamp: Date.now() };
+  
+  // Simpan di Memori
+  memoryCache.set(key, entry);
+
+  // Simpan di SessionStorage agar tahan refresh ringan
+  try {
+    sessionStorage.setItem(`espenli_cache_${key}`, JSON.stringify(entry));
+  } catch (e) {
+    // Abaikan jika quota penuh
+  }
 };
 
 /**
- * Menghapus entri tertentu dari cache, atau membersihkan seluruh cache.
- * Ini berguna ketika mutasi data terjadi (misalnya, setelah memperbarui dokumen).
- * @param key Kunci spesifik yang akan dihapus. Jika tidak disediakan, seluruh cache akan dibersihkan.
+ * Menghapus entri cache.
  */
 export const invalidateCache = (key?: string): void => {
+  if (typeof window === 'undefined') return;
+
   if (key) {
-    // console.log(`[CACHE INVALIDATE] Menghapus kunci: ${key}`);
-    cache.delete(key);
+    memoryCache.delete(key);
+    sessionStorage.removeItem(`espenli_cache_${key}`);
   } else {
-    // console.log('[CACHE CLEAR] Membersihkan semua entri cache.');
-    cache.clear();
+    memoryCache.clear();
+    // Hapus semua session storage milik aplikasi ini
+    Object.keys(sessionStorage).forEach(k => {
+      if (k.startsWith('espenli_cache_')) sessionStorage.removeItem(k);
+    });
   }
 };
