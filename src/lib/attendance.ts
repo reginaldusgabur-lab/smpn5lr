@@ -17,6 +17,10 @@ export interface MonthlyReportData {
 
 const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\)/g, '').replace(/\(✓\)/g, '').trim() : '';
 
+/**
+ * Mendapatkan ringkasan kehadiran harian seluruh staf untuk dashboard.
+ * Menggunakan caching untuk efisiensi.
+ */
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
@@ -49,6 +53,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
             return offDays.includes(today.getDay());
         })();
 
+        // Ambil staf aktif
         const usersQuery = query(
             collection(firestore, 'users'), 
             where('role', 'in', ['guru', 'pegawai', 'kepala_sekolah']),
@@ -57,6 +62,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
         const usersSnap = await getDocs(usersQuery);
         const allStaff = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
+        // Ambil kehadiran hari ini (Bulk)
         const attendanceQuery = query(
             collectionGroup(firestore, 'attendanceRecords'),
             where('checkInTime', '>=', startOfToday),
@@ -70,6 +76,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
             if (userId) presentUserIds.add(userId);
         });
 
+        // Ambil izin hari ini (Bulk)
         const leaveQuery = query(collectionGroup(firestore, 'leaveRequests'));
         const leaveSnap = await getDocs(leaveQuery);
         const leaveStatusByUserId = new Map<string, { status: string, type: string }>();
@@ -127,6 +134,9 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     }
 }
 
+/**
+ * Kalkulasi statistik kehadiran individu.
+ */
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
     const cacheKey = `stats_${userId}_${format(start, 'yyyyMM')}`;
@@ -243,6 +253,9 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
     }
 }
 
+/**
+ * Mengambil data laporan bulanan individu secara lengkap.
+ */
 export async function fetchUserMonthlyReportData(firestore: Firestore, userId: string, currentMonth: Date, schoolConfig: any) {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);

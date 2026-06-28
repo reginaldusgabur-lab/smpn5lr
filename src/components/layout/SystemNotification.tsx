@@ -26,7 +26,6 @@ export function SystemNotification() {
   }>(user, schoolConfigRef);
 
   useEffect(() => {
-    // Reset dismissal status when a new notification is activated or changed
     setHasBeenDismissed(false);
     setIsVisible(false);
   }, [config?.notificationTitle, config?.notificationContent, config?.isNotificationActive]);

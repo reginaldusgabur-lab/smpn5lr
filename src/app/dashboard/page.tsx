@@ -80,9 +80,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     isMounted.current = true;
-    loadDashboardData();
+    if (!isUserLoading && user) {
+        loadDashboardData();
+    }
     return () => { isMounted.current = false; };
-  }, [loadDashboardData]);
+  }, [loadDashboardData, user, isUserLoading]);
 
   const todaysAttendanceQuery = useMemoFirebase(() => {
       if (!user || !firestore) return null;

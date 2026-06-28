@@ -4,10 +4,6 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Sparkles } from 'lucide-react';
 
-/**
- * PwaUpdater mendeteksi jika Service Worker baru tersedia.
- * Tombol "Perbarui" kini langsung berjalan di latar belakang tanpa reload otomatis saat Dashboard aktif.
- */
 const PwaUpdater = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [isHiding, setIsHiding] = useState(false);
@@ -46,8 +42,6 @@ const PwaUpdater = () => {
       navigator.serviceWorker.getRegistration().then((reg) => {
         if (reg && reg.waiting) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-          // Perubahan logo dan aset akan diterapkan pada login berikutnya 
-          // atau jika pengguna melakukan reload manual.
         }
       });
     }

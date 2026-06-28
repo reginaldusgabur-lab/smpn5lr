@@ -3,30 +3,26 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, getDocs, doc } from 'firebase/firestore';
-import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
+import { collection, query, where, getDocs, doc, collectionGroup } from 'firebase/firestore';
+import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths, startOfDay, endOfDay, isWithinInterval, isBefore, isSameDay, eachDayOfInterval } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, ChevronLeft, ChevronRight, Search, Download, Filter, Eye, FileText } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Search, Download, Filter, Eye } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { calculateAttendanceStats, fetchUserMonthlyReportData } from '@/lib/attendance';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useToast } from '@/hooks/use-toast';
-import { parseISO, isValid } from 'date-fns';
 
 interface ReportRowData {
     no: number;
@@ -51,7 +47,6 @@ export default function SchoolReportPage() {
     const [reportData, setReportData] = useState<ReportRowData[]>([]);
     const [isReportLoading, setIsReportLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
-    const [exportingUserId, setExportingUserId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState("all");
@@ -65,32 +60,126 @@ export default function SchoolReportPage() {
         setIsReportLoading(true);
         setError(null);
         try {
+            const start = startOfMonth(currentMonth);
+            const end = endOfMonth(currentMonth);
+            const monthId = format(currentMonth, 'yyyy-MM');
+
+            // 1. Ambil Semua Konfigurasi & Staf Aktif
+            const monthlyConfigRef = doc(firestore, 'monthlyConfigs', monthId);
             const usersQuery = query(
                 collection(firestore, 'users'), 
                 where('role', 'in', ['guru', 'pegawai', 'kepala_sekolah']),
                 where('status', '==', 'Aktif')
             );
-            const usersSnapshot = await getDocs(usersQuery);
             
-            const reportPromises = usersSnapshot.docs.map(async (userDoc) => {
-                const stats = await calculateAttendanceStats(firestore, userDoc.id, { start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) });
-                const userData = userDoc.data();
+            const [monthlySnap, usersSnap] = await Promise.all([
+                getDoc(monthlyConfigRef),
+                getDocs(usersQuery)
+            ]);
+
+            const monthlyConfig = monthlySnap.data() || {};
+            const allUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            // 2. Ambil Semua Data Kehadiran & Izin Bulan Ini (Bulk)
+            const attendanceQuery = query(
+                collectionGroup(firestore, 'attendanceRecords'),
+                where('checkInTime', '>=', start),
+                where('checkInTime', '<=', end)
+            );
+            const leaveQuery = query(
+                collectionGroup(firestore, 'leaveRequests'),
+                where('status', '==', 'approved'),
+                where('startDate', '<=', end)
+            );
+
+            const [attendanceSnap, leaveSnap] = await Promise.all([
+                getDocs(attendanceQuery),
+                getDocs(leaveQuery)
+            ]);
+
+            // Organisasikan data per user ID untuk pemrosesan cepat di memori
+            const attendanceByUserId: Record<string, any[]> = {};
+            attendanceSnap.forEach(d => {
+                const data = d.data();
+                const uid = data.userId || d.ref.parent.parent?.id;
+                if (uid) (attendanceByUserId[uid] = attendanceByUserId[uid] || []).push(data);
+            });
+
+            const leaveByUserId: Record<string, any[]> = {};
+            leaveSnap.forEach(d => {
+                const data = d.data();
+                const uid = data.userId || d.ref.parent.parent?.id;
+                if (uid) (leaveByUserId[uid] = leaveByUserId[uid] || []).push(data);
+            });
+
+            // 3. Logika Perhitungan Kalender
+            const today = startOfDay(new Date());
+            const offDays: number[] = (schoolConfigData as any)?.offDays ?? [0, 6];
+            const holidays: string[] = monthlyConfig.holidays ?? [];
+            const workingDays = eachDayOfInterval({ start, end }).filter(day => 
+                !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd'))
+            );
+            const pastWorkingDays = workingDays.filter(day => isBefore(day, today) || isSameDay(day, today));
+            const workingDaysSet = new Set(workingDays.map(d => format(d, 'yyyy-MM-dd')));
+
+            // 4. Kalkulasi Stats per User
+            const results = allUsers.map(u => {
+                const uAtt = attendanceByUserId[u.id] || [];
+                const uLeave = leaveByUserId[u.id] || [];
+
+                const approvedEarlyLeaveDates = new Set(
+                    uLeave.filter(l => l.type === 'Pulang Cepat').map(l => format(l.startDate.toDate(), 'yyyy-MM-dd'))
+                );
+
+                const hadirScore = uAtt.reduce((total, att) => {
+                    const attDateStr = format(att.checkInTime.toDate(), 'yyyy-MM-dd');
+                    if (!workingDaysSet.has(attDateStr)) return total;
+                    if (att.checkInTime && att.checkOutTime) return total + 1;
+                    if (att.checkInTime && approvedEarlyLeaveDates.has(attDateStr)) return total + 1;
+                    if (att.checkInTime) return total + 0.5;
+                    return total;
+                }, 0);
+
+                const attDates = new Set(uAtt.map(att => format(att.checkInTime.toDate(), 'yyyy-MM-dd')));
+                
+                let izinCount = 0;
+                let sakitCount = 0;
+                const leaveDatesSet = new Set<string>();
+
+                uLeave.forEach(leave => {
+                    if (leave.type === 'Pulang Cepat') return;
+                    eachDayOfInterval({ start: leave.startDate.toDate(), end: leave.endDate.toDate() }).forEach(day => {
+                        const dayStr = format(day, 'yyyy-MM-dd');
+                        if (workingDaysSet.has(dayStr)) {
+                            if (leave.type === 'Sakit') sakitCount++; else izinCount++;
+                            leaveDatesSet.add(dayStr);
+                        }
+                    });
+                });
+
+                const alpaCount = pastWorkingDays.filter(day => {
+                    const dayStr = format(day, 'yyyy-MM-dd');
+                    return !attDates.has(dayStr) && !leaveDatesSet.has(dayStr);
+                }).length;
+
+                const adjustedWorkingDays = workingDays.length - (izinCount + sakitCount);
+                const persentase = adjustedWorkingDays > 0 ? ((hadirScore / adjustedWorkingDays) * 100).toFixed(1) + '%' : '0%';
+
                 return {
-                    uid: userDoc.id,
-                    name: userData.name || '',
-                    nip: userData.nip || '-',
-                    position: userData.position || '-',
-                    role: userData.role || '',
-                    sequenceNumber: userData.sequenceNumber || null,
-                    totalHadir: stats.totalHadir,
-                    totalIzin: stats.totalIzin,
-                    totalSakit: stats.totalSakit,
-                    totalAlpa: stats.totalAlpa,
-                    persentase: stats.persentase,
+                    uid: u.id,
+                    name: (u as any).name || '',
+                    nip: (u as any).nip || '-',
+                    position: (u as any).position || '-',
+                    role: (u as any).role || '',
+                    sequenceNumber: (u as any).sequenceNumber || null,
+                    totalHadir: hadirScore,
+                    totalIzin: izinCount,
+                    totalSakit: sakitCount,
+                    totalAlpa: alpaCount,
+                    persentase
                 };
             });
 
-            const results = await Promise.all(reportPromises);
             results.sort((a, b) => (a.sequenceNumber ?? 999) - (b.sequenceNumber ?? 999));
 
             if (isMounted.current) {
@@ -98,29 +187,24 @@ export default function SchoolReportPage() {
                 setIsReportLoading(false);
             }
         } catch (err) { 
+            console.error("Load bulk report error:", err);
             if (isMounted.current) {
                 setError("Gagal memuat data laporan.");
                 setIsReportLoading(false);
             }
         }
-    }, [firestore, user, currentMonth]);
+    }, [firestore, user, currentMonth, schoolConfigData]);
 
     useEffect(() => {
         isMounted.current = true;
-        if (!isUserLoading && user) {
+        if (!isUserLoading && user && schoolConfigData) {
             loadData();
         }
         return () => { isMounted.current = false; };
-    }, [user, isUserLoading, loadData]);
+    }, [user, isUserLoading, schoolConfigData, loadData]);
 
     const filteredReports = useMemo(() => reportData.filter(r => (roleFilter === 'all' || r.role === roleFilter) && r.name.toLowerCase().includes(searchTerm.toLowerCase())), [reportData, roleFilter, searchTerm]);
     const monthName = format(currentMonth, 'MMMM yyyy', { locale: id });
-
-    const safeFormat = (dateInput: any, formatString: string): string => {
-        if (!dateInput) return '-';
-        const date = typeof dateInput === 'string' ? parseISO(dateInput) : dateInput;
-        return isValid(date) ? format(date, formatString, { locale: id }) : '-';
-    };
 
     const handleDownloadPdf = async () => {
         if (!filteredReports.length || isExporting) return;
@@ -137,12 +221,12 @@ export default function SchoolReportPage() {
             const config = schoolConfigData || ({} as any);
 
             doc.setFont('times', 'bold').setFontSize(14);
-            doc.text((config.governmentAgency || 'PEMERINTAH KABUPATEN MANGGARAI').toUpperCase(), centerX, finalY, { align: 'center' });
+            doc.text((config.governmentAgency || 'Pemerintah Kabupaten Manggarai').toUpperCase(), centerX, finalY, { align: 'center' });
             finalY += 7;
-            doc.text((config.educationAgency || 'DINAS PENDIDIKAN, KEPEMUDAAN DAN OLAHRAGA').toUpperCase(), centerX, finalY, { align: 'center' });
+            doc.text((config.educationAgency || 'Dinas Pendidikan, Kepemudaan dan Olahraga').toUpperCase(), centerX, finalY, { align: 'center' });
             finalY += 7;
             doc.setFontSize(12);
-            doc.text((config.schoolName || 'SMP NEGERI 5 LANGKE REMBONG').toUpperCase(), centerX, finalY, { align: 'center' });
+            doc.text((config.schoolName || 'SMP Negeri 5 Langke Rembong').toUpperCase(), centerX, finalY, { align: 'center' });
             finalY += 5;
             doc.setFont('times', 'normal').setFontSize(9);
             doc.text(`Alamat: ${config.address || 'Alamat Sekolah'}`, centerX, finalY, { align: 'center' });
@@ -152,10 +236,10 @@ export default function SchoolReportPage() {
             finalY += 15;
 
             doc.setFont('times', 'bold').setFontSize(14);
-            doc.text(`LAPORAN KEHADIRAN BULAN ${monthName.toUpperCase()}`, centerX, finalY, { align: 'center' });
+            doc.text(`Laporan Kehadiran Bulan ${monthName}`, centerX, finalY, { align: 'center' });
             if (config.academicYear) {
                 finalY += 7;
-                doc.text(`TAHUN AJARAN ${config.academicYear.toUpperCase()}`, centerX, finalY, { align: 'center' });
+                doc.text(`Tahun Ajaran ${config.academicYear}`, centerX, finalY, { align: 'center' });
             }
             finalY += 12;
 
@@ -173,7 +257,7 @@ export default function SchoolReportPage() {
 
             autoTable(doc, {
                 startY: finalY,
-                head: [['No', 'Nama', 'NIP', 'Status', 'H', 'I', 'S', 'A', 'Persen']],
+                head: [['No', 'Nama', 'NIP', 'Status', 'H', 'I', 'S', 'A', '%']],
                 body: tableRows,
                 theme: 'grid',
                 styles: { font: 'times', fontSize: 9, cellPadding: 3, lineWidth: 0.1, lineColor: [150, 150, 150], valign: 'middle' },
@@ -222,7 +306,7 @@ export default function SchoolReportPage() {
                 doc.text(`Halaman ${i} dari ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
             }
 
-            doc.save(`Laporan_Sekolah_${monthName.replace(' ', '_')}.pdf`);
+            doc.save(`Laporan_Sekolah_${format(currentMonth, 'MMMM_yyyy', { locale: id })}.pdf`);
             toast({ title: "Berhasil", description: "Laporan PDF berhasil diunduh." });
         } catch (err) {
             console.error("Export PDF error:", err);
@@ -249,9 +333,9 @@ export default function SchoolReportPage() {
                         <div className="p-6 space-y-6">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
                                 <div className="flex items-center gap-6">
-                                    <Button variant="outline" size="icon" className="rounded-full shrink-0 h-10 w-10" onClick={() => setCurrentMonth(prev => subMonths(prev, 1))}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
+                                    <Button variant="outline" size="icon" className="rounded-full shrink-0 h-10 w-10" onClick={() => setCurrentMonth(prev => subMonths(prev, 1))} disabled={isReportLoading}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
                                     <span className="w-48 text-center font-bold text-2xl text-primary tracking-tight">{monthName}</span>
-                                    <Button variant="outline" size="icon" className="rounded-full shrink-0 h-10 w-10" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isSameMonth(currentMonth, new Date())}><ChevronRight className="h-5 w-5 text-primary" /></Button>
+                                    <Button variant="outline" size="icon" className="rounded-full shrink-0 h-10 w-10" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isReportLoading || isSameMonth(currentMonth, new Date())}><ChevronRight className="h-5 w-5 text-primary" /></Button>
                                 </div>
                                 <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent mt-2" />
                             </div>
@@ -273,7 +357,7 @@ export default function SchoolReportPage() {
                                         </Select>
                                     </div>
                                     <div className="flex-1 relative min-w-[200px] group">
-                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-primary z-10 pointer-events-none transition-transform" />
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-primary z-10 pointer-events-none" />
                                         <Input 
                                             placeholder="Cari personil..." 
                                             className="pl-12 h-12 rounded-2xl bg-muted/40 border-muted-foreground/10 focus:ring-primary focus:bg-background transition-all font-bold" 
@@ -288,14 +372,14 @@ export default function SchoolReportPage() {
                                         disabled={isReportLoading || !filteredReports.length || isExporting}
                                         onClick={handleDownloadPdf}
                                     >
-                                        {isExporting && !exportingUserId ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : <Download className="mr-3 h-5 w-5" />}
-                                        <span className="whitespace-nowrap uppercase tracking-wider">Unduh PDF</span>
+                                        {isExporting ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : <Download className="mr-3 h-5 w-5" />}
+                                        <span className="whitespace-nowrap tracking-wider">Unduh PDF</span>
                                     </Button>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="border-t border-muted-foreground/5 shadow-inner">
+                        <div className="border-t border-muted-foreground/5">
                             <div className="overflow-x-auto">
                                 <Table>
                                     <TableHeader className="bg-muted/30">
@@ -312,7 +396,7 @@ export default function SchoolReportPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {(isReportLoading || isUserLoading) ? (
-                                            [...Array(10)].map((_, i) => (
+                                            [...Array(8)].map((_, i) => (
                                                 <TableRow key={i} className="border-muted-foreground/5">
                                                     <TableCell><Skeleton className="h-4 w-4 mx-auto" /></TableCell>
                                                     <TableCell><Skeleton className="h-10 w-48 rounded-xl" /></TableCell>
@@ -324,6 +408,12 @@ export default function SchoolReportPage() {
                                                     <TableCell><Skeleton className="h-10 w-10 mx-auto rounded-full" /></TableCell>
                                                 </TableRow>
                                             ))
+                                        ) : error ? (
+                                            <TableRow>
+                                                <TableCell colSpan={8} className="h-48 text-center text-muted-foreground font-bold">
+                                                    {error}
+                                                </TableCell>
+                                            </TableRow>
                                         ) : filteredReports.length > 0 ? filteredReports.map((item) => (
                                             <TableRow key={item.uid} className="hover:bg-primary/5 transition-colors border-muted-foreground/5">
                                                 <TableCell className="text-center font-bold text-muted-foreground/60">{item.no}</TableCell>
@@ -343,7 +433,7 @@ export default function SchoolReportPage() {
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <Link href={`/dashboard/laporan/${item.uid}`}>
+                                                    <Link href={`/dashboard/laporan/${item.uid}?month=${format(currentMonth, 'yyyy-MM')}`}>
                                                         <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-primary/10 active:scale-90 transition-all">
                                                             <Eye className="h-5 w-5 text-primary" />
                                                         </Button>
@@ -353,7 +443,7 @@ export default function SchoolReportPage() {
                                         )) : (
                                             <TableRow>
                                                 <TableCell colSpan={8} className="h-48 text-center text-muted-foreground font-bold">
-                                                    {error || "Tidak ada data kehadiran ditemukan."}
+                                                    Tidak ada data personil ditemukan.
                                                 </TableCell>
                                             </TableRow>
                                         )}

@@ -4,8 +4,8 @@ import Image from 'next/image';
 
 export default function Loading() {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-white z-[9999]">
-      <div className="relative flex flex-col items-center gap-4">
+    <div className="fixed inset-0 flex flex-col items-center justify-center bg-white z-[9999]">
+      <div className="relative flex flex-col items-center gap-6">
         <div className="relative w-24 h-24 animate-logo-pulse">
           <Image
             src="/logo-3d-v2.png"
@@ -15,9 +15,9 @@ export default function Loading() {
             priority
           />
         </div>
-        <div className="flex flex-col items-center gap-1">
-          <h2 className="text-xl font-bold tracking-tight text-primary">E-SPENLI</h2>
-          <div className="w-12 h-1 bg-primary/20 rounded-full overflow-hidden">
+        <div className="flex flex-col items-center gap-3">
+          <h2 className="text-2xl font-bold tracking-tight text-primary">E-SPENLI</h2>
+          <div className="w-16 h-1 bg-primary/10 rounded-full overflow-hidden">
             <div className="w-full h-full bg-primary origin-left animate-progress-indefinite" />
           </div>
         </div>
@@ -25,7 +25,6 @@ export default function Loading() {
       <style jsx global>{`
         @keyframes progress {
           0% { transform: scaleX(0); }
-          50% { transform: scaleX(0.5); }
           100% { transform: scaleX(1); }
         }
         @keyframes pulse-custom {
@@ -33,7 +32,7 @@ export default function Loading() {
           50% { transform: scale(1.1); opacity: 0.8; }
         }
         .animate-progress-indefinite {
-          animation: progress 1.5s infinite ease-in-out;
+          animation: progress 1s infinite linear;
         }
         .animate-logo-pulse {
           animation: pulse-custom 2s ease-in-out infinite;
