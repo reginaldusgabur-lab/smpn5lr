@@ -1,4 +1,3 @@
-
 'use client';
 
 import { doc, getDoc, collection, getDocs, query, where, collectionGroup } from 'firebase/firestore';
@@ -32,7 +31,6 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const startOfToday = startOfDay(today);
     const endOfToday = endOfDay(today);
 
-    // Ambil data dalam satu batch untuk efisiensi
     const schoolConfigRef = doc(firestore, 'schoolConfig', 'default');
     const monthlyConfigId = format(today, 'yyyy-MM');
     const monthlyConfigRef = doc(firestore, 'monthlyConfigs', monthlyConfigId);
@@ -127,9 +125,6 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     return result;
 }
 
-/**
- * Kalkulasi statistik individu dengan caching hybrid.
- */
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
     const cacheKey = `stats_${userId}_${format(start, 'yyyyMM')}`;

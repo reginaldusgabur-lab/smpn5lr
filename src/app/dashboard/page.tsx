@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -289,7 +288,7 @@ export default function DashboardPage() {
                             <CardContent className="p-6">
                                 <div className="text-3xl font-bold text-amber-700 dark:text-amber-400">{isStatsLoading ? '...' : stats.pending}</div>
                             </CardContent>
-                        </Card>
+                        </Link>
                     </Link>
                 </div>
                 
