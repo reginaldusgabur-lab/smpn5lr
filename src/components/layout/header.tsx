@@ -1,3 +1,4 @@
+
 'use client';
 import React from 'react';
 import Link from 'next/link';
@@ -98,7 +99,7 @@ export function Header({ isTransparent }: { isTransparent?: boolean }) {
                         </Avatar>
                         <div className="hidden sm:flex flex-col justify-center text-left">
                             <p className="text-sm font-medium leading-none">{displayName || 'Pengguna'}</p>
-                            <p className="text-[10px] tracking-wide leading-none text-muted-foreground mt-1 font-semibold">{displayRole || 'User'}</p>
+                            <p className="text-[10px] tracking-wide leading-none text-muted-foreground mt-1 font-bold">{displayRole || 'User'}</p>
                         </div>
                     </button>
                 </DropdownMenuTrigger>
@@ -133,7 +134,7 @@ export function Header({ isTransparent }: { isTransparent?: boolean }) {
         <DialogTrigger asChild>
           <button className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full transition-transform active:scale-95">
             <Image
-              src={appLogo?.imageUrl || '/logo-3d.png'}
+              src={appLogo?.imageUrl || '/logo-3d-v2.png'}
               alt="App Logo"
               width={36}
               height={36}
@@ -146,22 +147,22 @@ export function Header({ isTransparent }: { isTransparent?: boolean }) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
                 <ShieldAlert className="h-6 w-6 text-destructive" />
-                <span>Aturan & Penegasan Absensi</span>
+                <span className="font-bold">Aturan & Penegasan Absensi</span>
             </DialogTitle>
             <DialogDescription className="pt-4 text-left">
               Aplikasi ini adalah alat resmi untuk mencatat kehadiran. Pelanggaran terhadap aturan berikut akan dikenakan sanksi sesuai kebijakan sekolah.
             </DialogDescription>
           </DialogHeader>
           <div className="text-sm space-y-3 py-2 max-h-[60vh] overflow-y-auto pr-4 text-left">
-            <div className="font-semibold text-foreground">1. Kejujuran adalah Segalanya</div>
+            <div className="font-bold text-foreground">1. Kejujuran adalah Segalanya</div>
             <p className="text-muted-foreground pl-4">
               Setiap pengguna bertanggung jawab penuh atas kebenaran data absensinya. Tindakan manipulasi atau pemalsuan data adalah pelanggaran berat.
             </p>
-            <div className="font-semibold text-foreground">2. Tepat Waktu</div>
+            <div className="font-bold text-foreground">2. Tepat Waktu</div>
             <p className="text-muted-foreground pl-4">
               Lakukan absensi masuk dan pulang sesuai dengan rentang waktu yang telah ditetapkan. Keterlambatan akan tercatat otomatis.
             </p>
-            <div className="font-semibold text-foreground">3. QR Code Bersifat Rahasia</div>
+            <div className="font-bold text-foreground">3. QR Code Bersifat Rahasia</div>
             <p className="text-muted-foreground pl-4">
               Dilarang keras membagikan atau menyalahgunakan QR Code absensi. Pelanggaran akan ditindaklanjuti.
             </p>

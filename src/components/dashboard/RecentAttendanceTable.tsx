@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -192,13 +193,13 @@ const RecentAttendanceTable = () => {
                     <TableRow key={index} className="border-muted-foreground/5 hover:bg-green-500/5 transition-colors">
                       <TableCell className="text-center font-bold text-xs text-muted-foreground">{activity.no}</TableCell>
                       <TableCell>
-                         <div className="font-black text-sm text-foreground">{activity.name}</div>
+                         <div className="font-bold text-sm text-foreground">{activity.name}</div>
                         <div className="text-[10px] text-muted-foreground font-bold tracking-tight">{activity.nip}</div>
                       </TableCell>
                       <TableCell className="text-center font-mono text-xs font-bold text-foreground">{activity.checkInTime}</TableCell>
                       <TableCell className="text-center font-mono text-xs font-bold text-foreground">{activity.checkOutTime}</TableCell>
                        <TableCell className="text-center">
-                        <Badge variant={activity.status === 'Hadir' ? 'default' : 'secondary'} className="text-[9px] font-black uppercase px-3">
+                        <Badge variant={activity.status === 'Hadir' ? 'default' : 'secondary'} className="text-[9px] font-bold uppercase px-3">
                             {activity.status}
                         </Badge>
                       </TableCell>

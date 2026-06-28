@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -361,7 +362,7 @@ export default function SchoolReportPage() {
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
                                 <div className="flex items-center gap-6">
                                     <Button variant="outline" size="icon" className="rounded-full shrink-0 h-10 w-10" onClick={() => setCurrentMonth(prev => subMonths(prev, 1))}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
-                                    <span className="w-48 text-center font-black text-2xl text-primary tracking-tight">{monthName}</span>
+                                    <span className="w-48 text-center font-bold text-2xl text-primary tracking-tight">{monthName}</span>
                                     <Button variant="outline" size="icon" className="rounded-full shrink-0 h-10 w-10" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isSameMonth(currentMonth, new Date())}><ChevronRight className="h-5 w-5 text-primary" /></Button>
                                 </div>
                                 <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent mt-2" />
@@ -411,14 +412,14 @@ export default function SchoolReportPage() {
                                 <Table>
                                     <TableHeader className="bg-muted/30">
                                         <TableRow className="border-none">
-                                            <TableHead className="w-[60px] text-center font-black text-[10px] uppercase tracking-widest text-muted-foreground">No</TableHead>
-                                            <TableHead className="font-black text-[10px] uppercase tracking-widest text-muted-foreground">Nama & NIP</TableHead>
-                                            <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-muted-foreground">H</TableHead>
-                                            <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-muted-foreground">I</TableHead>
-                                            <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-muted-foreground">S</TableHead>
-                                            <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-muted-foreground">A</TableHead>
-                                            <TableHead className="text-center font-black text-[10px] uppercase tracking-widest text-muted-foreground">%</TableHead>
-                                            <TableHead className="w-[80px] text-center font-black text-[10px] uppercase tracking-widest text-muted-foreground">Aksi</TableHead>
+                                            <TableHead className="w-[60px] text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">No</TableHead>
+                                            <TableHead className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Nama & NIP</TableHead>
+                                            <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">H</TableHead>
+                                            <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">I</TableHead>
+                                            <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">S</TableHead>
+                                            <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">A</TableHead>
+                                            <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">%</TableHead>
+                                            <TableHead className="w-[80px] text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Aksi</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -437,19 +438,19 @@ export default function SchoolReportPage() {
                                             ))
                                         ) : filteredReports.length > 0 ? filteredReports.map((item) => (
                                             <TableRow key={item.uid} className="hover:bg-primary/5 transition-colors border-muted-foreground/5">
-                                                <TableCell className="text-center font-black text-muted-foreground/60">{item.no}</TableCell>
+                                                <TableCell className="text-center font-bold text-muted-foreground/60">{item.no}</TableCell>
                                                 <TableCell>
                                                     <div className="flex flex-col">
-                                                        <span className="font-black text-sm text-foreground">{item.name}</span>
+                                                        <span className="font-bold text-sm text-foreground">{item.name}</span>
                                                         <span className="text-[10px] font-bold text-muted-foreground">{item.nip}</span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-center font-black text-green-600/80">{Math.ceil(item.totalHadir)}</TableCell>
-                                                <TableCell className="text-center font-black text-blue-500/80">{item.totalIzin}</TableCell>
-                                                <TableCell className="text-center font-black text-orange-500/80">{item.totalSakit}</TableCell>
-                                                <TableCell className="text-center font-black text-destructive/80">{item.totalAlpa}</TableCell>
+                                                <TableCell className="text-center font-bold text-green-600/80">{Math.ceil(item.totalHadir)}</TableCell>
+                                                <TableCell className="text-center font-bold text-blue-500/80">{item.totalIzin}</TableCell>
+                                                <TableCell className="text-center font-bold text-orange-500/80">{item.totalSakit}</TableCell>
+                                                <TableCell className="text-center font-bold text-destructive/80">{item.totalAlpa}</TableCell>
                                                 <TableCell className="text-center">
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-xl bg-primary/10 text-primary font-black text-xs">
+                                                    <span className="inline-flex items-center px-3 py-1 rounded-xl bg-primary/10 text-primary font-bold text-xs">
                                                         {item.persentase}
                                                     </span>
                                                 </TableCell>
@@ -464,7 +465,7 @@ export default function SchoolReportPage() {
                                                             <DropdownMenuItem asChild className="rounded-xl cursor-pointer py-3 px-4 focus:bg-primary/5 group">
                                                                 <Link href={`/dashboard/laporan/${item.uid}`} className="flex items-center">
                                                                     <Search className="mr-3 h-4.5 w-4.5 text-primary group-hover:scale-110 transition-transform" />
-                                                                    <span className="text-xs font-black text-foreground">Lihat Kehadiran</span>
+                                                                    <span className="text-xs font-bold text-foreground">Lihat Kehadiran</span>
                                                                 </Link>
                                                             </DropdownMenuItem>
                                                             <DropdownMenuSeparator className="my-1.5 opacity-30" />
@@ -478,7 +479,7 @@ export default function SchoolReportPage() {
                                                                 ) : (
                                                                     <FileText className="mr-3 h-4.5 w-4.5 text-destructive group-hover:scale-110 transition-transform" />
                                                                 )}
-                                                                <span className="text-xs font-black text-destructive">Unduh Laporan</span>
+                                                                <span className="text-xs font-bold text-destructive">Unduh Laporan</span>
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>

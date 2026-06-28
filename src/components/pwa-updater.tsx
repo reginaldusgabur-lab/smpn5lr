@@ -81,7 +81,7 @@ const PwaUpdater = () => {
         </div>
         
         <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-black tracking-tight flex items-center gap-1.5">
+            <h4 className="text-sm font-bold tracking-tight flex items-center gap-1.5">
                 Versi Baru Tersedia
                 <Sparkles className="h-3 w-3 text-amber-300" />
             </h4>

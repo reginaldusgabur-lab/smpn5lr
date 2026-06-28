@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -73,7 +74,7 @@ export function SystemNotification() {
             )}
           </div>
           <div className="flex-1 space-y-1">
-            <h3 className="text-lg font-black text-foreground tracking-tight leading-tight">
+            <h3 className="text-lg font-bold text-foreground tracking-tight leading-tight">
               {config.notificationTitle}
             </h3>
             <p className={cn(

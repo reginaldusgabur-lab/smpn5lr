@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -245,9 +246,9 @@ export default function PersetujuanIzinPage() {
                     const isCurrentUpdating = updatingId === req.id;
                     return (
                       <TableRow key={req.id} className="border-muted-foreground/5 hover:bg-primary/5 transition-colors">
-                        <TableCell className="font-black text-sm text-foreground">{req.userName}</TableCell>
+                        <TableCell className="font-bold text-sm text-foreground">{req.userName}</TableCell>
                         <TableCell>
-                          <Badge variant={req.type === 'Sakit' ? 'destructive' : 'secondary'} className="text-[9px] font-black uppercase px-3 py-0.5">
+                          <Badge variant={req.type === 'Sakit' ? 'destructive' : 'secondary'} className="text-[9px] font-bold uppercase px-3 py-0.5">
                             {req.type}
                           </Badge>
                         </TableCell>
@@ -301,9 +302,9 @@ export default function PersetujuanIzinPage() {
                 <TableBody>
                   {recentHistory.map(req => (
                     <TableRow key={req.id} className="border-muted-foreground/5 hover:bg-primary/5 transition-colors">
-                      <TableCell className="font-black text-sm text-foreground">{req.userName}</TableCell>
+                      <TableCell className="font-bold text-sm text-foreground">{req.userName}</TableCell>
                       <TableCell>
-                        <Badge variant={req.type === 'Sakit' ? 'destructive' : 'secondary'} className="text-[9px] font-black uppercase px-3 py-0.5">
+                        <Badge variant={req.type === 'Sakit' ? 'destructive' : 'secondary'} className="text-[9px] font-bold uppercase px-3 py-0.5">
                           {req.type}
                         </Badge>
                       </TableCell>
@@ -311,7 +312,7 @@ export default function PersetujuanIzinPage() {
                         {req.startDate?.toDate ? format(req.startDate.toDate(), 'd MMM yyyy', { locale: id }) : ''} - {req.endDate?.toDate ? format(req.endDate.toDate(), 'd MMM yyyy', { locale: id }) : ''}
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant={approvalStatusVariant[req.status] || 'secondary'} className="text-[9px] font-black uppercase px-3 py-0.5">
+                        <Badge variant={approvalStatusVariant[req.status] || 'secondary'} className="text-[9px] font-bold uppercase px-3 py-0.5">
                             {req.status}
                         </Badge>
                       </TableCell>

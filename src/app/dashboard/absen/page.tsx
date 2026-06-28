@@ -199,7 +199,7 @@ export default function AbsenPage() {
         )}
 
         <div className="absolute top-8 left-0 right-0 z-50 px-8 text-center pointer-events-none transition-all">
-            <h2 className="text-white text-2xl font-black mb-1 drop-shadow-md">Arahkan kamera</h2>
+            <h2 className="text-white text-2xl font-bold mb-1 drop-shadow-md">Arahkan kamera</h2>
             <p className="text-white/80 text-xs font-bold">Dekatkan QR Code ke area pemindaian</p>
         </div>
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -203,11 +204,11 @@ const AbsentUsersTable = () => {
                       <TableRow key={index} className="border-muted-foreground/5 hover:bg-destructive/5 transition-colors">
                       <TableCell className="text-center font-bold text-xs text-muted-foreground">{index + 1}</TableCell>
                       <TableCell>
-                          <div className="font-black text-sm text-foreground">{user.name}</div>
+                          <div className="font-bold text-sm text-foreground">{user.name}</div>
                           <div className="text-[10px] text-muted-foreground font-bold tracking-tight uppercase">{user.position}</div>
                       </TableCell>
                       <TableCell className="text-center">
-                          <Badge variant={getBadgeVariant(user.status)} className="text-[9px] font-black uppercase px-3">
+                          <Badge variant={getBadgeVariant(user.status)} className="text-[9px] font-bold uppercase px-3">
                               {user.status}
                           </Badge>
                       </TableCell>
