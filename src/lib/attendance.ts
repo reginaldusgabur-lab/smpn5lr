@@ -24,7 +24,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_v8_${todayStr}`;
+    const cacheKey = `daily_v9_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -64,7 +64,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
         const usersSnap = await getDocs(usersQuery);
         const allStaff = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // Jika hari libur, kembalikan 0 untuk semua statistik kontrol aktivitas
+        // Jika hari libur, paksa statistik menjadi 0 untuk semua kontrol aktivitas
         if (isHoliday) {
             const holidayResult = {
                 totalStaff: allStaff.length,
@@ -147,11 +147,10 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 /**
  * Kalkulasi statistik kehadiran individu dengan akurasi tinggi (Sinkron dengan Laporan).
- * Menghitung status Dinas dan Pulang Cepat sebagai kehadiran 100%.
  */
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v8_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v9_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;

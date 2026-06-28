@@ -132,6 +132,7 @@ export default function LoginPage() {
                   src={appLogo?.imageUrl || "/logo-3d-v2.png"}
                   alt="Logo E-SPENLI"
                   fill
+                  sizes="80px"
                   className="object-contain"
                   priority
                 />

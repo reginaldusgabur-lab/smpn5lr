@@ -46,7 +46,7 @@ export default function DashboardPage() {
   const isMounted = useRef(true);
   const loadingInitiated = useRef(false);
 
-  const [stats, setStats] = useState({ hadir: 0, izin: 0, sakit: 0, pending: 0 });
+  const [stats, setStats] = useState({ hadir: 0, izin: 0, sakit: 0, pending: 0, isHoliday: false });
   const [isStatsLoading, setIsStatsLoading] = useState(true);
   const [personalSummary, setPersonalSummary] = useState({ percentage: '0', hadir: 0, izin: 0, sakit: 0, alpa: 0 });
   const [isPersonalSummaryLoading, setIsPersonalSummaryLoading] = useState(true);
@@ -74,7 +74,7 @@ export default function DashboardPage() {
         }
     } catch (error) {
         if (isMounted.current) {
-            console.error("Dashboard load failed:", error);
+            console.error("Dashboard load failed:", error instanceof Error ? error.message : "Unknown error");
             setIsStatsLoading(false);
             setIsPersonalSummaryLoading(false);
         }
@@ -115,7 +115,7 @@ export default function DashboardPage() {
         return <div className={disabledStyle}><Clock className="mr-2 h-4 w-4 animate-spin" /> Memuat data...</div>;
     }
 
-    if (windowStatus === 'SESSION_INACTIVE') {
+    if (windowStatus === 'SESSION_INACTIVE' || stats.isHoliday) {
         return <div className="w-full bg-muted text-muted-foreground border border-border font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><Lock className="mr-2 h-4 w-4" /> Sistem nonaktif / hari libur</div>;
     }
 

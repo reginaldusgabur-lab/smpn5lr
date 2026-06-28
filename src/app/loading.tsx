@@ -11,6 +11,7 @@ export default function Loading() {
             src="/logo-3d-v2.png"
             alt="E-SPENLI"
             fill
+            sizes="96px"
             className="object-contain"
             priority
           />
