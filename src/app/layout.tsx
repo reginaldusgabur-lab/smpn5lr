@@ -40,10 +40,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
-    { media: '(prefers-color-scheme: dark)', color: '#0F172A' }
-  ],
+  themeColor: '#FFFFFF', // Mengunci warna tema ke putih agar splash screen tidak berubah liar
 }
 
 export default function RootLayout({
