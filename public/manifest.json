@@ -1,9 +1,9 @@
 {
   "id": "espenli-absensi-v1",
-  "name": "E-SPENLI - SMPN 5 Langke Rembong",
+  "name": "E-SPENLI",
   "short_name": "E-SPENLI",
   "description": "Aplikasi Absensi Digital Modern SMPN 5 Langke Rembong",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
@@ -12,54 +12,27 @@
   "icons": [
     {
       "src": "/logo-3d-v2.png",
-      "sizes": "72x72",
-      "type": "image/png"
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/logo-3d-v2.png",
-      "sizes": "96x96",
-      "type": "image/png"
-    },
-    {
-      "src": "/logo-3d-v2.png",
-      "sizes": "128x128",
-      "type": "image/png"
-    },
-    {
-      "src": "/logo-3d-v2.png",
-      "sizes": "144x144",
-      "type": "image/png"
-    },
-    {
-      "src": "/logo-3d-v2.png",
-      "sizes": "152x152",
-      "type": "image/png"
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/logo-3d-v2.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/logo-3d-v2.png",
-      "sizes": "384x384",
-      "type": "image/png"
+      "purpose": "maskable"
     },
     {
       "src": "/logo-3d-v2.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "categories": ["education", "productivity"],
-  "screenshots": [
-    {
-      "src": "/logo-3d-v2.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "form_factor": "narrow"
+      "purpose": "maskable"
     }
   ]
 }

@@ -1,4 +1,3 @@
-
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -14,7 +13,7 @@ export const metadata: Metadata = {
   applicationName: 'E-SPENLI',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     title: 'E-SPENLI',
   },
   formatDetection: {
@@ -29,9 +28,9 @@ export const metadata: Metadata = {
     'apple-mobile-web-app-capable': 'yes',
     'application-name': 'E-SPENLI',
     'apple-mobile-web-app-title': 'E-SPENLI',
-    'theme-color': '#2563EB',
-    'msapplication-navbutton-color': '#2563EB',
-    'apple-mobile-web-app-status-bar-style': 'black-translucent',
+    'theme-color': '#FFFFFF',
+    'msapplication-navbutton-color': '#FFFFFF',
+    'apple-mobile-web-app-status-bar-style': 'default',
   }
 };
 
@@ -58,10 +57,8 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
-        {/* Meta tags khusus Android 8.1 dan legacy PWA */}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/logo-3d-v2.png" />
         <link rel="manifest" href="/manifest.json" />
       </head>

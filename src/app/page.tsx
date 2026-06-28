@@ -95,7 +95,7 @@ export default function LoginPage() {
     setIsResetLoading(true);
     if (!auth) {
       toast({ variant: "destructive", title: "Layanan Belum Siap", description: "Layanan otentikasi belum siap." });
-      setIsResetLoading(false);
+      setIsLoginLoading(false);
       return;
     }
     try {
@@ -124,34 +124,36 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col min-h-screen items-center justify-center p-4 bg-background text-foreground">
       <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-        <Card className="w-full max-w-md bg-card border-none shadow-xl rounded-3xl overflow-hidden">
-          <CardHeader className="text-center space-y-2 pt-10 pb-6">
-            <div className="flex justify-center mb-4 transition-transform hover:scale-105 duration-300">
-              <Image
-                src={appLogo?.imageUrl || "/logo-3d-v2.png"}
-                alt="Logo SMPN 5 Langke Rembong"
-                width={100}
-                height={100}
-                priority
-              />
+        <Card className="w-full max-w-md bg-card border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
+          <CardHeader className="text-center space-y-2 pt-12 pb-6">
+            <div className="flex justify-center mb-6">
+              <div className="relative w-24 h-24 transition-all duration-500 hover:scale-110">
+                <Image
+                  src={appLogo?.imageUrl || "/logo-3d-v2.png"}
+                  alt="Logo E-SPENLI"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
             </div>
-            <CardTitle className="text-3xl font-black tracking-tight text-primary">E-SPENLI</CardTitle>
-            <CardDescription className="font-semibold text-muted-foreground">Absensi Online SMPN 5 Langke Rembong</CardDescription>
+            <CardTitle className="text-4xl font-black tracking-tighter text-primary">E-SPENLI</CardTitle>
+            <CardDescription className="font-bold text-muted-foreground/80 tracking-tight">SMPN 5 LANGKE REMBONG</CardDescription>
           </CardHeader>
-          <CardContent className="px-8 pb-8">
+          <CardContent className="px-10 pb-10">
             <Form {...loginForm}>
-              <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-5">
+              <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-6">
                 <FormField
                   control={loginForm.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem className="space-y-1.5">
-                      <Label className="text-xs font-bold text-muted-foreground ml-1">Alamat Email</Label>
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email Address</Label>
                       <FormControl>
                         <Input 
                           placeholder="nama@email.com" 
                           {...field} 
-                          className="h-12 rounded-xl bg-muted/30 border-muted-foreground/10 focus:bg-background transition-all"
+                          className="h-12 rounded-2xl bg-muted/30 border-muted-foreground/5 focus:bg-background focus:ring-primary/20 transition-all font-medium"
                         />
                       </FormControl>
                       <FormMessage className="text-[10px] font-bold" />
@@ -160,10 +162,10 @@ export default function LoginPage() {
                 />
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between mb-1">
-                    <Label htmlFor="password" className="text-xs font-bold text-muted-foreground ml-1">Kata Sandi</Label>
+                    <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Password</Label>
                     <DialogTrigger asChild>
-                      <button type="button" className="text-[10px] font-bold text-primary hover:opacity-70 transition-opacity">
-                        Lupa sandi?
+                      <button type="button" className="text-[10px] font-black text-primary hover:opacity-70 transition-opacity uppercase tracking-widest">
+                        Lupa?
                       </button>
                     </DialogTrigger>
                   </div>
@@ -178,7 +180,7 @@ export default function LoginPage() {
                               type={showLoginPass ? 'text' : 'password'} 
                               placeholder="Masukkan kata sandi" 
                               {...field} 
-                              className="h-12 rounded-xl bg-muted/30 border-muted-foreground/10 focus:bg-background transition-all"
+                              className="h-12 rounded-2xl bg-muted/30 border-muted-foreground/5 focus:bg-background focus:ring-primary/20 transition-all font-medium"
                             />
                           </FormControl>
                           <Button
@@ -199,47 +201,47 @@ export default function LoginPage() {
                 </div>
                 <Button 
                   type="submit" 
-                  className="w-full h-12 text-sm font-black rounded-xl shadow-lg transition-all active:scale-[0.97] bg-primary hover:bg-primary/90 mt-2" 
+                  className="w-full h-14 text-sm font-black rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-[0.97] bg-primary hover:bg-primary/90 mt-4 uppercase tracking-widest" 
                   disabled={isLoginLoading}
                 >
                   {isLoginLoading ? (
                     <Loader2 className="h-6 w-6 animate-spin" />
                   ) : (
-                    "Masuk ke Akun"
+                    "Masuk Sekarang"
                   )}
                 </Button>
               </form>
             </Form>
           </CardContent>
-          <CardFooter className="flex-col items-center justify-center bg-muted/30 py-4 px-8">
-            <p className="text-center text-[11px] font-bold text-muted-foreground">
-              Kesulitan masuk? Silakan hubungi Tim Operator Sekolah.
+          <CardFooter className="flex-col items-center justify-center bg-muted/20 py-6 px-10 border-t border-muted-foreground/5">
+            <p className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+              Aplikasi Absensi Digital Resmi
             </p>
           </CardFooter>
         </Card>
 
-        <DialogContent className="rounded-3xl border-none">
+        <DialogContent className="rounded-[2.5rem] border-none p-10">
           <DialogHeader>
-            <DialogTitle className="font-black text-xl">Atur Ulang Sandi</DialogTitle>
-            <DialogDescription className="font-medium text-xs">
-              Masukkan alamat email Anda yang terdaftar. Kami akan mengirimkan tautan untuk mengatur ulang kata sandi.
+            <DialogTitle className="font-black text-2xl tracking-tighter">Atur Ulang Sandi</DialogTitle>
+            <DialogDescription className="font-medium text-xs text-muted-foreground mt-2">
+              Masukkan email terdaftar Anda untuk menerima tautan pemulihan.
             </DialogDescription>
           </DialogHeader>
           <Form {...resetForm}>
             <form onSubmit={resetForm.handleSubmit(handlePasswordReset)}>
-              <div className="py-6">
+              <div className="py-8">
                 <FormField
                   control={resetForm.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <Label htmlFor="reset-email" className="text-xs font-bold text-muted-foreground ml-1">Email Terdaftar</Label>
+                      <Label htmlFor="reset-email" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email Terdaftar</Label>
                       <FormControl>
                         <Input 
                           id="reset-email" 
                           placeholder="email@anda.com" 
                           {...field} 
-                          className="h-12 rounded-xl bg-muted/30 border-muted-foreground/10 focus:bg-background"
+                          className="h-12 rounded-2xl bg-muted/30 border-muted-foreground/5 focus:bg-background"
                         />
                       </FormControl>
                       <FormMessage className="text-[10px] font-bold" />
@@ -251,7 +253,7 @@ export default function LoginPage() {
                 <Button 
                   type="submit" 
                   disabled={isResetLoading} 
-                  className="w-full h-11 rounded-xl font-bold"
+                  className="w-full h-12 rounded-2xl font-black uppercase tracking-widest shadow-lg"
                 >
                   {isResetLoading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -264,9 +266,9 @@ export default function LoginPage() {
           </Form>
         </DialogContent>
       </Dialog>
-      <footer className="mt-8 text-center text-[10px] font-bold text-muted-foreground/60 leading-relaxed">
+      <footer className="mt-10 text-center text-[10px] font-black text-muted-foreground/40 leading-relaxed uppercase tracking-[0.2em]">
         ©2026 SMPN 5 LANGKE REMBONG <br /> 
-        <span className="text-primary/50">DIBANGUN OLEH TIM OPERATOR</span>
+        <span className="text-primary/40">Powered by Team Operator</span>
       </footer>
     </div>
   );
