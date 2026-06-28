@@ -3,8 +3,8 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, where, getDocs, doc, collectionGroup } from 'firebase/firestore';
-import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths, startOfDay, endOfDay, isWithinInterval, isBefore, isSameDay, eachDayOfInterval } from 'date-fns';
+import { collection, query, where, getDocs, doc, getDoc, collectionGroup } from 'firebase/firestore';
+import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths, startOfDay, endOfDay, isBefore, isSameDay, eachDayOfInterval } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -64,7 +64,6 @@ export default function SchoolReportPage() {
             const end = endOfMonth(currentMonth);
             const monthId = format(currentMonth, 'yyyy-MM');
 
-            // 1. Ambil Semua Konfigurasi & Staf Aktif
             const monthlyConfigRef = doc(firestore, 'monthlyConfigs', monthId);
             const usersQuery = query(
                 collection(firestore, 'users'), 
@@ -80,7 +79,6 @@ export default function SchoolReportPage() {
             const monthlyConfig = monthlySnap.data() || {};
             const allUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-            // 2. Ambil Semua Data Kehadiran & Izin Bulan Ini (Bulk)
             const attendanceQuery = query(
                 collectionGroup(firestore, 'attendanceRecords'),
                 where('checkInTime', '>=', start),
@@ -97,7 +95,6 @@ export default function SchoolReportPage() {
                 getDocs(leaveQuery)
             ]);
 
-            // Organisasikan data per user ID untuk pemrosesan cepat di memori
             const attendanceByUserId: Record<string, any[]> = {};
             attendanceSnap.forEach(d => {
                 const data = d.data();
@@ -112,7 +109,6 @@ export default function SchoolReportPage() {
                 if (uid) (leaveByUserId[uid] = leaveByUserId[uid] || []).push(data);
             });
 
-            // 3. Logika Perhitungan Kalender
             const today = startOfDay(new Date());
             const offDays: number[] = (schoolConfigData as any)?.offDays ?? [0, 6];
             const holidays: string[] = monthlyConfig.holidays ?? [];
@@ -122,7 +118,6 @@ export default function SchoolReportPage() {
             const pastWorkingDays = workingDays.filter(day => isBefore(day, today) || isSameDay(day, today));
             const workingDaysSet = new Set(workingDays.map(d => format(d, 'yyyy-MM-dd')));
 
-            // 4. Kalkulasi Stats per User
             const results = allUsers.map(u => {
                 const uAtt = attendanceByUserId[u.id] || [];
                 const uLeave = leaveByUserId[u.id] || [];

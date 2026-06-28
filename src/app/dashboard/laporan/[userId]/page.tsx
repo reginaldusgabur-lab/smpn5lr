@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -164,7 +163,6 @@ export default function UserReportDetailPage() {
             baseLateTime.setHours(endH, endM, 0);
             const realInTime = addMinutes(baseLateTime, Math.floor(Math.random() * 10) + 1);
 
-            // Auto-fill check-out for past days
             const outStart = schoolConfigData.checkOutStartTime || '14:00';
             const outEnd = schoolConfigData.checkOutEndTime || '15:00';
             const realOutTime = getRandomTime(targetDate, outStart, outEnd);
@@ -271,7 +269,6 @@ export default function UserReportDetailPage() {
         const monthName = format(currentMonth, 'MMMM yyyy', { locale: id });
         const config = schoolConfigData || ({} as any);
 
-        // Kop Surat
         doc.setFont('times', 'bold').setFontSize(14);
         doc.text((config.governmentAgency || 'PEMERINTAH KABUPATEN MANGGARAI').toUpperCase(), centerX, 20, { align: 'center' });
         doc.text((config.educationAgency || 'DINAS PENDIDIKAN, KEPEMUDAAN DAN OLAHRAGA').toUpperCase(), centerX, 27, { align: 'center' });
@@ -283,7 +280,6 @@ export default function UserReportDetailPage() {
         doc.setLineWidth(0.8).line(margin, 43, pageWidth - margin, 43);
         doc.setLineWidth(0.2).line(margin, 43.8, pageWidth - margin, 43.8);
 
-        // Judul
         doc.setFont('times', 'bold').setFontSize(14);
         let currentY = 58;
         doc.text(`LAPORAN KEHADIRAN INDIVIDU BULAN ${monthName.toUpperCase()}`, centerX, currentY, { align: 'center' });
@@ -292,7 +288,6 @@ export default function UserReportDetailPage() {
             doc.text(`TAHUN AJARAN ${config.academicYear.toUpperCase()}`, centerX, currentY, { align: 'center' });
         }
 
-        // Info Identitas
         doc.setFontSize(10).setFont('times', 'normal');
         currentY += 15;
         doc.text(`Nama`, margin, currentY);
@@ -333,7 +328,6 @@ export default function UserReportDetailPage() {
             }
         });
 
-        // Tanda Tangan
         let finalTableY = (doc as any).lastAutoTable.finalY;
         if (finalTableY > pageHeight - 65) {
             doc.addPage();
@@ -351,7 +345,6 @@ export default function UserReportDetailPage() {
         doc.setFont('times', 'normal');
         doc.text(`NIP. ${config.headmasterNip || '198507272011011020'}`, signatureX, signY + 44);
 
-        // Footer
         const totalPages = doc.internal.getNumberOfPages();
         for (let i = 1; i <= totalPages; i++) {
             doc.setPage(i);
