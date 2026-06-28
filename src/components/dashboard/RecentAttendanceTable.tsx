@@ -155,7 +155,7 @@ const RecentAttendanceTable = () => {
 
   return (
     <div className="w-full space-y-4">
-      <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
+      <Card className="border-none shadow-none rounded-3xl overflow-hidden">
         <CardHeader className="p-6 flex flex-row items-center justify-between gap-1 text-green-700 border-b border-muted-foreground/5">
           <div className="flex items-center gap-3">
             <History className="h-5 w-5" />

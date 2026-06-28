@@ -145,7 +145,7 @@ export default function DashboardPage() {
         }
         if (windowStatus === 'CHECK_IN_OPEN') {
             return (
-                <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-lg active:scale-95 transition-all">
+                <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all">
                     <Link href="/dashboard/absen">Absen masuk sekarang</Link>
                 </Button>
             );
@@ -160,7 +160,7 @@ export default function DashboardPage() {
 
     if (windowStatus === 'CHECK_OUT_OPEN') {
         return (
-            <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-lg active:scale-95 transition-all">
+            <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all">
                 <Link href="/dashboard/absen">Absen pulang sekarang</Link>
             </Button>
         );
@@ -218,7 +218,7 @@ export default function DashboardPage() {
 
         {isStaff && (
             <div className="w-full space-y-6 flex flex-col items-stretch">
-                <Card className="w-full border shadow-xl rounded-3xl overflow-hidden bg-card">
+                <Card className="w-full border shadow-none rounded-3xl overflow-hidden bg-card">
                     <CardHeader className="p-6 text-primary border-b border-muted-foreground/5">
                         <div className="flex items-center justify-center">
                             <CardTitle className="text-2xl sm:text-3xl font-bold tracking-tight text-center">
@@ -260,7 +260,7 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="w-full border shadow-xl rounded-3xl overflow-hidden bg-card">
+                <Card className="w-full border shadow-none rounded-3xl overflow-hidden bg-card">
                     <CardHeader className="p-6 text-primary border-b border-muted-foreground/5">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -286,7 +286,7 @@ export default function DashboardPage() {
                                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'currentColor' }} className="text-foreground" allowDecimals={false} />
                                         <Tooltip 
                                             cursor={{ fill: 'rgba(0,0,0,0.03)' }} 
-                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', fontSize: '11px', fontWeight: 'bold' }}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', shadow: 'none', fontSize: '11px', fontWeight: 'bold' }}
                                         />
                                         <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>
                                             {chartData.map((entry, index) => (
@@ -305,7 +305,7 @@ export default function DashboardPage() {
         {isAdminOrKepsek && (
             <div className="w-full space-y-8 pt-4 border-t border-dashed border-border/50 flex flex-col items-stretch">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-                    <Card className="bg-card border-none shadow-xl rounded-3xl overflow-hidden">
+                    <Card className="bg-card border-none shadow-none rounded-3xl overflow-hidden">
                         <CardHeader className="p-4 text-green-700 border-b border-muted-foreground/5">
                             <div className="flex items-center justify-between">
                                 <p className="text-[10px] font-bold uppercase tracking-widest">Hadir</p>
@@ -317,10 +317,10 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
                     
-                    <Card className="bg-card border-none shadow-xl rounded-3xl overflow-hidden">
+                    <Card className="bg-card border-none shadow-none rounded-3xl overflow-hidden">
                         <CardHeader className="p-4 text-blue-700 border-b border-muted-foreground/5">
                             <div className="flex items-center justify-between">
-                                <p className="text-[10px] font-bold uppercase tracking-widest">Izin / sakit</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest">Izin / Sakit</p>
                                 <BookUser className="h-4 w-4" />
                             </div>
                         </CardHeader>
@@ -330,7 +330,7 @@ export default function DashboardPage() {
                     </Card>
 
                     <Link href="/dashboard/izin-kepala-sekolah" className="block">
-                        <Card className="bg-card border-none shadow-xl rounded-3xl hover:opacity-95 transition-all group overflow-hidden">
+                        <Card className="bg-card border-none shadow-none rounded-3xl hover:opacity-95 transition-all group overflow-hidden">
                             <CardHeader className="p-4 text-amber-700 border-b border-muted-foreground/5">
                                 <div className="flex items-center justify-between">
                                     <p className="text-[10px] font-bold uppercase tracking-widest">Menunggu</p>

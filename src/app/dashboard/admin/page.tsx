@@ -19,7 +19,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useMemo, useEffect, useState } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, Timestamp, getDocs, type DocumentData, collectionGroup } from 'firebase/firestore';
+import { doc, collection, query, where, Timestamp, getDocs, type DocumentData, collectionGroup, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -302,7 +302,7 @@ export default function AdminDashboardPage() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {/* Main Content: Recent Attendance Table */}
-            <Card className="lg:col-span-2">
+            <Card className="lg:col-span-2 shadow-none">
                 <CardHeader>
                     <CardTitle>Aktivitas Pengguna Terbaru</CardTitle>
                     <CardDescription>Aktivitas kehadiran semua pengguna (guru, staf, dan siswa) yang tercatat hari ini.</CardDescription>
@@ -345,7 +345,7 @@ export default function AdminDashboardPage() {
 
             {/* Sidebar: Summary Cards */}
             <div className="space-y-6">
-                <Card>
+                <Card className="shadow-none">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium">Guru & Staf Hadir</CardTitle>
                         <UserCheck className="h-5 w-5 text-green-500" />
@@ -355,7 +355,7 @@ export default function AdminDashboardPage() {
                         <p className="text-xs text-muted-foreground">Total guru & staf yang tercatat masuk hari ini</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="shadow-none">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-sm font-medium">Permintaan Izin Tertunda</CardTitle>
                     <FileWarning className="h-5 w-5 text-amber-500" />
@@ -365,7 +365,7 @@ export default function AdminDashboardPage() {
                     <p className="text-xs text-muted-foreground">Permintaan izin/sakit menunggu persetujuan</p>
                   </CardContent>
                 </Card>
-                 <Card>
+                 <Card className="shadow-none">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium">Total Pengguna Aktif</CardTitle>
                         <Users className="h-5 w-5 text-primary" />
@@ -376,7 +376,7 @@ export default function AdminDashboardPage() {
                     </CardContent>
                 </Card>
                 <Link href="/dashboard/admin/laporan-guru">
-                    <Card className="hover:bg-muted/50 transition-colors">
+                    <Card className="hover:bg-muted/50 transition-colors shadow-none">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Laporan Guru</CardTitle>
                             <FileText className="h-5 w-5 text-blue-500" />

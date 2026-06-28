@@ -149,7 +149,7 @@ function MonthlyConfigCalendar({ user, schoolConfig }: { user: any, schoolConfig
   };
   
   return (
-    <Card className="lg:col-span-3 overflow-hidden shadow-sm">
+    <Card className="lg:col-span-3 overflow-hidden border shadow-none">
         <CardHeader className="p-4 sm:p-6 text-primary border-b border-muted-foreground/10">
             <CardTitle className="font-bold text-sm tracking-tight">Hari kerja & libur bulanan</CardTitle>
             <CardDescription className="text-muted-foreground font-medium">
@@ -236,7 +236,7 @@ function MonthlyConfigCalendar({ user, schoolConfig }: { user: any, schoolConfig
             </div>
         </CardContent>
          <CardFooter className="border-t p-4 sm:p-6 bg-muted/5">
-            <Button onClick={handleSave} className="w-full sm:w-auto font-bold rounded-xl h-11 shadow-sm" disabled={isSaving}>
+            <Button onClick={handleSave} className="w-full sm:w-auto font-bold rounded-xl h-11 shadow-none" disabled={isSaving}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Simpan pengaturan bulan ini
             </Button>
@@ -487,13 +487,13 @@ export default function KonfigurasiAbsenPage() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <Card className="lg:col-span-1 overflow-hidden shadow-sm">
+      <Card className="lg:col-span-1 overflow-hidden border shadow-none">
         <CardHeader className="p-4 sm:p-6 text-primary border-b border-muted-foreground/10">
           <CardTitle className="font-bold text-sm tracking-tight">Kode QR absensi</CardTitle>
           <CardDescription className="text-muted-foreground font-medium">Gunakan kode QR ini untuk absensi harian.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center gap-4 p-4 sm:p-6">
-          <div className="p-4 border rounded-2xl bg-white aspect-square w-full max-w-[256px] relative shadow-inner">
+          <div className="p-4 border rounded-2xl bg-white aspect-square w-full max-w-[256px] relative shadow-none">
             {isQrLoading || !qrCodeDataUrl ? (
               <div className="w-full h-full flex items-center justify-center bg-muted/30 rounded-xl">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -529,7 +529,7 @@ export default function KonfigurasiAbsenPage() {
         </CardFooter>
       </Card>
 
-      <Card className="lg:col-span-2 overflow-hidden shadow-sm">
+      <Card className="lg:col-span-2 overflow-hidden border shadow-none">
         <CardHeader className="p-4 sm:p-6 text-primary border-b border-muted-foreground/10">
           <CardTitle className="font-bold text-sm tracking-tight">Pengaturan umum</CardTitle>
           <CardDescription className="text-muted-foreground font-medium">Atur parameter sistem absensi sekolah.</CardDescription>
@@ -601,7 +601,7 @@ export default function KonfigurasiAbsenPage() {
                   <Label htmlFor="radius" className="text-xs font-bold">Radius sekolah (Meter)</Label>
                   <Input id="radius" type="number" className="h-10 rounded-xl bg-muted/30" value={radius} onChange={(e) => setRadius(Number(e.target.value))} placeholder="100" disabled={holidayMode} />
                 </div>
-                <div className="aspect-video w-full overflow-hidden rounded-2xl border shadow-inner">
+                <div className="aspect-video w-full overflow-hidden rounded-2xl border shadow-none">
                     <iframe
                       key={`${latitude}-${longitude}`}
                       width="100%"
@@ -626,7 +626,7 @@ export default function KonfigurasiAbsenPage() {
               {useTimeValidation && (
                   <div className="space-y-6 pt-4 border-t border-muted-foreground/10">
                       <div className="space-y-4">
-                          <Label className="text-xs font-black uppercase tracking-wider text-primary">Jadwal Masuk (Global)</Label>
+                          <Label className="text-xs font-bold uppercase tracking-wider text-primary">Jadwal Masuk (Global)</Label>
                           <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-1.5">
                                   <Label htmlFor="checkin-start" className="text-[10px] font-bold">Mulai masuk</Label>
@@ -645,7 +645,7 @@ export default function KonfigurasiAbsenPage() {
 
                       <div className="space-y-4 pt-4 border-t border-muted-foreground/10">
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs font-black uppercase tracking-wider text-primary">Jadwal Pulang Spesifik</Label>
+                            <Label className="text-xs font-bold uppercase tracking-wider text-primary">Jadwal Pulang Spesifik</Label>
                             <Clock className="h-4 w-4 text-primary opacity-50" />
                           </div>
                           <p className="text-[10px] text-muted-foreground font-medium">Atur jam pulang berbeda untuk setiap hari.</p>
@@ -694,7 +694,7 @@ export default function KonfigurasiAbsenPage() {
           </div>
         </CardContent>
          <CardFooter className="border-t p-4 sm:p-6 bg-muted/5">
-           <Button onClick={handleSave} className="w-full sm:w-auto font-bold rounded-xl h-11 shadow-sm" disabled={isSaving}>
+           <Button onClick={handleSave} className="w-full sm:w-auto font-bold rounded-xl h-11 shadow-none" disabled={isSaving}>
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Simpan pengaturan umum
           </Button>

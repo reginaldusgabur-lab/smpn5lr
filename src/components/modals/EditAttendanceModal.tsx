@@ -186,9 +186,9 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
+            <DialogContent className="max-w-md rounded-3xl border-none shadow-none p-0 overflow-hidden">
                 <DialogHeader className="p-6 pb-2">
-                    <DialogTitle className="text-xl font-bold text-primary">Perbaiki Kehadiran</DialogTitle>
+                    <DialogTitle className="text-xl font-bold text-primary">Perbaiki kehadiran</DialogTitle>
                     {error && <Alert variant="destructive" className="mt-4 rounded-xl"><AlertTitle className="font-bold">Kesalahan</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
                 </DialogHeader>
                 <div className="px-6 pb-6">
@@ -238,7 +238,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 </div>
                 <DialogFooter className="p-6 pt-0 flex flex-col sm:flex-row gap-2">
                     <DialogClose asChild><Button variant="ghost" className="rounded-xl font-bold" disabled={isSaving}>Batal</Button></DialogClose>
-                    <Button onClick={handleSaveChanges} className="rounded-xl font-bold shadow-lg bg-primary" disabled={isLoading || isSaving || !hasSelection}>
+                    <Button onClick={handleSaveChanges} className="rounded-xl font-bold shadow-none bg-primary" disabled={isLoading || isSaving || !hasSelection}>
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Perbaiki terpilih'}
                     </Button>
                 </DialogFooter>

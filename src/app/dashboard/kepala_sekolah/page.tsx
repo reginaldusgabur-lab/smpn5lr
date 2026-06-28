@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, CalendarOff, LogIn, LogOut, ClipboardCheck, ArrowRight, FileText, UserCheck } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, collection, query, where, Timestamp, getDocs, type DocumentData, collectionGroup } from 'firebase/firestore';
+import { doc, collection, query, where, Timestamp, getDocs, type DocumentData, collectionGroup, getDoc } from 'firebase/firestore';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
@@ -322,7 +322,7 @@ export default function KepalaSekolahDashboardPage() {
             <p className="text-lg text-muted-foreground">{userData?.name || 'Kepala Sekolah'}</p>
             <p className="text-muted-foreground !mt-2">Dasbor pemantauan untuk Kepala Sekolah.</p>
         </div>
-        <Card className="w-full max-w-lg mx-auto">
+        <Card className="w-full max-w-lg mx-auto shadow-none">
           <CardHeader className="text-center items-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
               <CalendarOff className="h-8 w-8 text-primary" />
@@ -352,7 +352,7 @@ export default function KepalaSekolahDashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Personal Attendance Card */}
-        <Card className="w-full lg:col-span-2">
+        <Card className="w-full lg:col-span-2 shadow-none">
           <CardHeader>
             <CardTitle>Kehadiran Anda Hari Ini</CardTitle>
             <CardDescription>Status kehadiran dan jam absensi pribadi Anda.</CardDescription>
@@ -387,7 +387,7 @@ export default function KepalaSekolahDashboardPage() {
 
         {/* Monitoring Cards */}
         <div className="space-y-6">
-          <Card>
+          <Card className="shadow-none">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Guru &amp; Pegawai Hadir</CardTitle>
                 <UserCheck className="h-5 w-5 text-green-500" />
@@ -399,7 +399,7 @@ export default function KepalaSekolahDashboardPage() {
                 <p className="text-xs text-muted-foreground">Guru &amp; pegawai yang tercatat masuk hari ini</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="shadow-none">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Persetujuan Izin</CardTitle>
               <ClipboardCheck className="h-5 w-5 text-amber-500" />
@@ -417,7 +417,7 @@ export default function KepalaSekolahDashboardPage() {
             </CardFooter>
           </Card>
           
-           <Card>
+           <Card className="shadow-none">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Laporan</CardTitle>
               <FileText className="h-5 w-5 text-green-500" />
@@ -435,7 +435,7 @@ export default function KepalaSekolahDashboardPage() {
           </Card>
         </div>
       </div>
-      <Card>
+      <Card className="shadow-none">
         <CardHeader>
             <CardTitle>Riwayat Kehadiran Guru &amp; Pegawai Terbaru</CardTitle>
             <CardDescription>Aktivitas kehadiran guru &amp; pegawai yang tercatat hari ini.</CardDescription>

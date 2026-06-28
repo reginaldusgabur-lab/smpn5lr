@@ -243,7 +243,7 @@ export default function UserReportDetailPage() {
             } else {
                 batch.set(doc(attendanceRef), {
                     userId, date: format(targetDate, 'yyyy-MM-dd'),
-                    checkInTime: Timestamp.fromDate(checkInTime),
+                    checkInTime: Timestamp.fromDate(checkInTime), 
                     checkOutTime: checkOutTime ? Timestamp.fromDate(checkOutTime) : null,
                     ...dataToSave
                 });
@@ -382,7 +382,7 @@ export default function UserReportDetailPage() {
                     </div>
                 </div>
 
-                <Card className="overflow-hidden border shadow-sm">
+                <Card className="overflow-hidden border shadow-none">
                     <CardContent className="p-0 sm:p-6">
                         <div className="p-4 space-y-4">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">

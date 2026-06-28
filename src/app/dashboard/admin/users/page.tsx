@@ -216,13 +216,13 @@ export default function AdminUsersPage() {
                         <h1 className="text-3xl font-bold tracking-tight text-foreground">Manajemen Pengguna</h1>
                         <p className="text-muted-foreground mt-1 font-semibold">Kelola data personil sekolah dengan mudah.</p>
                     </div>
-                    <Button size="lg" className="font-bold rounded-xl h-12 shadow-sm active:scale-95 transition-all bg-primary hover:bg-primary/90" onClick={() => { setEditingUser(null); setIsUserDialogOpen(true); }}>
+                    <Button size="lg" className="font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all bg-primary hover:bg-primary/90" onClick={() => { setEditingUser(null); setIsUserDialogOpen(true); }}>
                         <PlusCircle className="mr-2 h-5 w-5" />
                         Tambah Personil
                     </Button>
                 </div>
 
-                <Card className="w-full border shadow-sm rounded-3xl overflow-hidden bg-card">
+                <Card className="w-full border shadow-none rounded-3xl overflow-hidden bg-card">
                     <CardHeader className="p-6 border-b border-muted-foreground/10 text-primary">
                         <CardTitle className="font-bold text-sm tracking-tight">Daftar Pengguna Sistem</CardTitle>
                         <CardDescription className="text-muted-foreground font-semibold">Informasi akun dan hak akses pengguna aktif.</CardDescription>
@@ -310,7 +310,7 @@ export default function AdminUsersPage() {
                                                             <MoreHorizontal className="h-5 w-5" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-52 rounded-2xl p-2 shadow-2xl border-none">
+                                                    <DropdownMenuContent align="end" className="w-52 rounded-2xl p-2 shadow-none border-none">
                                                         <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-3 mb-1">Aksi Pengguna</DropdownMenuLabel>
                                                         <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 focus:bg-primary/5" onClick={() => { setEditingUser(u); setIsUserDialogOpen(true); }}>
                                                             <Edit2 className="mr-3 h-4 w-4 text-primary" />
@@ -385,7 +385,7 @@ export default function AdminUsersPage() {
                                                         <SelectValue placeholder="Pilih Peran" />
                                                     </SelectTrigger>
                                                 </FormControl>
-                                                <SelectContent className="rounded-xl border-none shadow-2xl">
+                                                <SelectContent className="rounded-xl border-none shadow-none">
                                                     <SelectItem value="guru" className="rounded-lg">Guru</SelectItem>
                                                     <SelectItem value="pegawai" className="rounded-lg">Pegawai</SelectItem>
                                                     <SelectItem value="kepala_sekolah" className="rounded-lg">Kepala Sekolah</SelectItem>
@@ -432,7 +432,7 @@ export default function AdminUsersPage() {
                                 )}
 
                                 <div className="pt-4 sticky bottom-0 bg-card/80 backdrop-blur-sm">
-                                    <Button type="submit" className="w-full h-12 rounded-xl font-bold shadow-sm shadow-primary/20 active:scale-95 transition-all" disabled={isSaving}>
+                                    <Button type="submit" className="w-full h-12 rounded-xl font-bold shadow-none active:scale-95 transition-all" disabled={isSaving}>
                                         {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : (editingUser ? 'Perbarui Data' : 'Buat Akun Sekarang')}
                                     </Button>
                                 </div>
@@ -456,7 +456,7 @@ export default function AdminUsersPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-4 gap-2">
                         <AlertDialogCancel className="h-11 rounded-xl font-bold border-muted-foreground/10 active:scale-95 transition-all" disabled={isSaving}>Batal</AlertDialogCancel>
-                        <AlertDialogAction className="h-11 rounded-xl font-bold bg-destructive hover:bg-destructive/90 shadow-lg active:scale-95 transition-all" onClick={handleDeleteUser} disabled={isSaving}>
+                        <AlertDialogAction className="h-11 rounded-xl font-bold bg-destructive hover:bg-destructive/90 shadow-none active:scale-95 transition-all" onClick={handleDeleteUser} disabled={isSaving}>
                             {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Ya, Hapus Permanen'}
                         </AlertDialogAction>
                     </AlertDialogFooter>

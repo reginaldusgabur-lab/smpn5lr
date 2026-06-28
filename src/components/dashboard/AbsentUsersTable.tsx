@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -180,7 +179,7 @@ const AbsentUsersTable = () => {
 
   return (
     <div className="w-full space-y-4">
-      <Card className="bg-card border-none rounded-3xl overflow-hidden shadow-xl">
+      <Card className="bg-card border-none rounded-3xl overflow-hidden shadow-none">
         <CardHeader className="p-6 flex flex-row items-center justify-between gap-1 text-destructive border-b border-muted-foreground/5">
           <div className="flex items-center gap-3">
             <AlertTriangle className="h-5 w-5" />
