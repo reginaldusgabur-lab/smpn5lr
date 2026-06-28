@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -174,9 +175,52 @@ export default function DashboardPage() {
         {isAdminOrKepsek && (
             <div className="w-full space-y-8 pt-4 border-t border-dashed border-border/50 flex flex-col items-stretch">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-                    <Card className="bg-card border border-border/40 shadow-none rounded-3xl overflow-hidden"><CardHeader className="p-4 text-green-700 border-b border-muted-foreground/5"><div className="flex items-center justify-between"><p className="text-[10px] font-bold tracking-widest">Hadir</p><UserCheck className="h-4 w-4" /></div></CardHeader><CardContent className="p-6"><div className="text-3xl font-bold text-green-700 dark:text-green-400">{isStatsLoading ? '...' : stats.hadir}</div></CardContent></Card>
-                    <Card className="bg-card border border-border/40 shadow-none rounded-3xl overflow-hidden"><CardHeader className="p-4 text-blue-700 border-b border-muted-foreground/5"><div className="flex items-center justify-between"><p className="text-[10px] font-bold tracking-widest">Izin / Sakit</p><BookUser className="h-4 w-4" /></div></CardHeader><CardContent className="p-6"><div className="text-3xl font-bold text-blue-700 dark:text-blue-400">{isStatsLoading ? '...' : stats.izin + stats.sakit}</div></CardContent></Card>
-                    <Link href="/dashboard/izin-kepala-sekolah" className="block"><Card className="bg-card border border-border/40 shadow-none rounded-3xl hover:opacity-95 transition-all group overflow-hidden"><CardHeader className="p-4 text-amber-700 border-b border-muted-foreground/5"><div className="flex items-center justify-between"><p className="text-[10px] font-bold tracking-widest">Menunggu</p><MailWarning className="h-4 w-4 group-hover:scale-110 transition-transform" /></div></CardHeader><CardContent className="p-6"><div className="text-3xl font-bold text-amber-700 dark:text-amber-400">{isStatsLoading ? '...' : stats.pending}</div></CardContent></Card></Link>
+                    {/* Hadir Card */}
+                    <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[2rem] overflow-hidden">
+                        <CardHeader className="p-6 pb-0 flex flex-row items-center justify-between space-y-0">
+                            <CardTitle className="text-sm font-bold text-green-600">Hadir</CardTitle>
+                            <div className="p-2 bg-green-50 rounded-xl">
+                                <UserCheck className="h-5 w-5 text-green-600" />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6 pt-4">
+                            <div className="text-6xl font-bold text-green-600 tracking-tighter">
+                                {isStatsLoading ? '...' : stats.hadir}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Izin / Sakit Card */}
+                    <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[2rem] overflow-hidden">
+                        <CardHeader className="p-6 pb-0 flex flex-row items-center justify-between space-y-0">
+                            <CardTitle className="text-sm font-bold text-blue-600">Izin / Sakit</CardTitle>
+                            <div className="p-2 bg-blue-50 rounded-xl">
+                                <BookUser className="h-5 w-5 text-blue-600" />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-6 pt-4">
+                            <div className="text-6xl font-bold text-blue-600 tracking-tighter">
+                                {isStatsLoading ? '...' : stats.izin + stats.sakit}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Menunggu Card */}
+                    <Link href="/dashboard/izin-kepala-sekolah" className="block">
+                        <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[2rem] hover:bg-muted/30 transition-all group overflow-hidden">
+                            <CardHeader className="p-6 pb-0 flex flex-row items-center justify-between space-y-0">
+                                <CardTitle className="text-sm font-bold text-amber-600">Menunggu</CardTitle>
+                                <div className="p-2 bg-amber-50 rounded-xl group-hover:scale-110 transition-transform">
+                                    <MailWarning className="h-5 w-5 text-amber-600" />
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-6 pt-4">
+                                <div className="text-6xl font-bold text-amber-600 tracking-tighter">
+                                    {isStatsLoading ? '...' : stats.pending}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </Link>
                 </div>
                 <div className="w-full space-y-10 flex flex-col items-stretch">
                     <RecentAttendanceTable />
