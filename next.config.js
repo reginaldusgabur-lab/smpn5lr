@@ -8,7 +8,8 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   disable: process.env.NODE_ENV === "development",
   workboxOptions: {
     disableDevLogs: true,
-    skipWaiting: true,
+    // Diubah ke false agar kita bisa menampilkan prompt "Update Available"
+    skipWaiting: false, 
     clientsClaim: true,
   },
 });
