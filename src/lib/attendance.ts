@@ -298,10 +298,6 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
             let description = cleanDesc(rawDescription);
             if (!description) description = 'Kehadiran penuh';
 
-            if (description === 'Terlambat') {
-                // Jangan null-kan jam masuk, agar tetap tampil di laporan tapi beri tanda di status
-            }
-
             if (!checkOutTime && !isToday && isBefore(day, todayStart)) {
                 return {
                     id: attendanceRecord.id,
