@@ -73,6 +73,7 @@ export default function DashboardPage() {
         }
     } catch (error) {
         if (isMounted.current) {
+            console.error("Dashboard load failed:", error instanceof Error ? error.message : "Unknown error");
             setIsStatsLoading(false);
             setIsPersonalSummaryLoading(false);
         }
@@ -169,16 +170,16 @@ export default function DashboardPage() {
 
         {isAdminOrKepsek && (
             <div className="w-full space-y-4 pt-4 border-t border-dashed border-border/50 flex flex-col items-stretch">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
                     {/* Hadir Card */}
-                    <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[2rem] overflow-hidden">
-                        <CardHeader className="p-4 pb-0 flex flex-row items-center justify-between space-y-0">
-                            <CardTitle className="text-xs font-bold text-green-600">Hadir</CardTitle>
-                            <div className="p-1.5 bg-green-50 rounded-xl">
-                                <UserCheck className="h-4 w-4 text-green-600" />
+                    <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[1.5rem] overflow-hidden">
+                        <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
+                            <CardTitle className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Hadir</CardTitle>
+                            <div className="p-1.5 bg-green-50 rounded-lg">
+                                <UserCheck className="h-3.5 w-3.5 text-green-600" />
                             </div>
                         </CardHeader>
-                        <CardContent className="p-4 pt-2">
+                        <CardContent className="p-3 pt-1">
                             <div className="text-3xl font-bold text-green-600 tracking-tighter">
                                 {isStatsLoading ? '...' : stats.hadir}
                             </div>
@@ -186,14 +187,14 @@ export default function DashboardPage() {
                     </Card>
 
                     {/* Izin / Sakit Card */}
-                    <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[2rem] overflow-hidden">
-                        <CardHeader className="p-4 pb-0 flex flex-row items-center justify-between space-y-0">
-                            <CardTitle className="text-xs font-bold text-blue-600">Izin / Sakit</CardTitle>
-                            <div className="p-1.5 bg-blue-50 rounded-xl">
-                                <BookUser className="h-4 w-4 text-blue-600" />
+                    <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[1.5rem] overflow-hidden">
+                        <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
+                            <CardTitle className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Izin / Sakit</CardTitle>
+                            <div className="p-1.5 bg-blue-50 rounded-lg">
+                                <BookUser className="h-3.5 w-3.5 text-blue-600" />
                             </div>
                         </CardHeader>
-                        <CardContent className="p-4 pt-2">
+                        <CardContent className="p-3 pt-1">
                             <div className="text-3xl font-bold text-blue-600 tracking-tighter">
                                 {isStatsLoading ? '...' : stats.izin + stats.sakit}
                             </div>
@@ -202,14 +203,14 @@ export default function DashboardPage() {
 
                     {/* Menunggu Card */}
                     <Link href="/dashboard/izin-kepala-sekolah" className="block">
-                        <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[2rem] hover:bg-muted/30 transition-all group overflow-hidden">
-                            <CardHeader className="p-4 pb-0 flex flex-row items-center justify-between space-y-0">
-                                <CardTitle className="text-xs font-bold text-amber-600">Menunggu</CardTitle>
-                                <div className="p-1.5 bg-amber-50 rounded-xl group-hover:scale-110 transition-transform">
-                                    <MailWarning className="h-4 w-4 text-amber-600" />
+                        <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[1.5rem] hover:bg-muted/30 transition-all group overflow-hidden">
+                            <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
+                                <CardTitle className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Menunggu</CardTitle>
+                                <div className="p-1.5 bg-amber-50 rounded-lg group-hover:scale-110 transition-transform">
+                                    <MailWarning className="h-3.5 w-3.5 text-amber-600" />
                                 </div>
                             </CardHeader>
-                            <CardContent className="p-4 pt-2">
+                            <CardContent className="p-3 pt-1">
                                 <div className="text-3xl font-bold text-amber-600 tracking-tighter">
                                     {isStatsLoading ? '...' : stats.pending}
                                 </div>
@@ -217,7 +218,7 @@ export default function DashboardPage() {
                         </Card>
                     </Link>
                 </div>
-                <div className="w-full space-y-8 flex flex-col items-stretch">
+                <div className="w-full space-y-6 flex flex-col items-stretch">
                     <RecentAttendanceTable />
                     <AbsentUsersTable />
                 </div>

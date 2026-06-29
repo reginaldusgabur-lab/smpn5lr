@@ -98,14 +98,14 @@ export default function SchoolReportPage() {
             ]);
 
             const attendanceByUserId: Record<string, any[]> = {};
-            attendanceSnap.forEach(d => {
+            attendanceSnap.docs.forEach(d => {
                 const data = d.data();
                 const uid = data.userId || d.ref.parent.parent?.id;
                 if (uid) (attendanceByUserId[uid] = attendanceByUserId[uid] || []).push(data);
             });
 
             const leaveByUserId: Record<string, any[]> = {};
-            leaveSnap.forEach(d => {
+            leaveSnap.docs.forEach(d => {
                 const data = d.data();
                 const uid = data.userId || d.ref.parent.parent?.id;
                 if (uid) (leaveByUserId[uid] = leaveByUserId[uid] || []).push(data);
