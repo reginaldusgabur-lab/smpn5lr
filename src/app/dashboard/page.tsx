@@ -117,22 +117,18 @@ export default function DashboardPage() {
         return <div className="w-full bg-muted text-muted-foreground border border-border font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><Lock className="mr-2 h-4 w-4" /> Sistem nonaktif / hari libur</div>;
     }
 
-    // PRIORITAS 1: Jika waktu operasional hari ini sudah berakhir (CLOSED)
     if (windowStatus === 'CLOSED') {
         return <div className="w-full bg-blue-500/5 text-blue-600 border border-blue-500/20 font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><CheckCircle2 className="mr-2 w-4 h-4" /> Aktivitas hari ini telah berakhir</div>;
     }
 
-    // PRIORITAS 2: Jika sudah absen pulang
     if (isCheckedOut) {
         return <div className="w-full bg-green-500/5 text-green-600 border border-green-500/20 font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><Sparkles className="mr-2 w-4 h-4" /> Absensi selesai</div>;
     }
 
-    // PRIORITAS 3: Jika jam pulang sudah dibuka
     if (windowStatus === 'CHECK_OUT_OPEN') {
         return <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all bg-primary hover:bg-primary/90"><Link href="/dashboard/absen">Absen pulang sekarang</Link></Button>;
     }
 
-    // PRIORITAS 4: Absen masuk
     if (!isCheckedIn) {
         if (windowStatus === 'BEFORE_IN') return <div className={disabledStyle}><Clock className="mr-2 h-4 w-4" /> Belum waktu jam masuk</div>;
         if (windowStatus === 'CHECK_IN_OPEN') return <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all"><Link href="/dashboard/absen">Absen masuk sekarang</Link></Button>;
@@ -141,8 +137,6 @@ export default function DashboardPage() {
 
     return <div className={disabledStyle}><Clock className="mr-2 h-4 w-4" /> Menunggu jam pulang dibuka</div>;
   };
-
-  if (isUserLoading) return <div className="w-full space-y-6 animate-pulse p-4"><div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-8 w-48" /></div><div className="pt-10 space-y-4"><Skeleton className="h-64 w-full rounded-2xl" /><Skeleton className="h-40 w-full rounded-2xl" /></div></div>;
 
   const isAdminOrKepsek = user?.role === 'admin' || user?.role === 'kepala_sekolah';
   const isKepalaSekolah = user?.role === 'kepala_sekolah';

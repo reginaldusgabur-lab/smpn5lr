@@ -227,7 +227,13 @@ export default function UserReportDetailPage() {
 
             const outStart = schoolConfigData.checkOutStartTime || '14:00';
             const outEnd = schoolConfigData.checkOutEndTime || '16:00';
-            const checkOutTime = isPast ? getRandomTime(targetDate, outStart, outEnd) : null;
+            
+            // Logika: Isi jam pulang jika hari sudah lewat, ATAU jika hari ini sudah melewati jam mulai pulang
+            const [outH, outM] = outStart.split(':').map(Number);
+            const checkoutStartTimeToday = setMinutes(setHours(startOfDay(targetDate), outH), outM);
+            const shouldFillCheckout = isPast || now >= checkoutStartTimeToday;
+            
+            const checkOutTime = shouldFillCheckout ? getRandomTime(targetDate, outStart, outEnd) : null;
 
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
             const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
