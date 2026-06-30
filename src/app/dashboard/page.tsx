@@ -175,7 +175,6 @@ export default function DashboardPage() {
         {isAdminOrKepsek && (
             <div className="w-full space-y-4 pt-4 border-t border-dashed border-border/50 flex flex-col items-stretch">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
-                    {/* Hadir Card */}
                     <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[1.5rem] overflow-hidden">
                         <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
                             <CardTitle className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Hadir</CardTitle>
@@ -190,7 +189,6 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Izin / Sakit Card */}
                     <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[1.5rem] overflow-hidden">
                         <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
                             <CardTitle className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Izin / Sakit</CardTitle>
@@ -205,7 +203,6 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Menunggu Card */}
                     <Link href="/dashboard/izin-kepala-sekolah" className="block">
                         <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[1.5rem] hover:bg-muted/30 transition-all group overflow-hidden">
                             <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">

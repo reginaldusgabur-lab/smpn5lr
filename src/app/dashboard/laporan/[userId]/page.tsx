@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, getDoc, writeBatch, collection, serverTimestamp, Timestamp, query, where, getDocs } from 'firebase/firestore';
-import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isSameDay, setHours, setMinutes, isBefore } from 'date-fns';
+import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isSameDay, setHours, setMinutes, isBefore, isSameMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -187,7 +187,7 @@ export default function UserReportDetailPage() {
             const [endH, endM] = inEnd.split(':').map(Number);
             const baseLateTime = new Date(targetDate);
             baseLateTime.setHours(endH, endM, 0);
-            const realInTime = addMinutes(baseLateTime, Math.floor(Math.random() * 10) + 1);
+            const realInTime = addMinutes(baseLateTime, Math.floor(Math.random() * 15) + 1);
 
             const outStart = schoolConfigData.checkOutStartTime || '14:00';
             const outEnd = schoolConfigData.checkOutEndTime || '15:00';
