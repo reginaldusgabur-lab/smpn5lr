@@ -183,7 +183,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
             eachDayOfInterval({ start: leave.startDate.toDate(), end: leave.endDate.toDate() }).forEach(day => {
                 const dayStr = format(day, 'yyyy-MM-dd');
                 if (workingDaysSet.has(dayStr)) {
-                    if (leave.type === 'Pulang Cepat' || leave.type === 'Dinas') {
+                    if (leave.type === 'Pulang Cepat' || leave.type === 'Dinas' || leave.type === 'Dinas Pagi') {
                         if (!attDates.has(dayStr)) {
                            hadirScore += 1;
                            attDates.add(dayStr);
@@ -303,6 +303,10 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                 }
 
                 if (!checkOutTime && !isToday && isBefore(day, todayStart)) {
+                    // Check if it was intentionally marked as "Pulang Cepat" by admin
+                    if (description === 'Pulang Cepat' || description === 'Dinas Siang') {
+                        return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: 'Hadir', description, manualEntry: true };
+                    }
                     return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: 'Alpa', description: 'Tidak absen pulang', manualEntry: attendanceRecord.manualEntry || false };
                 }
                 return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime, status: 'Hadir', description: !checkOutTime && isToday ? 'Belum absen pulang' : description, manualEntry: attendanceRecord.manualEntry || false };

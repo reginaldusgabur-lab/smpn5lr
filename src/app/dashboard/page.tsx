@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -139,6 +138,8 @@ export default function DashboardPage() {
     return <div className={disabledStyle}><Clock className="mr-2 h-4 w-4" /> Menunggu jam pulang dibuka</div>;
   };
 
+  if (isUserLoading) return <div className="w-full space-y-6 animate-pulse p-4"><div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-8 w-48" /></div><div className="pt-10 space-y-4"><Skeleton className="h-64 w-full rounded-2xl" /><Skeleton className="h-40 w-full rounded-2xl" /></div></div>;
+
   const isAdminOrKepsek = user?.role === 'admin' || user?.role === 'kepala_sekolah';
   const isKepalaSekolah = user?.role === 'kepala_sekolah';
   const isStaff = ['guru', 'pegawai', 'siswa', 'kepala_sekolah'].includes(user?.role || '');
@@ -182,6 +183,7 @@ export default function DashboardPage() {
         {isAdminOrKepsek && (
             <div className="w-full space-y-4 pt-4 border-t border-dashed border-border/50 flex flex-col items-stretch">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
+                    {/* Hadir Card */}
                     <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[1.5rem] overflow-hidden">
                         <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
                             <CardTitle className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Hadir</CardTitle>
@@ -196,6 +198,7 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
 
+                    {/* Izin / Sakit Card */}
                     <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[1.5rem] overflow-hidden">
                         <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
                             <CardTitle className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Izin / Sakit</CardTitle>
@@ -210,6 +213,7 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
 
+                    {/* Menunggu Card */}
                     <Link href="/dashboard/izin-kepala-sekolah" className="block">
                         <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[1.5rem] hover:bg-muted/30 transition-all group overflow-hidden">
                             <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
@@ -112,26 +111,37 @@ export default function UserReportDetailPage() {
             const now = new Date();
             const isPast = isBefore(startOfDay(targetDate), startOfDay(now));
             
-            // Logika: Dinas dan Pulang Cepat otomatis isi jam masuk/pulang acak agar sinkron
+            const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
+            const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
+            const snap = await getDocs(q);
+
+            const inStart = schoolConfigData.checkInStartTime || '07:00';
+            const inEnd = schoolConfigData.checkInEndTime || '07:30';
+            const outStart = schoolConfigData.checkOutStartTime || '14:00';
+            const outEnd = schoolConfigData.checkOutEndTime || '16:00';
+
             if (newStatus === 'Dinas Pagi' || newStatus === 'Dinas Siang' || newStatus === 'Pulang Cepat') {
-                const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
-                const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
-                const snap = await getDocs(q);
-                
-                const inStart = schoolConfigData.checkInStartTime || '07:00';
-                const inEnd = schoolConfigData.checkInEndTime || '07:30';
-                const outStart = schoolConfigData.checkOutStartTime || '14:00';
-                const outEnd = schoolConfigData.checkOutEndTime || '16:00';
-                
-                const realInTime = getRandomTime(targetDate, inStart, inEnd);
-                let realOutTime: Date | null = isPast ? getRandomTime(targetDate, outStart, outEnd) : null;
-                
-                if (newStatus === 'Pulang Cepat') realOutTime = null;
+                let realInTime: Date | null = null;
+                let realOutTime: Date | null = null;
+                let isDinasPagi = false;
+
+                if (newStatus === 'Dinas Pagi') {
+                    isDinasPagi = true;
+                    realInTime = null; // Masuk dikosongkan
+                    realOutTime = getRandomTime(targetDate, outStart, outEnd);
+                } else if (newStatus === 'Dinas Siang') {
+                    realInTime = getRandomTime(targetDate, inStart, inEnd);
+                    realOutTime = getRandomTime(targetDate, outStart, outEnd); // Pulang TIDAK dikosongkan
+                } else if (newStatus === 'Pulang Cepat') {
+                    realInTime = getRandomTime(targetDate, inStart, inEnd);
+                    realOutTime = null; // Pulang dikosongkan
+                }
 
                 const dataToSave = {
                     userId, date: format(targetDate, 'yyyy-MM-dd'),
-                    checkInTime: Timestamp.fromDate(realInTime), 
+                    checkInTime: realInTime ? Timestamp.fromDate(realInTime) : null, 
                     checkOutTime: realOutTime ? Timestamp.fromDate(realOutTime) : null,
+                    isDinasPagi,
                     manualEntry: true, reasonForUpdate: reason,
                     updatedBy: currentUser.uid, updatedAt: serverTimestamp()
                 };
@@ -142,6 +152,10 @@ export default function UserReportDetailPage() {
                     batch.set(doc(attendanceRef), dataToSave);
                 }
             } else {
+                // Untuk status Izin/Sakit murni, hapus record absen jika ada agar tidak double
+                if (!snap.empty) {
+                    batch.delete(snap.docs[0].ref);
+                }
                 const leaveRef = collection(firestore, 'users', userId, 'leaveRequests');
                 const newLeaveDoc = doc(leaveRef);
                 batch.set(newLeaveDoc, {
@@ -424,6 +438,7 @@ export default function UserReportDetailPage() {
                                                                     <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleStatusChange(item.date, 'Izin Pribadi', 'Izin Pribadi')}>Izin Pribadi</DropdownMenuItem>
                                                                     <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleStatusChange(item.date, 'Dinas Pagi', 'Dinas Pagi')}>Dinas Pagi</DropdownMenuItem>
                                                                     <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleStatusChange(item.date, 'Dinas Siang', 'Dinas Siang')}>Dinas Siang</DropdownMenuItem>
+                                                                    <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleStatusChange(item.date, 'Pulang Cepat', 'Pulang Cepat')}>Pulang Cepat</DropdownMenuItem>
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
                                                         ) : (

@@ -106,7 +106,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
         finally { setIsSaving(false); }
     };
 
-    const handleAlpaConversionToAttendance = async (day: any, type: 'hadir' | 'terlambat' | 'dinas') => {
+    const handleAlpaConversionToAttendance = async (day: any, type: 'hadir' | 'terlambat' | 'dinas-pagi' | 'dinas-siang' | 'pulang-cepat') => {
         if (!currentUser?.uid || !firestore || !schoolConfig) return;
         
         const { checkInStartTime, checkInEndTime, checkOutStartTime, checkOutEndTime } = schoolConfig;
@@ -116,30 +116,46 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
             const recordDate = parseISO(day.date);
             const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', day.id);
 
-            let checkInTime: Date;
-            let checkOutTime: Date;
+            let checkInTime: Date | null = null;
+            let checkOutTime: Date | null = null;
             let reasonForUpdate: string;
+            let isDinasPagi = false;
 
-            if (type === 'hadir' || type === 'dinas') {
+            if (type === 'hadir') {
                 checkInTime = getRandomTime(recordDate, checkInStartTime || '07:00', checkInEndTime || '07:30');
-                reasonForUpdate = type === 'dinas' ? 'Dinas pagi' : 'Kehadiran penuh';
-            } else {
+                checkOutTime = getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00');
+                reasonForUpdate = 'Kehadiran penuh';
+            } else if (type === 'terlambat') {
                 const [endH, endM] = (checkInEndTime || '08:00').split(':').map(Number);
                 const baseLateTime = new Date(recordDate);
                 baseLateTime.setHours(endH, endM, 0);
                 checkInTime = addMinutes(baseLateTime, Math.floor(Math.random() * 15) + 1);
+                checkOutTime = getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00');
                 reasonForUpdate = 'Terlambat';
+            } else if (type === 'dinas-pagi') {
+                isDinasPagi = true;
+                checkInTime = null;
+                checkOutTime = getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00');
+                reasonForUpdate = 'Dinas pagi';
+            } else if (type === 'dinas-siang') {
+                checkInTime = getRandomTime(recordDate, checkInStartTime || '07:00', checkInEndTime || '07:30');
+                checkOutTime = getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00');
+                reasonForUpdate = 'Dinas siang';
+            } else { // pulang-cepat
+                checkInTime = getRandomTime(recordDate, checkInStartTime || '07:00', checkInEndTime || '07:30');
+                checkOutTime = null;
+                reasonForUpdate = 'Pulang cepat';
             }
 
-            checkOutTime = getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00');
-            if (checkOutTime.getTime() <= checkInTime.getTime()) {
+            if (checkInTime && checkOutTime && checkOutTime.getTime() <= checkInTime.getTime()) {
                 checkOutTime = addMinutes(checkInTime, 240);
             }
 
             batch.set(recordRef, {
                 userId: user.uid, date: format(recordDate, 'yyyy-MM-dd'),
-                checkInTime: Timestamp.fromDate(checkInTime), 
-                checkOutTime: Timestamp.fromDate(checkOutTime),
+                checkInTime: checkInTime ? Timestamp.fromDate(checkInTime) : null, 
+                checkOutTime: checkOutTime ? Timestamp.fromDate(checkOutTime) : null,
+                isDinasPagi,
                 updatedBy: currentUser.uid, updatedAt: Timestamp.now(), reasonForUpdate: reasonForUpdate, manualEntry: true
             }, { merge: true });
 
@@ -214,7 +230,9 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                                             <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl border-none p-2">
                                                 <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'hadir')}>Jadikan hadir</DropdownMenuItem>
                                                 <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'terlambat')}>Set terlambat</DropdownMenuItem>
-                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'dinas')}>Dinas pagi</DropdownMenuItem>
+                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'dinas-pagi')}>Dinas pagi</DropdownMenuItem>
+                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'dinas-siang')}>Dinas siang</DropdownMenuItem>
+                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'pulang-cepat')}>Pulang cepat</DropdownMenuItem>
                                                 <DropdownMenuSeparator className="my-1.5 opacity-50" />
                                                 <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToLeave(day, 'Sakit')}>Set sakit</DropdownMenuItem>
                                                 <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToLeave(day, 'Izin')}>Set izin</DropdownMenuItem>
