@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -172,7 +171,7 @@ export default function AbsenPage() {
 
         if (qrCode.getState() !== 2) {
             setIsScannerReady(false);
-            const config: Html5QrcodeCameraScanConfig = { fps: 10 };
+            const config: Html5QrcodeCameraScanConfig = { fps: 10, qrbox: 250 };
             qrCode.start({ facingMode: 'environment' }, config, onScanSuccess, undefined)
             .then(() => { if (html5QrCodeRef.current) setIsScannerReady(true); })
             .catch(err => console.error('Scanner error', err));
