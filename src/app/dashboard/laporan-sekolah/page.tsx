@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, getDocs, doc, getDoc, collectionGroup } from 'firebase/firestore';
-import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths, startOfDay, isBefore, isSameDay, eachDayOfInterval } from 'date-fns';
+import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths, startOfDay, isBefore, isSameDay, eachDayOfInterval, setHours, setMinutes } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -56,7 +56,7 @@ export default function SchoolReportPage() {
     const { data: schoolConfigData } = useDoc(user, schoolConfigRef);
 
     const loadData = useCallback(async () => {
-        if (!firestore || !user?.uid || !isMounted.current) return;
+        if (!firestore || !user?.uid || !isMounted.current || !schoolConfigData) return;
         
         setIsReportLoading(true);
         setError(null);
@@ -87,7 +87,6 @@ export default function SchoolReportPage() {
                 where('checkInTime', '<=', end)
             );
             
-            // Query fallback untuk record lama
             const attendanceFallbackQuery = query(
                 collectionGroup(firestore, 'attendanceRecords'),
                 where('date', '>=', format(start, 'yyyy-MM-dd')),
@@ -139,48 +138,62 @@ export default function SchoolReportPage() {
                 const uAtt = attendanceByUserId[u.id] || [];
                 const uLeave = leaveByUserId[u.id] || [];
 
-                const attDates = new Set<string>();
-                let hadirScore = 0;
+                let points = 0;
+                let hadirCount = 0;
+                let izinCount = 0;
+                let sakitCount = 0;
+                const processedDates = new Set<string>();
 
                 uAtt.forEach(att => {
                     const attDateStr = att.date || format(att.checkInTime.toDate(), 'yyyy-MM-dd');
-                    if (workingDaysSet.has(attDateStr)) {
-                        hadirScore += 1;
-                        attDates.add(attDateStr);
+                    if (workingDaysSet.has(attDateStr) && !processedDates.has(attDateStr)) {
+                        let p = 0;
+                        const desc = (att.reasonForUpdate || '').toLowerCase();
+                        if (desc.includes('dinas')) {
+                            p = 1.0;
+                            hadirCount++;
+                        } else if (att.checkInTime && att.checkOutTime) {
+                            let isLate = false;
+                            if (schoolConfigData.useTimeValidation && schoolConfigData.checkInEndTime) {
+                                const [h, m] = schoolConfigData.checkInEndTime.split(':').map(Number);
+                                const deadline = setMinutes(setHours(startOfDay(att.checkInTime.toDate()), h), m);
+                                if (att.checkInTime.toDate() > deadline) isLate = true;
+                            }
+                            p = isLate ? 0.95 : 1.0;
+                            hadirCount++;
+                        } else if (att.checkInTime || att.checkOutTime) {
+                            p = 0.5;
+                            hadirCount++;
+                        }
+                        points += p;
+                        processedDates.add(attDateStr);
                     }
                 });
                 
-                let izinCount = 0;
-                let sakitCount = 0;
-                const leaveDatesSet = new Set<string>();
-
                 uLeave.forEach(leave => {
                     eachDayOfInterval({ start: leave.startDate.toDate(), end: leave.endDate.toDate() }).forEach(day => {
                         const dayStr = format(day, 'yyyy-MM-dd');
-                        if (workingDaysSet.has(dayStr)) {
-                            if (leave.type === 'Pulang Cepat' || leave.type === 'Dinas' || leave.type === 'Dinas Pagi') {
-                                if (!attDates.has(dayStr)) {
-                                    hadirScore += 1;
-                                    attDates.add(dayStr);
-                                }
-                            } else if (leave.type === 'Sakit') {
+                        if (workingDaysSet.has(dayStr) && !processedDates.has(dayStr)) {
+                            let p = 0;
+                            if (leave.type === 'Sakit') {
+                                p = 0.9;
                                 sakitCount++;
-                            } else {
+                            } else if (leave.type === 'Izin' || leave.type === 'Izin Pribadi') {
+                                p = 0.7;
                                 izinCount++;
+                            } else if (leave.type === 'Dinas' || leave.type === 'Pulang Cepat' || leave.type === 'Dinas Pagi') {
+                                p = 1.0;
+                                hadirCount++;
                             }
-                            leaveDatesSet.add(dayStr);
+                            points += p;
+                            processedDates.add(dayStr);
                         }
                     });
                 });
 
-                const alpaCount = pastWorkingDays.filter(day => {
-                    const dayStr = format(day, 'yyyy-MM-dd');
-                    return !attDates.has(dayStr) && !leaveDatesSet.has(dayStr);
-                }).length;
-
-                const denominator = Math.max(1, pastWorkingDays.length - (izinCount + sakitCount));
-                const persentaseRaw = (hadirScore / denominator) * 100;
-                const persentase = Math.min(persentaseRaw, 100).toFixed(1) + '%';
+                const alpaCount = pastWorkingDays.filter(day => !processedDates.has(format(day, 'yyyy-MM-dd'))).length;
+                const denominator = pastWorkingDays.length || 1;
+                const persentase = Math.min((points / denominator) * 100, 100).toFixed(1) + '%';
 
                 return {
                     uid: u.id,
@@ -189,7 +202,7 @@ export default function SchoolReportPage() {
                     position: (u as any).position || '-',
                     role: (u as any).role || '',
                     sequenceNumber: (u as any).sequenceNumber || null,
-                    totalHadir: hadirScore,
+                    totalHadir: hadirCount,
                     totalIzin: izinCount,
                     totalSakit: sakitCount,
                     totalAlpa: alpaCount,
@@ -329,7 +342,7 @@ export default function SchoolReportPage() {
                     <p className="text-muted-foreground mt-1 font-bold">Ringkasan kehadiran bulanan untuk seluruh personil aktif.</p>
                 </div>
 
-                <Card className="overflow-hidden border border-muted-foreground/10 shadow-none rounded-3xl bg-card">
+                <Card className="overflow-hidden border border-muted-foreground/10 shadow-none rounded-xl bg-card">
                     <CardHeader className="p-6 border-b border-muted-foreground/10 text-primary">
                         <CardTitle className="font-bold text-sm tracking-tight">Rekapitulasi kehadiran</CardTitle>
                         <CardDescription className="text-muted-foreground font-bold">Data kehadiran akumulatif seluruh personil bulan {monthName}.</CardDescription>
@@ -350,10 +363,10 @@ export default function SchoolReportPage() {
                                     <div className="w-full sm:w-[180px] relative group">
                                         <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-primary z-10 pointer-events-none transition-colors" />
                                         <Select value={roleFilter} onValueChange={setRoleFilter}>
-                                            <SelectTrigger className="pl-11 h-12 rounded-2xl bg-muted/40 border-muted-foreground/10 focus:ring-primary focus:bg-background transition-all shadow-none">
+                                            <SelectTrigger className="pl-11 h-12 rounded-xl bg-muted/40 border-muted-foreground/10 focus:ring-primary focus:bg-background transition-all shadow-none">
                                                 <SelectValue placeholder="Peran" />
                                             </SelectTrigger>
-                                            <SelectContent className="rounded-2xl border-none shadow-2xl">
+                                            <SelectContent className="rounded-xl border-none shadow-2xl">
                                                 <SelectItem value="all" className='rounded-xl'>Semua peran</SelectItem>
                                                 <SelectItem value="guru" className='rounded-xl'>Guru</SelectItem>
                                                 <SelectItem value="pegawai" className='rounded-xl'>Pegawai</SelectItem>
@@ -365,7 +378,7 @@ export default function SchoolReportPage() {
                                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-primary z-10 pointer-events-none" />
                                         <Input 
                                             placeholder="Cari personil..." 
-                                            className="pl-12 h-12 rounded-2xl bg-muted/40 border-muted-foreground/10 focus:ring-primary focus:bg-background transition-all font-bold shadow-none" 
+                                            className="pl-12 h-12 rounded-xl bg-muted/40 border-muted-foreground/10 focus:ring-primary focus:bg-background transition-all font-bold shadow-none" 
                                             value={searchTerm} 
                                             onChange={e => setSearchTerm(e.target.value)} 
                                         />
@@ -373,7 +386,7 @@ export default function SchoolReportPage() {
                                 </div>
                                 <div className="w-full lg:w-auto">
                                     <Button 
-                                        className="w-full lg:w-auto h-12 rounded-2xl font-bold shadow-none active:scale-95 transition-all px-8 bg-primary hover:bg-primary/90 text-sm" 
+                                        className="w-full lg:w-auto h-12 rounded-xl font-bold shadow-none active:scale-95 transition-all px-8 bg-primary hover:bg-primary/90 text-sm" 
                                         disabled={isReportLoading || !filteredReports.length || isExporting}
                                         onClick={handleDownloadPdf}
                                     >

@@ -77,7 +77,7 @@ function useStaffAttendanceSummary(currentMonth: Date) {
             
             const [attendanceSnapshot, leaveSnapshot] = await Promise.all([ getDocs(attendanceQuery), getDocs(leaveQuery) ]);
 
-            const allAttendance = attendanceSnapshot.docs.map(d => ({...d.data(), id: d.id, checkInTime: d.data().checkInTime.toDate() }));
+            const allAttendance = attendanceSnapshot.docs.map(d => ({...d.data(), id: d.id }));
             const allLeave = leaveSnapshot.docs.map(d => ({ ...d.data(), id: d.id, startDate: d.data().startDate.toDate(), endDate: d.data().endDate.toDate() }));
 
             const offDays: number[] = schoolConfig?.offDays ?? [0, 6];
@@ -86,53 +86,69 @@ function useStaffAttendanceSummary(currentMonth: Date) {
 
             const workingDaysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd }).filter(day => !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd')));
             const workingDaysSet = new Set(workingDaysInMonth.map(d => format(d, 'yyyy-MM-dd')));
-            
-            const pastWorkingDaysInMonth = workingDaysInMonth.filter(day => isBefore(day, today) || isSameDay(day, today));
-            const totalWorkingDays = workingDaysInMonth.length;
-            const totalPastWorkingDays = pastWorkingDaysInMonth.length;
-
-            const attendanceByUser = allAttendance.reduce((acc: any, record: any) => { 
-                if (workingDaysSet.has(format(record.checkInTime, 'yyyy-MM-dd'))) {
-                    (acc[record.userId] = acc[record.userId] || []).push(record); 
-                }
-                return acc; 
-            }, {});
-
-            const leaveByUser = allLeave.reduce((acc: any, record: any) => { 
-                (acc[record.userId] = acc[record.userId] || []).push(record); 
-                return acc; 
-            }, {});
+            const pastWorkingDays = workingDaysInMonth.filter(day => isBefore(day, today) || isSameDay(day, today));
 
             const userSummary = users.map((u: any) => {
-                const userAttendance = attendanceByUser[u.id] || [];
-                const userLeave = leaveByUser[u.id] || [];
-                const hadirCount = userAttendance.length;
-                
-                let terlambatCount = 0;
-                if (schoolConfig?.useTimeValidation && schoolConfig?.checkInEndTime) {
-                    const [endH, endM] = schoolConfig.checkInEndTime.split(':').map(Number);
-                    terlambatCount = userAttendance.filter((att: any) => {
-                        if (!att.checkInTime) return false;
-                        const checkInDeadline = setMinutes(setHours(new Date(att.checkInTime), endH), endM);
-                        return isBefore(checkInDeadline, att.checkInTime);
-                    }).length;
-                }
-
+                let totalPoints = 0;
+                let hadirCount = 0;
                 let izinCount = 0;
                 let sakitCount = 0;
-                userLeave.forEach((leave: any) => {
+                const processedDates = new Set<string>();
+
+                // Process attendance
+                allAttendance.filter(att => att.userId === u.id).forEach((att: any) => {
+                    const attDateStr = att.date || format(att.checkInTime.toDate(), 'yyyy-MM-dd');
+                    if (workingDaysSet.has(attDateStr) && !processedDates.has(attDateStr)) {
+                        let point = 0;
+                        const desc = (att.reasonForUpdate || '').toLowerCase();
+                        if (desc.includes('dinas')) {
+                            point = 1.0;
+                            hadirCount++;
+                        } else if (att.checkInTime && att.checkOutTime) {
+                            let isLate = false;
+                            if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
+                                const [h, m] = schoolConfig.checkInEndTime.split(':').map(Number);
+                                const deadline = setMinutes(setHours(startOfDay(att.checkInTime.toDate()), h), m);
+                                if (att.checkInTime.toDate() > deadline) isLate = true;
+                            }
+                            point = isLate ? 0.95 : 1.0;
+                            hadirCount++;
+                        } else if (att.checkInTime || att.checkOutTime) {
+                            point = 0.5;
+                            hadirCount++;
+                        }
+                        totalPoints += point;
+                        processedDates.add(attDateStr);
+                    }
+                });
+
+                // Process leaves
+                allLeave.filter(l => l.userId === u.id).forEach(leave => {
                     eachDayOfInterval({ start: leave.startDate, end: leave.endDate }).forEach(day => {
-                        if (isWithinInterval(day, { start: monthStart, end: monthEnd }) && workingDaysInMonth.some(wd => isSameDay(wd, day))) {
-                            if (leave.type === 'Izin' || leave.type === 'Dinas') izinCount++;
-                            else if (leave.type === 'Sakit') sakitCount++;
+                        const dayStr = format(day, 'yyyy-MM-dd');
+                        if (workingDaysSet.has(dayStr) && !processedDates.has(dayStr)) {
+                            let point = 0;
+                            if (leave.type === 'Sakit') {
+                                point = 0.9;
+                                sakitCount++;
+                            } else if (leave.type === 'Izin' || leave.type === 'Izin Pribadi') {
+                                point = 0.7;
+                                izinCount++;
+                            } else if (leave.type === 'Dinas' || leave.type === 'Pulang Cepat') {
+                                point = 1.0;
+                                hadirCount++;
+                            }
+                            totalPoints += point;
+                            processedDates.add(dayStr);
                         }
                     });
                 });
 
-                const alpaCount = Math.max(0, totalPastWorkingDays - hadirCount - izinCount - sakitCount);
-                const presentasi = totalWorkingDays > 0 ? Math.round((hadirCount / totalWorkingDays) * 100) : 0;
+                const alpaCount = pastWorkingDays.filter(day => !processedDates.has(format(day, 'yyyy-MM-dd'))).length;
+                const denominator = pastWorkingDays.length || 1;
+                const presentasi = Math.min((totalPoints / denominator) * 100, 100).toFixed(1) + '%';
 
-                return { ...u, hadir: hadirCount, izin: izinCount, sakit: sakitCount, alpa: alpaCount, terlambat: terlambatCount, presentasi: `${presentasi}%` };
+                return { ...u, hadir: hadirCount, izin: izinCount, sakit: sakitCount, alpa: alpaCount, terlambat: 0, presentasi };
             });
 
             const groupedByRole = userSummary.reduce((acc: any, user: any) => {
@@ -141,7 +157,6 @@ function useStaffAttendanceSummary(currentMonth: Date) {
                 return acc;
             }, {});
             
-            // SORT: Ensure sequenceNumber is used
             if(groupedByRole.guru) groupedByRole.guru.sort((a:any,b:any) => (a.sequenceNumber || 999) - (b.sequenceNumber || 999));
             if(groupedByRole.pegawai) groupedByRole.pegawai.sort((a:any,b:any) => (a.sequenceNumber || 999) - (b.sequenceNumber || 999));
             if(groupedByRole.kepala_sekolah) groupedByRole.kepala_sekolah.sort((a:any,b:any) => (a.sequenceNumber || 999) - (b.sequenceNumber || 999));
@@ -190,8 +205,8 @@ const StaffReportTable = ({ data, isLoading, currentMonth }: { data: any[], isLo
                         <TableHead className="text-center">Izin</TableHead>
                         <TableHead className="text-center">Sakit</TableHead>
                         <TableHead className="text-center">Alpa</TableHead>
-                        <TableHead className="text-center">Terlambat</TableHead>
-                        <TableHead className="text-center">Presentasi</TableHead>
+                        <TableHead className="text-center">Poin</TableHead>
+                        <TableHead className="text-center">Persentase</TableHead>
                         <TableHead className="text-right">Aksi</TableHead> 
                     </TableRow>
                 </TableHeader>
@@ -207,7 +222,7 @@ const StaffReportTable = ({ data, isLoading, currentMonth }: { data: any[], isLo
                                 <TableCell className="text-center font-bold">{user.izin}</TableCell>
                                 <TableCell className="text-center font-bold">{user.sakit}</TableCell>
                                 <TableCell className="text-center font-bold text-destructive">{user.alpa}</TableCell>
-                                <TableCell className="text-center font-bold">{user.terlambat}</TableCell>
+                                <TableCell className="text-center font-bold">{user.hadir.toFixed(2)}</TableCell>
                                 <TableCell className="text-center font-bold">{user.presentasi}</TableCell>
                                 <TableCell className="text-right">
                                      <DropdownMenu>

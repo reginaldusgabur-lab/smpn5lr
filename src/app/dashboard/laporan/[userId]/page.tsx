@@ -123,15 +123,12 @@ export default function UserReportDetailPage() {
                 let realOutTime: Date | null = null;
 
                 if (newStatus === 'Dinas Pagi') {
-                    // Masuk Kosong, Pulang Isi
                     realInTime = null;
                     realOutTime = getRandomTime(targetDate, outStart, outEnd);
                 } else if (newStatus === 'Dinas Siang') {
-                    // Masuk Isi, Pulang Kosong
                     realInTime = getRandomTime(targetDate, inStart, inEnd);
                     realOutTime = null; 
                 } else if (newStatus === 'Pulang Cepat') {
-                    // Masuk Isi, Pulang Kosong
                     realInTime = getRandomTime(targetDate, inStart, inEnd);
                     realOutTime = null; 
                 }

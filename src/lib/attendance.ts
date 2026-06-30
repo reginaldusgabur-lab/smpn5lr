@@ -20,7 +20,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v12_${todayStr}`;
+    const cacheKey = `daily_stats_v13_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -120,7 +120,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v12_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v13_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -172,54 +172,62 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         const workingDaysSet = new Set(workingDaysInPeriod.map(day => format(day, 'yyyy-MM-dd')));
         const pastWorkingDays = workingDaysInPeriod.filter(day => isBefore(day, today) || isSameDay(day, today));
         
-        let hadirScore = 0;
-        const attDates = new Set<string>();
+        let totalPoints = 0;
+        const processedDates = new Set<string>();
 
         attendanceData.forEach((att: any) => {
             const attDateStr = att.date || format(att.checkInTime.toDate(), 'yyyy-MM-dd');
-            if (workingDaysSet.has(attDateStr)) {
-                hadirScore += 1;
-                attDates.add(attDateStr);
+            if (workingDaysSet.has(attDateStr) && !processedDates.has(attDateStr)) {
+                let point = 0;
+                const desc = (att.reasonForUpdate || '').toLowerCase();
+                
+                if (desc.includes('dinas')) {
+                    point = 1.0;
+                } else if (att.checkInTime && att.checkOutTime) {
+                    // Check late logic
+                    let isLate = false;
+                    if (schoolConfig?.useTimeValidation && schoolConfig?.checkInEndTime) {
+                        const [endH, endM] = schoolConfig.checkInEndTime.split(':').map(Number);
+                        const deadline = setMinutes(setHours(startOfDay(att.checkInTime.toDate()), endH), endM);
+                        if (att.checkInTime.toDate() > deadline) isLate = true;
+                    }
+                    point = isLate ? 0.95 : 1.0;
+                } else if (att.checkInTime || att.checkOutTime) {
+                    point = 0.5;
+                }
+                
+                totalPoints += point;
+                processedDates.add(attDateStr);
             }
         });
-
-        let izinCount = 0;
-        let sakitCount = 0;
-        const leaveDates = new Set<string>();
 
         leaveData.forEach(leave => {
             eachDayOfInterval({ start: leave.startDate.toDate(), end: leave.endDate.toDate() }).forEach(day => {
                 const dayStr = format(day, 'yyyy-MM-dd');
-                if (workingDaysSet.has(dayStr)) {
-                    if (leave.type === 'Pulang Cepat' || leave.type === 'Dinas' || leave.type === 'Dinas Pagi') {
-                        if (!attDates.has(dayStr)) {
-                           hadirScore += 1;
-                           attDates.add(dayStr);
-                        }
-                    } else if (leave.type === 'Sakit') {
-                        sakitCount++;
-                    } else {
-                        izinCount++;
+                if (workingDaysSet.has(dayStr) && !processedDates.has(dayStr)) {
+                    let point = 0;
+                    if (leave.type === 'Sakit') {
+                        point = 0.9;
+                    } else if (leave.type === 'Izin' || leave.type === 'Izin Pribadi') {
+                        point = 0.7;
+                    } else if (leave.type === 'Dinas' || leave.type === 'Pulang Cepat') {
+                        point = 1.0;
                     }
-                    leaveDates.add(dayStr);
+                    totalPoints += point;
+                    processedDates.add(dayStr);
                 }
             });
         });
 
-        const alpaCount = pastWorkingDays.filter(day => {
-            const dayStr = format(day, 'yyyy-MM-dd');
-            return !attDates.has(dayStr) && !leaveDates.has(dayStr);
-        }).length;
-        
-        const denominator = Math.max(1, pastWorkingDays.length - (izinCount + sakitCount));
-        const finalPercentage = Math.min((hadirScore / denominator) * 100, 100);
+        const totalPastWorkingDays = pastWorkingDays.length;
+        const finalPercentage = totalPastWorkingDays > 0 ? (totalPoints / totalPastWorkingDays) * 100 : 0;
 
         const result = {
-            totalHadir: hadirScore, 
-            totalIzin: izinCount,
-            totalSakit: sakitCount,
-            totalAlpa: alpaCount,
-            persentase: finalPercentage.toFixed(1) + '%',
+            totalHadir: totalPoints, 
+            totalIzin: 0, // Simplified for summary stats
+            totalSakit: 0,
+            totalAlpa: Math.max(0, totalPastWorkingDays - processedDates.size),
+            persentase: Math.min(finalPercentage, 100).toFixed(1) + '%',
         };
 
         setInCache(cacheKey, result);
@@ -303,13 +311,10 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                 let description = attendanceRecord.reasonForUpdate || 'Kehadiran penuh';
                 description = cleanDesc(description) || 'Kehadiran penuh';
 
-                // LOGIKA KHUSUS DISPLAY:
-                // Jika Dinas Pagi (Input Manual), tampilkan hanya Pulang
-                if (description === 'Dinas Pagi') {
+                if (description === 'Dinas pagi') {
                     return { id: attendanceRecord.id, date: day, checkInTime: null, checkOutTime, status: 'Hadir', description, manualEntry: true };
                 }
-                // Jika Dinas Siang atau Pulang Cepat (Input Manual), tampilkan hanya Masuk
-                if (description === 'Dinas Siang' || description === 'Pulang Cepat') {
+                if (description === 'Dinas siang' || description === 'Pulang cepat') {
                     return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: 'Hadir', description, manualEntry: true };
                 }
 
