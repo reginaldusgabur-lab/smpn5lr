@@ -250,7 +250,7 @@ export default function UserReportDetailPage() {
 
             const batch = writeBatch(firestore);
             const dataToSave = {
-                userId: user.uid, date: format(targetDate, 'yyyy-MM-dd'),
+                userId: userId, date: format(targetDate, 'yyyy-MM-dd'),
                 checkInTime: Timestamp.fromDate(checkInTime), 
                 checkOutTime: checkOutTime ? Timestamp.fromDate(checkOutTime) : null,
                 manualEntry: true,

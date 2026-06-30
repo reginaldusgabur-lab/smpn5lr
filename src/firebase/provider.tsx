@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -109,7 +108,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     };
   }, [firebaseApp, firestore, auth, userAuthState]);
 
-  // IMPORTANT: Do NOT return null during loading to prevent hydration crash on PWA
+  // IMPORTANT: Do NOT return null during loading to prevent hydration crash on Android PWA.
+  // Instead, render the context provider and let children handle the loading UI.
   return (
     <FirebaseContext.Provider value={contextValue}>
       <FirebaseErrorListener />
