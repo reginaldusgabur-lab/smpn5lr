@@ -23,7 +23,7 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221 83% 53%;
-    --radius: 0.75rem; /* DIUBAH: Dari 1rem ke 0.75rem agar lebih mengotak namun tetap halus */
+    --radius: 0.75rem; /* DIUBAH: Dari 1rem ke 0.75rem agar lebih halus dan mengotak */
   }
   .dark {
     --background: 222 47% 11%; /* Midnight Blue */

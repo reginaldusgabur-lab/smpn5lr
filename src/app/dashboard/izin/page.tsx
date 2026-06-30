@@ -177,7 +177,7 @@ export default function IzinPage() {
 
     return (
         <PageWrapper>
-            <Card className="w-full overflow-hidden border shadow-none rounded-3xl">
+            <Card className="w-full overflow-hidden border shadow-none rounded-xl">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)}>
                         <CardHeader className="p-4 sm:p-6 text-primary border-b border-muted-foreground/10">

@@ -202,7 +202,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-md rounded-2xl border-none shadow-none p-0 overflow-hidden">
+            <DialogContent className="max-w-md rounded-xl border-none shadow-none p-0 overflow-hidden">
                 <DialogHeader className="p-6 pb-2">
                     <DialogTitle className="text-xl font-bold text-primary">Perbaiki kehadiran</DialogTitle>
                     {error && <Alert variant="destructive" className="mt-4 rounded-xl"><AlertTitle className="font-bold">Kesalahan</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}

@@ -124,7 +124,7 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col min-h-screen items-center justify-center p-4 bg-background text-foreground">
       <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-        <Card className="w-full max-w-md bg-card border border-muted-foreground/10 shadow-none rounded-2xl overflow-hidden">
+        <Card className="w-full max-w-md bg-card border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden">
           <CardHeader className="text-center space-y-2 pt-12 pb-6">
             <div className="flex justify-center mb-6">
               <div className="relative w-20 h-20 transition-all duration-500 hover:scale-110">
@@ -217,7 +217,7 @@ export default function LoginPage() {
           </CardFooter>
         </Card>
 
-        <DialogContent className="rounded-2xl border-none p-10 shadow-none">
+        <DialogContent className="rounded-xl border-none p-10 shadow-none">
           <DialogHeader>
             <DialogTitle className="font-bold text-2xl tracking-tighter text-primary">Atur ulang sandi</DialogTitle>
             <DialogDescription className="font-bold text-xs text-muted-foreground mt-2">
