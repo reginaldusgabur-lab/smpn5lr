@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, getDoc, writeBatch, collection, serverTimestamp, Timestamp, query, where, getDocs } from 'firebase/firestore';
-import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isSameDay, isSameMonth, setHours, setMinutes, isBefore } from 'date-fns';
+import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isSameDay, setHours, setMinutes, isBefore } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -127,14 +127,14 @@ export default function UserReportDetailPage() {
 
                 if (newStatus === 'Dinas Pagi') {
                     isDinasPagi = true;
-                    realInTime = null; // Masuk dikosongkan
+                    realInTime = null; 
                     realOutTime = getRandomTime(targetDate, outStart, outEnd);
                 } else if (newStatus === 'Dinas Siang') {
                     realInTime = getRandomTime(targetDate, inStart, inEnd);
-                    realOutTime = getRandomTime(targetDate, outStart, outEnd); // Pulang TIDAK dikosongkan
+                    realOutTime = getRandomTime(targetDate, outStart, outEnd); 
                 } else if (newStatus === 'Pulang Cepat') {
                     realInTime = getRandomTime(targetDate, inStart, inEnd);
-                    realOutTime = null; // Pulang dikosongkan
+                    realOutTime = null; 
                 }
 
                 const dataToSave = {
@@ -152,7 +152,6 @@ export default function UserReportDetailPage() {
                     batch.set(doc(attendanceRef), dataToSave);
                 }
             } else {
-                // Untuk status Izin/Sakit murni, hapus record absen jika ada agar tidak double
                 if (!snap.empty) {
                     batch.delete(snap.docs[0].ref);
                 }

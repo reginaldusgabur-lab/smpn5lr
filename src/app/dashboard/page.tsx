@@ -125,31 +125,20 @@ export default function DashboardPage() {
         return <div className="w-full bg-green-500/5 text-green-600 border border-green-500/20 font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><Sparkles className="mr-2 w-4 h-4" /> Absensi selesai</div>;
     }
 
-    if (windowStatus === 'CHECK_OUT_OPEN') {
-        return <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all bg-primary hover:bg-primary/90"><Link href="/dashboard/absen">Absen pulang sekarang</Link></Button>;
-    }
-
     if (!isCheckedIn) {
         if (windowStatus === 'BEFORE_IN') return <div className={disabledStyle}><Clock className="mr-2 h-4 w-4" /> Belum waktu jam masuk</div>;
         if (windowStatus === 'CHECK_IN_OPEN') return <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all"><Link href="/dashboard/absen">Absen masuk sekarang</Link></Button>;
         return <div className="w-full bg-destructive/5 text-destructive/60 border border-destructive/10 font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><AlertCircle className="mr-2 h-4 w-4" /> Batas jam masuk berakhir</div>;
     }
 
-    return <div className={disabledStyle}><Clock className="mr-2 h-4 w-4" /> Menunggu jam pulang dibuka</div>;
+    if (windowStatus === 'CHECK_OUT_OPEN') return <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all"><Link href="/dashboard/absen">Absen pulang sekarang</Link></Button>;
+    return <div className={disabledStyle}><Clock className="mr-2 h-4 w-4" /> Belum waktu jam pulang</div>;
   };
 
   if (isUserLoading) return <div className="w-full space-y-6 animate-pulse p-4"><div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-8 w-48" /></div><div className="pt-10 space-y-4"><Skeleton className="h-64 w-full rounded-2xl" /><Skeleton className="h-40 w-full rounded-2xl" /></div></div>;
 
   const isAdminOrKepsek = user?.role === 'admin' || user?.role === 'kepala_sekolah';
-  const isKepalaSekolah = user?.role === 'kepala_sekolah';
   const isStaff = ['guru', 'pegawai', 'siswa', 'kepala_sekolah'].includes(user?.role || '');
-
-  const MonthlySummaryChart = () => (
-    <Card className="w-full border border-muted-foreground/10 shadow-none rounded-3xl overflow-hidden bg-card">
-        <CardHeader className="p-6 text-primary border-b border-muted-foreground/5"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><TrendingUp className="w-5 h-5" /><h2 className="text-xs font-bold tracking-widest">Ringkasan bulanan</h2></div><p className="text-[10px] font-bold tracking-widest opacity-80 bg-primary/10 px-2 py-1 rounded-lg">Skor: {isPersonalSummaryLoading ? '...' : `${personalSummary.percentage}%`}</p></div></CardHeader>
-        <CardContent className="p-6 pt-8"><div className="w-full h-44">{isPersonalSummaryLoading ? <Skeleton className="h-full w-full rounded-2xl" /> : <ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} margin={{ top: 0, right: 0, left: -40, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: 'currentColor' }} /><YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'currentColor' }} allowDecimals={false} /><Tooltip cursor={{ fill: 'rgba(0,0,0,0.03)' }} contentStyle={{ borderRadius: '12px', border: 'none', shadow: 'none', fontSize: '11px', fontWeight: 'bold' }} /><Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>{chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}</Bar></BarChart></ResponsiveContainer>}</div></CardContent>
-    </Card>
-  );
 
   return (
     <div className="w-full space-y-6 pb-10 flex flex-col items-stretch">
@@ -176,7 +165,10 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                {!isKepalaSekolah && <MonthlySummaryChart />}
+                <Card className="w-full border border-muted-foreground/10 shadow-none rounded-3xl overflow-hidden bg-card">
+                    <CardHeader className="p-6 text-primary border-b border-muted-foreground/5"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><TrendingUp className="w-5 h-5" /><h2 className="text-xs font-bold tracking-widest">Ringkasan bulanan</h2></div><p className="text-[10px] font-bold tracking-widest opacity-80 bg-primary/10 px-2 py-1 rounded-lg">Skor: {isPersonalSummaryLoading ? '...' : `${personalSummary.percentage}%`}</p></div></CardHeader>
+                    <CardContent className="p-6 pt-8"><div className="w-full h-44">{isPersonalSummaryLoading ? <Skeleton className="h-full w-full rounded-2xl" /> : <ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} margin={{ top: 0, right: 0, left: -40, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: 'currentColor' }} /><YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'currentColor' }} allowDecimals={false} /><Tooltip cursor={{ fill: 'rgba(0,0,0,0.03)' }} contentStyle={{ borderRadius: '12px', border: 'none', shadow: 'none', fontSize: '11px', fontWeight: 'bold' }} /><Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40}>{chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}</Bar></BarChart></ResponsiveContainer>}</div></CardContent>
+                </Card>
             </div>
         )}
 
@@ -233,7 +225,6 @@ export default function DashboardPage() {
                 <div className="w-full space-y-6 flex flex-col items-stretch">
                     <RecentAttendanceTable />
                     <AbsentUsersTable />
-                    {isKepalaSekolah && <MonthlySummaryChart />}
                 </div>
             </div>
         )}
