@@ -4,13 +4,13 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%; /* Ice White / Very Light Blue */
-    --foreground: 222 47% 11%; /* Deep Navy */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 221 83% 53%; /* Royal Blue */
+    --primary: 221 83% 53%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222 47% 11.2%;
@@ -23,10 +23,10 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221 83% 53%;
-    --radius: 0.75rem; /* Updated: Modern Boxy Refined */
+    --radius: 0.75rem;
   }
   .dark {
-    --background: 222 47% 11%; /* Midnight Blue */
+    --background: 222 47% 11%;
     --foreground: 0 0% 100%;
     --card: 222 47% 11%;
     --card-foreground: 0 0% 100%;

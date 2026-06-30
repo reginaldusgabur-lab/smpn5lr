@@ -20,7 +20,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v13_${todayStr}`;
+    const cacheKey = `daily_stats_v14_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -120,7 +120,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v13_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v14_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -181,14 +181,13 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                 let point = 0;
                 const desc = (att.reasonForUpdate || '').toLowerCase();
                 
-                if (desc.includes('dinas')) {
+                if (desc.includes('dinas') || desc.includes('pulang cepat')) {
                     point = 1.0;
                 } else if (att.checkInTime && att.checkOutTime) {
-                    // Check late logic
                     let isLate = false;
                     if (schoolConfig?.useTimeValidation && schoolConfig?.checkInEndTime) {
-                        const [endH, endM] = schoolConfig.checkInEndTime.split(':').map(Number);
-                        const deadline = setMinutes(setHours(startOfDay(att.checkInTime.toDate()), endH), endM);
+                        const [h, m] = schoolConfig.checkInEndTime.split(':').map(Number);
+                        const deadline = setMinutes(setHours(startOfDay(att.checkInTime.toDate()), h), m);
                         if (att.checkInTime.toDate() > deadline) isLate = true;
                     }
                     point = isLate ? 0.95 : 1.0;
@@ -210,7 +209,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                         point = 0.9;
                     } else if (leave.type === 'Izin' || leave.type === 'Izin Pribadi') {
                         point = 0.7;
-                    } else if (leave.type === 'Dinas' || leave.type === 'Pulang Cepat') {
+                    } else if (leave.type === 'Dinas' || leave.type === 'Pulang Cepat' || leave.type === 'Dinas Pagi') {
                         point = 1.0;
                     }
                     totalPoints += point;
@@ -219,14 +218,14 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
             });
         });
 
-        const totalPastWorkingDays = pastWorkingDays.length;
-        const finalPercentage = totalPastWorkingDays > 0 ? (totalPoints / totalPastWorkingDays) * 100 : 0;
+        const denominator = pastWorkingDays.length || 1;
+        const finalPercentage = (totalPoints / denominator) * 100;
 
         const result = {
             totalHadir: totalPoints, 
-            totalIzin: 0, // Simplified for summary stats
+            totalIzin: 0,
             totalSakit: 0,
-            totalAlpa: Math.max(0, totalPastWorkingDays - processedDates.size),
+            totalAlpa: Math.max(0, pastWorkingDays.length - processedDates.size),
             persentase: Math.min(finalPercentage, 100).toFixed(1) + '%',
         };
 

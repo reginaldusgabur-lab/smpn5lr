@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Loader2, Sparkles, Newspaper, MessageSquare } from 'lucide-react';
+import { Loader2, Sparkles, Newspaper } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface QuoteOfTheDayProps {
@@ -33,29 +33,15 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
       try {
         const response = await fetch('/api/quote', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            category: category,
-            attendanceType: attendanceType,
-          }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category, attendanceType }),
         });
         
-        if (!response.ok) {
-          throw new Error('API Response Error');
-        }
-
+        if (!response.ok) throw new Error('API Error');
         const data = await response.json();
-
-        if (data.quote && data.author) {
-          setQuote(data);
-        } else {
-          throw new Error('Invalid Data Format');
-        }
+        if (data.quote) setQuote(data);
       } catch (e: any) {
         setError(true);
-        // Fallback quotes
         setQuote({
           quote: attendanceType === 'in' ? "Awali hari dengan bismillah dan senyuman, karena kopi saja tidak cukup untuk menjaga semangat." : "Kerja kerasmu hari ini luar biasa. Sekarang waktunya istirahat dan berkumpul dengan keluarga.",
           author: "Tim E-SPENLI"
@@ -64,9 +50,7 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
         setIsLoading(false);
       }
     };
-
     fetchQuote();
-
   }, [category, attendanceType]);
 
   const isNews = quote?.author.toLowerCase().includes('news') || 
@@ -80,25 +64,19 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
         Pesan Spesial Hari Ini
       </div>
       
-      <div className="text-center min-h-[70px] flex items-center justify-center px-4 relative">
+      <div className="text-center min-h-[70px] flex items-center justify-center px-4">
         {isLoading ? (
           <div className="flex flex-col items-center gap-2 text-muted-foreground/60">
             <Loader2 className="h-5 w-5 animate-spin" />
             <span className="text-[10px] font-bold uppercase tracking-widest">Menyiapkan inspirasi...</span>
           </div>
         ) : (
-          <div className="animate-in fade-in slide-in-from-bottom-3 duration-1000 ease-out">
-            <div className={cn(
-              "relative px-4 py-2",
-              isNews ? "bg-primary/5 rounded-2xl border border-primary/5" : ""
-            )}>
-              <blockquote className={cn(
-                "font-bold text-sm text-foreground/90 leading-relaxed",
-                !isNews && "italic"
-              )}>
+          <div className="animate-in fade-in slide-in-from-bottom-3 duration-1000 ease-out w-full">
+            <div className={cn("relative px-4 py-2", isNews ? "bg-primary/5 rounded-xl border border-primary/5" : "")}>
+              <blockquote className={cn("font-bold text-sm text-foreground/90 leading-relaxed", !isNews && "italic")}>
                 "{quote?.quote}"
               </blockquote>
-              <cite className="block text-right mt-2 text-[10px] font-black text-primary/70 not-italic">
+              <cite className="block text-right mt-2 text-[10px] font-black text-primary/70 not-italic uppercase">
                 — {quote?.author}
               </cite>
             </div>
