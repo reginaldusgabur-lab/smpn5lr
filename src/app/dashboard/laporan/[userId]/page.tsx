@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, getDoc, writeBatch, collection, serverTimestamp, Timestamp, query, where, getDocs } from 'firebase/firestore';
-import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isSameDay, setHours, setMinutes, isBefore, isSameMonth } from 'date-fns';
+import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isSameDay, setHours, setMinutes, isBefore, isSameMonth, startOfMonth, endOfMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -250,7 +250,7 @@ export default function UserReportDetailPage() {
 
             const batch = writeBatch(firestore);
             const dataToSave = {
-                userId, date: format(targetDate, 'yyyy-MM-dd'),
+                userId: user.uid, date: format(targetDate, 'yyyy-MM-dd'),
                 checkInTime: Timestamp.fromDate(checkInTime), 
                 checkOutTime: checkOutTime ? Timestamp.fromDate(checkOutTime) : null,
                 manualEntry: true,
@@ -386,7 +386,7 @@ export default function UserReportDetailPage() {
                                                 <span className="text-sm font-black text-primary">{stats.persentase}</span>
                                             </div>
                                         )}
-                                        <span className="w-40 text-center font-bold text-lg sm:text-xl text-primary tracking-tight capitalize">
+                                        <span className="font-bold text-lg sm:text-2xl text-primary tracking-tight min-w-[120px] text-center capitalize">
                                             {format(currentMonth, 'MMMM yyyy', { locale: id })}
                                         </span>
                                     </div>
