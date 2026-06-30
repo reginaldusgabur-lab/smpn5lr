@@ -180,12 +180,20 @@ const AbsentUsersTable = () => {
   return (
     <div className="w-full space-y-4">
       <Card className="bg-card border-none rounded-3xl overflow-hidden shadow-none">
-        <CardHeader className="p-6 flex flex-row items-center justify-between gap-1 text-destructive border-b border-muted-foreground/5">
-          <div className="flex items-center gap-3">
-            <AlertTriangle className="h-5 w-5" />
-            <CardTitle className="font-bold text-sm tracking-tight">Daftar Ketidakhadiran</CardTitle>
+        <CardHeader className="p-6 border-b border-muted-foreground/5">
+          <div className="flex items-start gap-3">
+            <div className="mt-1">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+            </div>
+            <div className="space-y-1">
+              <CardTitle className="font-bold text-base tracking-tight text-destructive">
+                Daftar Ketidakhadiran
+              </CardTitle>
+              <p className="text-sm font-medium text-muted-foreground">
+                Staf tanpa absen & izin
+              </p>
+            </div>
           </div>
-          <p className="text-[10px] font-bold tracking-widest bg-destructive/10 px-3 py-1 rounded-lg">Staf tanpa absen & izin</p>
         </CardHeader>
         <CardContent className="p-0">
           {!isHoliday && absentUsers.length > 0 ? (

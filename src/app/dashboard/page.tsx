@@ -106,7 +106,6 @@ export default function DashboardPage() {
     const record = todaysAttendance?.[0];
     const isCheckedIn = !!record?.checkInTime;
     const isCheckedOut = !!record?.checkOutTime;
-    const isDinasPagi = record?.isDinasPagi || false;
 
     const disabledStyle = "w-full bg-primary/5 text-primary/40 border border-primary/10 font-bold rounded-xl h-12 flex items-center justify-center text-sm transition-all cursor-default select-none shadow-none";
 
@@ -120,12 +119,6 @@ export default function DashboardPage() {
 
     if (isCheckedOut) {
         return <div className="w-full bg-green-500/5 text-green-600 border border-green-500/20 font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><Sparkles className="mr-2 w-4 h-4" /> Absensi selesai</div>;
-    }
-
-    // IZIN DINAS PAGI: Boleh absen pulang meskipun tidak absen masuk (checkInTime null)
-    if (isDinasPagi && !isCheckedOut) {
-        if (windowStatus === 'CHECK_OUT_OPEN') return <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all"><Link href="/dashboard/absen">Absen pulang sekarang</Link></Button>;
-        return <div className={disabledStyle}><Clock className="mr-2 h-4 w-4" /> Izin Dinas Pagi - Tunggu jam pulang</div>;
     }
 
     if (!isCheckedIn) {
@@ -176,7 +169,6 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                {/* Tampilkan grafik di sini hanya jika BUKAN Kepala Sekolah */}
                 {!isKepalaSekolah && <MonthlySummaryChart />}
             </div>
         )}
@@ -184,7 +176,6 @@ export default function DashboardPage() {
         {isAdminOrKepsek && (
             <div className="w-full space-y-4 pt-4 border-t border-dashed border-border/50 flex flex-col items-stretch">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
-                    {/* Hadir Card */}
                     <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[1.5rem] overflow-hidden">
                         <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
                             <CardTitle className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Hadir</CardTitle>
@@ -199,7 +190,6 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Izin / Sakit Card */}
                     <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[1.5rem] overflow-hidden">
                         <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
                             <CardTitle className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Izin / Sakit</CardTitle>
@@ -214,7 +204,6 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Menunggu Card */}
                     <Link href="/dashboard/izin-kepala-sekolah" className="block">
                         <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-[1.5rem] hover:bg-muted/30 transition-all group overflow-hidden">
                             <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
@@ -234,8 +223,6 @@ export default function DashboardPage() {
                 <div className="w-full space-y-6 flex flex-col items-stretch">
                     <RecentAttendanceTable />
                     <AbsentUsersTable />
-                    
-                    {/* Tampilkan grafik di sini di bagian paling bawah KHUSUS Kepala Sekolah */}
                     {isKepalaSekolah && <MonthlySummaryChart />}
                 </div>
             </div>
