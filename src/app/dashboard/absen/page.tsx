@@ -186,7 +186,7 @@ export default function AbsenPage() {
   }, [showScanner, status, onScanSuccess]);
 
   return (
-    <div className="fixed inset-0 z-40 bg-black overflow-hidden touch-none overscroll-none">
+    <div className="fixed inset-0 z-40 bg-black overflow-hidden" style={{ touchAction: 'none' }}>
         {(showScanner || isCameraInitializing) && (
             <div className="absolute inset-0">
                 <div id={readerId} className="w-full h-full" />
@@ -254,7 +254,7 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData }: { s
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-            <div className={cn("w-full max-sm text-center p-8 rounded-2xl shadow-2xl relative", feedback.cardClass)} onClick={(e) => e.stopPropagation()}>
+            <div className={cn("w-full max-sm text-center p-8 rounded-xl shadow-2xl relative", feedback.cardClass)} onClick={(e) => e.stopPropagation()}>
                 <div className="flex flex-col items-center gap-4">
                     <div className="mb-2">{feedback.icon}</div>
                     <h3 className="text-2xl font-bold">{feedback.title}</h3>
