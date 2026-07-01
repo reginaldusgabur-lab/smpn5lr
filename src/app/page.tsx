@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,7 +16,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter
 } from '@/components/ui/card';
 import {
   Form,
@@ -79,7 +79,7 @@ export default function LoginPage() {
   const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     setIsLoginLoading(true);
     if (!auth) {
-      toast({ variant: "destructive", title: "Layanan Belum Siap", description: "Otentikasi belum siap." });
+      toast({ variant: "destructive", title: "Layanan belum siap", description: "Layanan otentikasi belum tersedia." });
       setIsLoginLoading(false);
       return;
     }
@@ -97,65 +97,81 @@ export default function LoginPage() {
     try {
       auth.languageCode = 'id';
       await sendPasswordResetEmail(auth, values.email);
-      toast({ title: "Link terkirim", description: `Cek inbox ${values.email}.` });
+      toast({
+        title: "Link pemulihan terkirim",
+        description: `Periksa kotak masuk & spam di ${values.email}.`
+      });
       setIsResetDialogOpen(false);
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Gagal", description: "Email tidak terdaftar." });
+      toast({
+        variant: "destructive",
+        title: "Gagal",
+        description: "Gagal mengirim email reset. Pastikan email terdaftar."
+      });
     } finally {
       setIsResetLoading(false);
     }
   };
   
-  if (isUserLoading || user) return <div className="fixed inset-0 bg-background" />;
+  if (isUserLoading || user) {
+      return <div className="fixed inset-0 bg-background" />;
+  }
 
   return (
-    <div className="flex flex-col min-h-screen items-center justify-center p-4 bg-background">
+    <div className="flex flex-col min-h-screen items-center justify-center p-4 bg-background text-foreground">
       <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
         <Card className="w-full max-w-md bg-card border border-muted-foreground/10 shadow-none rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="text-center pt-10 pb-4">
-            <div className="flex justify-center mb-2">
-              <div className="relative w-32 h-32 transition-transform duration-500 hover:scale-105">
-                <Image 
-                  src={appLogo?.imageUrl || "/logo-3d-v2.png"} 
-                  alt="Logo E-SPENLI" 
-                  fill 
-                  sizes="128px" 
-                  className="object-contain" 
-                  priority 
+          <CardHeader className="text-center space-y-2 pt-10 pb-4">
+            <div className="flex justify-center mb-4">
+              <div className="relative w-32 h-32 transition-all duration-500 hover:scale-105">
+                <Image
+                  src={appLogo?.imageUrl || "/logo-3d-v2.png"}
+                  alt="Logo E-SPENLI"
+                  fill
+                  sizes="128px"
+                  className="object-contain"
+                  priority
                 />
               </div>
             </div>
-            <div className="space-y-1">
-              <CardTitle className="text-4xl font-bold tracking-tight text-primary">E-SPENLI</CardTitle>
-              <CardDescription className="font-medium text-muted-foreground/80 text-[10px] tracking-tight px-4">
-                Electronic System of SMP Negeri 5 Langke Rembong
-              </CardDescription>
-            </div>
+            <CardTitle className="text-4xl font-bold tracking-tight text-primary">E-SPENLI</CardTitle>
+            <CardDescription className="font-normal text-muted-foreground/80 text-[10px] sm:text-xs tracking-tight px-2 whitespace-nowrap">
+              Electronic System of SMP Negeri 5 Langke Rembong
+            </CardDescription>
           </CardHeader>
-          <CardContent className="px-10 pb-8">
+          <CardContent className="px-10 pb-10">
             <Form {...loginForm}>
-              <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-5">
-                <FormField control={loginForm.control} name="email" render={({ field }) => (
+              <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-6">
+                <FormField
+                  control={loginForm.control}
+                  name="email"
+                  render={({ field }) => (
                     <FormItem className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Alamat Email</Label>
+                      <Label className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1 uppercase">Alamat email</Label>
                       <FormControl>
                         <Input 
                           placeholder="nama@email.com" 
                           {...field} 
-                          className="h-12 rounded-2xl bg-muted/30 border-muted-foreground/5 font-medium shadow-none focus:bg-background transition-all" 
+                          className="h-12 rounded-2xl bg-muted/30 border-muted-foreground/5 focus:bg-background transition-all font-bold shadow-none"
                         />
                       </FormControl>
                       <FormMessage className="text-[10px] font-bold" />
                     </FormItem>
-                  )} />
+                  )}
+                />
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between mb-1">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Kata Sandi</Label>
+                    <Label htmlFor="password" className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1 uppercase">Kata sandi</Label>
                     <DialogTrigger asChild>
-                      <button type="button" className="text-[10px] font-bold text-primary tracking-widest hover:opacity-70 transition-opacity">Lupa sandi?</button>
+                      <button type="button" className="text-[10px] font-bold text-primary hover:opacity-70 transition-opacity tracking-widest uppercase">
+                        Lupa sandi?
+                      </button>
                     </DialogTrigger>
                   </div>
-                  <FormField control={loginForm.control} name="password" render={({ field }) => (
+                  <FormField
+                    control={loginForm.control}
+                    name="password"
+                    render={({ field }) => (
                       <FormItem>
                         <div className="relative">
                           <FormControl>
@@ -163,26 +179,28 @@ export default function LoginPage() {
                               type={showLoginPass ? 'text' : 'password'} 
                               placeholder="Masukkan kata sandi" 
                               {...field} 
-                              className="h-12 rounded-2xl bg-muted/30 border-muted-foreground/5 font-medium shadow-none focus:bg-background transition-all" 
+                              className="h-12 rounded-2xl bg-muted/30 border-muted-foreground/5 focus:bg-background transition-all font-bold shadow-none"
                             />
                           </FormControl>
-                          <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="icon" 
-                            className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:bg-transparent shadow-none" 
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute inset-y-0 right-0 h-full px-3 text-muted-foreground hover:bg-transparent shadow-none"
                             onClick={() => setShowLoginPass(!showLoginPass)}
                           >
                             {showLoginPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            <span className="sr-only">Tampilkan kata sandi</span>
                           </Button>
                         </div>
                         <FormMessage className="text-[10px] font-bold" />
                       </FormItem>
-                    )} />
+                    )}
+                  />
                 </div>
                 <Button 
                   type="submit" 
-                  className="w-full h-14 text-sm font-bold rounded-2xl shadow-none bg-primary hover:bg-primary/90 mt-2 tracking-widest active:scale-[0.98] transition-all" 
+                  className="w-full h-14 text-sm font-bold rounded-2xl shadow-none transition-all active:scale-[0.97] bg-primary hover:bg-primary/90 mt-4 tracking-widest" 
                   disabled={isLoginLoading}
                 >
                   {isLoginLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "MASUK SEKARANG"}
@@ -190,35 +208,44 @@ export default function LoginPage() {
               </form>
             </Form>
           </CardContent>
-          <div className="bg-muted/20 py-6 border-t border-muted-foreground/5" />
+          <div className="bg-muted/20 py-4 border-t border-muted-foreground/5" />
         </Card>
 
-        <DialogContent className="rounded-[2.5rem] border-none p-10 shadow-2xl">
+        <DialogContent className="rounded-[2.5rem] border-none p-10 shadow-none">
           <DialogHeader>
             <DialogTitle className="font-bold text-2xl tracking-tighter text-primary">Atur ulang sandi</DialogTitle>
             <DialogDescription className="font-bold text-xs text-muted-foreground mt-2">
-              Masukkan email terdaftar Anda untuk instruksi reset.
+              Masukkan email terdaftar Anda untuk menerima tautan pemulihan.
             </DialogDescription>
           </DialogHeader>
           <Form {...resetForm}>
             <form onSubmit={resetForm.handleSubmit(handlePasswordReset)}>
               <div className="py-8">
-                <FormField control={resetForm.control} name="email" render={({ field }) => (
+                <FormField
+                  control={resetForm.control}
+                  name="email"
+                  render={({ field }) => (
                     <FormItem>
-                      <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Email terdaftar</Label>
+                      <Label htmlFor="reset-email" className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1 uppercase">Email terdaftar</Label>
                       <FormControl>
                         <Input 
+                          id="reset-email" 
                           placeholder="email@anda.com" 
                           {...field} 
-                          className="h-12 rounded-2xl bg-muted/30 border-muted-foreground/5 font-medium shadow-none" 
+                          className="h-12 rounded-2xl bg-muted/30 border-muted-foreground/5 focus:bg-background shadow-none font-bold"
                         />
                       </FormControl>
                       <FormMessage className="text-[10px] font-bold" />
                     </FormItem>
-                  )} />
+                  )}
+                />
               </div>
               <DialogFooter>
-                <Button type="submit" disabled={isResetLoading} className="w-full h-12 rounded-xl font-bold tracking-widest shadow-none">
+                <Button 
+                  type="submit" 
+                  disabled={isResetLoading} 
+                  className="w-full h-12 rounded-2xl font-bold tracking-widest shadow-none"
+                >
                   {isResetLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Kirim link pemulihan"}
                 </Button>
               </DialogFooter>
@@ -226,11 +253,11 @@ export default function LoginPage() {
           </Form>
         </DialogContent>
       </Dialog>
-      <footer className="mt-8 text-center flex flex-col items-center gap-1.5">
-        <p className="text-[10px] font-bold text-muted-foreground/50 tracking-[0.15em] uppercase">
+      <footer className="mt-10 text-center flex flex-col items-center gap-1">
+        <p className="text-[10px] font-bold text-muted-foreground/50 tracking-[0.2em] uppercase">
           SMP NEGERI 5 LANGKE REMBONG
         </p>
-        <p className="text-[9px] font-medium text-muted-foreground/30 tracking-widest uppercase">
+        <p className="text-[9px] font-medium text-muted-foreground/30 tracking-widest">
           All Rights Reserved.
         </p>
       </footer>
