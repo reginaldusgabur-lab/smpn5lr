@@ -317,14 +317,14 @@ export default function DashboardPage() {
                                             allowDecimals={false} 
                                         />
                                         <Tooltip 
-                                            cursor={{ fill: 'rgba(0,0,0,0.03)' }} 
-                                            contentStyle={{ borderRadius: '12px', border: 'none', shadow: 'none', fontSize: '11px', fontWeight: 'bold' }} 
+                                            cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 8 }} 
+                                            contentStyle={{ borderRadius: '12px', border: 'none', shadow: 'none', fontSize: '11px', fontWeight: 'bold' }}
+                                            formatter={(val) => [`${val} hari`, "Jumlah"]}
                                         />
                                         <Bar 
                                             dataKey="Jumlah" 
                                             radius={[6, 6, 0, 0]} 
                                             barSize={45}
-                                            background={{ fill: 'rgba(0,0,0,0.02)', radius: 6 }}
                                         >
                                             {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                                         </Bar>
