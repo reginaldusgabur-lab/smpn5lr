@@ -324,18 +324,18 @@ export default function DashboardPage() {
                                 <Skeleton className="h-full w-full rounded-xl" />
                             ) : (
                                 <ChartContainer config={chartConfig} className="h-full w-full">
-                                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -30, bottom: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.2} />
                                         <XAxis 
                                             dataKey="name" 
-                                            axisLine={false} 
+                                            axisLine={{ stroke: 'currentColor', opacity: 0.2 }}
                                             tickLine={false} 
-                                            tick={{ fontSize: 11, fontWeight: 'bold', fill: 'currentColor' }} 
+                                            tick={{ fontSize: 11, fontWeight: 'bold', fill: 'currentColor', opacity: 0.6 }} 
                                         />
                                         <YAxis 
-                                            axisLine={false} 
+                                            axisLine={{ stroke: 'currentColor', opacity: 0.2 }}
                                             tickLine={false} 
-                                            tick={{ fontSize: 11, fill: 'currentColor' }} 
+                                            tick={{ fontSize: 11, fill: 'currentColor', opacity: 0.6 }} 
                                             allowDecimals={false} 
                                         />
                                         <Tooltip 
