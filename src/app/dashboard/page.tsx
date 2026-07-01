@@ -10,12 +10,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 
 import { calculateAttendanceStats, getDailyStaffAttendanceStats } from '@/lib/attendance';
 import { useAttendanceWindow } from '@/hooks/use-attendance-window';
 import AbsentUsersTable from '@/components/dashboard/AbsentUsersTable';
 import RecentAttendanceTable from '@/components/dashboard/RecentAttendanceTable';
+
+const chartConfig = {
+  Jumlah: {
+    label: "Jumlah",
+    color: "hsl(var(--primary))",
+  },
+} satisfies ChartConfig;
 
 const LiveClockUI = () => {
     const [time, setTime] = useState<Date | null>(null);
@@ -95,7 +103,6 @@ export default function DashboardPage() {
     return () => { isMounted.current = false; };
   }, [loadDashboardData, loadMonthlySummary, summaryMonth, user?.uid, isUserLoading]);
 
-  // Check today's personal attendance
   const todaysAttendanceQuery = useMemoFirebase(() => {
       if (!user || !firestore) return null;
       const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -103,7 +110,6 @@ export default function DashboardPage() {
   }, [firestore, user]);
   const { data: todaysAttendance, isLoading: isAttendanceLoading } = useCollection(user, todaysAttendanceQuery);
 
-  // Check today's active approved leave
   const todayLeaveQuery = useMemoFirebase(() => {
       if (!user || !firestore) return null;
       return query(
@@ -181,15 +187,15 @@ export default function DashboardPage() {
 
     if (windowStatus === 'CHECK_OUT_OPEN') {
         return (
-            <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all bg-blue-600 hover:bg-blue-700">
-                <Link href="/dashboard/absen">Absen pulang</Link>
+            <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all bg-blue-600 hover:bg-blue-700 text-white">
+                <Link href="/dashboard/absen">Absen pulang sekarang</Link>
             </Button>
         );
     }
 
     if (!isCheckedIn) {
         if (windowStatus === 'BEFORE_IN') return <div className={disabledStyle}><Clock className="mr-2 h-4 w-4" /> Belum waktu jam masuk</div>;
-        if (windowStatus === 'CHECK_IN_OPEN') return <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all"><Link href="/dashboard/absen">Absen masuk</Link></Button>;
+        if (windowStatus === 'CHECK_IN_OPEN') return <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all"><Link href="/dashboard/absen">Absen masuk sekarang</Link></Button>;
         if (windowStatus === 'AFTER_IN') return <div className="w-full bg-destructive/5 text-destructive/60 border border-destructive/10 font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><AlertCircle className="mr-2 h-4 w-4" /> Batas jam masuk berakhir</div>;
     }
 
@@ -301,7 +307,7 @@ export default function DashboardPage() {
                             {isPersonalSummaryLoading ? (
                                 <Skeleton className="h-full w-full rounded-xl" />
                             ) : (
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ChartContainer config={chartConfig} className="h-full w-full">
                                     <BarChart data={chartData} margin={{ top: 10, right: 10, left: -30, bottom: 0 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
                                         <XAxis 
@@ -316,20 +322,21 @@ export default function DashboardPage() {
                                             tick={{ fontSize: 11, fill: 'currentColor' }} 
                                             allowDecimals={false} 
                                         />
-                                        <Tooltip 
-                                            cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 8 }} 
-                                            contentStyle={{ borderRadius: '12px', border: 'none', shadow: 'none', fontSize: '11px', fontWeight: 'bold' }}
-                                            formatter={(val) => [`${val} hari`, "Jumlah"]}
+                                        <ChartTooltip 
+                                            cursor={{ fill: 'currentColor', opacity: 0.05, radius: 8 }} 
+                                            content={<ChartTooltipContent hideLabel indicator="dot" />}
                                         />
                                         <Bar 
                                             dataKey="Jumlah" 
                                             radius={[6, 6, 0, 0]} 
                                             barSize={45}
                                         >
-                                            {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                            {chartData.map((entry, index) => (
+                                              <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
                                         </Bar>
                                     </BarChart>
-                                </ResponsiveContainer>
+                                </ChartContainer>
                             )}
                         </div>
                     </CardContent>
