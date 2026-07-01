@@ -22,6 +22,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { format, parseISO, isValid, startOfDay, endOfDay, addMinutes, isBefore } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { MoreVertical, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { invalidateCache } from '@/lib/cache';
 
 const getRandomTime = (baseDate: Date, startTimeStr: string, endTimeStr: string): Date => {
     const [startH, startM] = startTimeStr.split(':').map(Number);
@@ -110,6 +111,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 reason: newStatus
             });
             await batch.commit();
+            invalidateCache(); // Clear cache
             setProblematicDays(prev => prev.filter(p => p.id !== day.id));
         } catch (err) { setError("Gagal mengubah status."); }
         finally { setIsSaving(false); }
@@ -166,6 +168,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
             }, { merge: true });
 
             await batch.commit();
+            invalidateCache(); // Clear cache
             setProblematicDays(prev => prev.filter(p => p.id !== day.id));
         } catch (err) { setError("Gagal menyimpan perubahan."); }
         finally { setIsSaving(false); }
@@ -199,6 +202,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 }, { merge: true });
             }
             await batch.commit();
+            invalidateCache(); // Clear cache
             onClose();
         } catch (err) { setError("Gagal menyimpan perubahan."); }
         finally { setIsSaving(false); }

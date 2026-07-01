@@ -131,7 +131,6 @@ export default function SchoolReportPage() {
             const workingDays = eachDayOfInterval({ start, end }).filter(day => 
                 !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd'))
             );
-            const pastWorkingDays = workingDays.filter(day => isBefore(day, today) || isSameDay(day, today));
             const workingDaysSet = new Set(workingDays.map(d => format(d, 'yyyy-MM-dd')));
 
             const results = allUsers.map(u => {
@@ -154,7 +153,7 @@ export default function SchoolReportPage() {
                             p = 1.0;
                             hadirCount++;
                         } else if (desc.includes('pulang cepat')) {
-                            p = 0.95; // Same as late
+                            p = 0.95; 
                             hadirCount++;
                         } else if (att.checkInTime && att.checkOutTime) {
                             let isLate = false;
@@ -198,9 +197,7 @@ export default function SchoolReportPage() {
                     });
                 });
 
-                alpaCount = pastWorkingDays.filter(day => !processedDates.has(format(day, 'yyyy-MM-dd'))).length;
-
-                // Denominator: Seluruh hari kerja dalam sebulan untuk progres bertahap
+                // Denominator: Seluruh hari kerja dalam sebulan sesuai desain skor progresif
                 const denominator = workingDays.length || 1;
                 const persentase = Math.min((points / denominator) * 100, 100).toFixed(1) + '%';
 
@@ -214,7 +211,7 @@ export default function SchoolReportPage() {
                     totalHadir: hadirCount,
                     totalIzin: izinCount,
                     totalSakit: sakitCount,
-                    totalAlpa: alpaCount,
+                    totalAlpa: 0, // Alpa logic removed from summary list as requested
                     persentase
                 };
             });
@@ -290,27 +287,25 @@ export default function SchoolReportPage() {
                 Math.ceil(item.totalHadir),
                 item.totalIzin,
                 item.totalSakit,
-                item.totalAlpa,
                 item.persentase
             ]);
 
             autoTable(doc, {
                 startY: finalY,
-                head: [['No', 'Nama', 'NIP', 'Status', 'H', 'I', 'S', 'A', '%']],
+                head: [['No', 'Nama', 'NIP', 'Status', 'H', 'I', 'S', '%']],
                 body: tableRows,
                 theme: 'grid',
                 styles: { font: 'times', fontSize: 9, cellPadding: 3, lineWidth: 0.1, lineColor: [150, 150, 150], valign: 'middle' },
                 headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center', fontStyle: 'bold', fontSize: 10, lineWidth: 0 },
                 columnStyles: {
                     0: { halign: 'center', cellWidth: 10 },
-                    1: { halign: 'left', cellWidth: 45 },
+                    1: { halign: 'left', cellWidth: 50 },
                     2: { halign: 'left', cellWidth: 35 },
-                    3: { halign: 'center', cellWidth: 20 },
-                    4: { halign: 'center', cellWidth: 12 },
-                    5: { halign: 'center', cellWidth: 12 },
-                    6: { halign: 'center', cellWidth: 12 },
-                    7: { halign: 'center', cellWidth: 12 },
-                    8: { halign: 'center', cellWidth: 22 },
+                    3: { halign: 'center', cellWidth: 25 },
+                    4: { halign: 'center', cellWidth: 15 },
+                    5: { halign: 'center', cellWidth: 15 },
+                    6: { halign: 'center', cellWidth: 15 },
+                    7: { halign: 'center', cellWidth: 25 },
                 }
             });
 
@@ -321,7 +316,7 @@ export default function SchoolReportPage() {
             doc.setFontSize(9).setFont('times', 'bold');
             doc.text('Catatan:', margin, currentY);
             doc.setFont('times', 'normal');
-            doc.text('H = Hadir, I = Izin, S = Sakit, A = Alpa', margin + 15, currentY);
+            doc.text('H = Hadir, I = Izin, S = Sakit', margin + 15, currentY);
 
             currentY += 15;
             const signatureX = pageWidth - 80;
@@ -416,7 +411,6 @@ export default function SchoolReportPage() {
                                             <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">H</TableHead>
                                             <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">I</TableHead>
                                             <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">S</TableHead>
-                                            <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">A</TableHead>
                                             <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">%</TableHead>
                                             <TableHead className="w-[80px] text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Aksi</TableHead>
                                         </TableRow>
@@ -430,14 +424,13 @@ export default function SchoolReportPage() {
                                                     <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
                                                     <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
                                                     <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
-                                                    <TableCell><Skeleton className="h-4 w-8 mx-auto" /></TableCell>
                                                     <TableCell><Skeleton className="h-7 w-14 mx-auto rounded-xl" /></TableCell>
                                                     <TableCell><Skeleton className="h-10 w-10 mx-auto rounded-full" /></TableCell>
                                                 </TableRow>
                                             ))
                                         ) : error ? (
                                             <TableRow>
-                                                <TableCell colSpan={8} className="h-48 text-center text-muted-foreground font-bold">
+                                                <TableCell colSpan={7} className="h-48 text-center text-muted-foreground font-bold">
                                                     {error}
                                                 </TableCell>
                                             </TableRow>
@@ -453,7 +446,6 @@ export default function SchoolReportPage() {
                                                 <TableCell className="text-center font-bold text-green-600/80">{Math.ceil(item.totalHadir)}</TableCell>
                                                 <TableCell className="text-center font-bold text-blue-500/80">{item.totalIzin}</TableCell>
                                                 <TableCell className="text-center font-bold text-orange-500/80">{item.totalSakit}</TableCell>
-                                                <TableCell className="text-center font-bold text-destructive/80">{item.totalAlpa}</TableCell>
                                                 <TableCell className="text-center">
                                                     <span className="inline-flex items-center px-3 py-1 rounded-xl bg-primary/10 text-primary font-bold text-xs">
                                                         {item.persentase}
@@ -469,7 +461,7 @@ export default function SchoolReportPage() {
                                             </TableRow>
                                         )) : (
                                             <TableRow>
-                                                <TableCell colSpan={8} className="h-48 text-center text-muted-foreground font-bold">
+                                                <TableCell colSpan={7} className="h-48 text-center text-muted-foreground font-bold">
                                                     Tidak ada data personil ditemukan.
                                                 </TableCell>
                                             </TableRow>

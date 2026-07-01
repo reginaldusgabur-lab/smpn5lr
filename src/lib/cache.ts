@@ -78,8 +78,8 @@ export const invalidateCache = (key?: string): void => {
     memoryCache.delete(key);
     sessionStorage.removeItem(`espenli_cache_${key}`);
   } else {
+    // Jika tidak ada key, hapus semua cache yang berkaitan dengan statistik dan daily stats
     memoryCache.clear();
-    // Hapus semua session storage milik aplikasi ini
     Object.keys(sessionStorage).forEach(k => {
       if (k.startsWith('espenli_cache_')) sessionStorage.removeItem(k);
     });

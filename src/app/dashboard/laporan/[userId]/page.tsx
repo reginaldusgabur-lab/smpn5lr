@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { invalidateCache } from '@/lib/cache';
 
 const safeFormat = (dateInput: any, formatString: string): string => {
     if (!dateInput) return '-';
@@ -168,6 +169,7 @@ export default function UserReportDetailPage() {
             }
 
             await batch.commit();
+            invalidateCache(); // Clear cache to ensure percentage syncs immediately
             toast({ title: 'Berhasil', description: `Status diperbarui menjadi ${reason}.` });
             fetchData();
         } catch (err) {
@@ -213,6 +215,7 @@ export default function UserReportDetailPage() {
                 await writeBatch(firestore).set(doc(attendanceRef), data).commit();
             }
 
+            invalidateCache(); // Clear cache
             toast({ title: 'Berhasil', description: 'Ditandai sebagai terlambat.' });
             fetchData();
         } catch (err) {
@@ -265,6 +268,7 @@ export default function UserReportDetailPage() {
             }
 
             await batch.commit();
+            invalidateCache(); // Clear cache
             toast({ title: 'Berhasil', description: 'Ditandai sebagai hadir.' });
             fetchData();
         } catch (err) {
