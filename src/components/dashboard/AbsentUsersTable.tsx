@@ -168,18 +168,18 @@ const AbsentUsersTable = () => {
 
   const getStatusStyle = (status: string) => {
       const s = status.toLowerCase();
-      // Alpa: Merah
-      if (s === 'alpa') return 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800';
-      // Sakit: Oranye
-      if (s === 'sakit') return 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800';
-      // Izin: Biru
-      if (s === 'izin' || s.includes('izin pribadi')) return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800';
-      // Dinas / Pulang Cepat: Ungu
-      if (s.includes('dinas') || s.includes('pulang cepat')) return 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800';
-      // Menunggu: Abu-abu
-      if (s === 'menunggu') return 'bg-muted text-muted-foreground border-transparent hover:bg-muted dark:bg-muted/20';
+      // Alpa: Merah Solid (Sesuai Gambar)
+      if (s === 'alpa') return 'bg-red-800 text-white border-none rounded-full px-5 py-1.5 h-auto shadow-sm';
+      // Sakit: Oranye Solid (Sesuai Permintaan)
+      if (s === 'sakit') return 'bg-orange-600 text-white border-none rounded-full px-5 py-1.5 h-auto shadow-sm';
+      // Izin: Biru Solid
+      if (s === 'izin' || s.includes('izin pribadi')) return 'bg-blue-800 text-white border-none rounded-full px-5 py-1.5 h-auto shadow-sm';
+      // Dinas / Pulang Cepat: Ungu Solid
+      if (s.includes('dinas') || s.includes('pulang cepat')) return 'bg-purple-800 text-white border-none rounded-full px-5 py-1.5 h-auto shadow-sm';
+      // Menunggu: Abu-abu Solid
+      if (s === 'menunggu') return 'bg-slate-700 text-white border-none rounded-full px-5 py-1.5 h-auto shadow-sm';
       
-      return 'bg-primary/10 text-primary border-transparent hover:bg-primary/20';
+      return 'bg-primary text-white border-none rounded-full px-5 py-1.5 h-auto shadow-sm';
   }
 
   return (
@@ -206,9 +206,9 @@ const AbsentUsersTable = () => {
               <Table>
                   <TableHeader className="bg-destructive/5">
                   <TableRow className="border-none">
-                      <TableHead className="w-[60px] text-center font-bold text-[10px] tracking-widest text-destructive">No</TableHead>
-                      <TableHead className="font-bold text-[10px] tracking-widest text-destructive">Nama & Posisi</TableHead>
-                      <TableHead className="text-center font-bold text-[10px] tracking-widest text-destructive">Status</TableHead>
+                      <TableHead className="w-[60px] text-center font-bold text-[10px] tracking-widest text-destructive uppercase">No</TableHead>
+                      <TableHead className="font-bold text-[10px] tracking-widest text-destructive uppercase">Nama & Posisi</TableHead>
+                      <TableHead className="text-center font-bold text-[10px] tracking-widest text-destructive uppercase">Status</TableHead>
                   </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -220,7 +220,7 @@ const AbsentUsersTable = () => {
                           <div className="text-[10px] text-muted-foreground font-bold tracking-tight">{user.position}</div>
                       </TableCell>
                       <TableCell className="text-center">
-                          <Badge variant="outline" className={cn("text-[10px] font-bold px-3 py-1 rounded-xl", getStatusStyle(user.status))}>
+                          <Badge variant="outline" className={cn("text-[10px] font-bold", getStatusStyle(user.status))}>
                               {user.status}
                           </Badge>
                       </TableCell>
