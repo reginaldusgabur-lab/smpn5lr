@@ -231,8 +231,7 @@ export default function LoginPage() {
         </DialogContent>
       </Dialog>
       <footer className="mt-8 text-center text-[9px] font-bold text-muted-foreground/40 leading-relaxed tracking-[0.2em] uppercase">
-        Sistem Absensi Digital Terintegrasi <br /> 
-        <span className="text-primary/40">SMPN 5 Langke Rembong</span>
+        created by team operator | All Rights Reserved.
       </footer>
     </div>
   );
