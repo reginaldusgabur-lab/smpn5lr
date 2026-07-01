@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
@@ -369,22 +370,22 @@ export default function UserReportDetailPage() {
     }, [currentMonth]);
 
     return (
-        <div className="flex-1 pt-4 pb-24 md:p-8">
-            <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex-1 pt-2 pb-24 md:p-8">
+            <div className="max-w-7xl mx-auto space-y-4">
                 <div className="px-4 md:px-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-0.5">
                         <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2 shadow-none" onClick={() => router.back()}>
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
-                        <h1 className="text-3xl font-bold tracking-tight">Detail Laporan Kehadiran</h1>
+                        <h1 className="text-2xl font-black tracking-tight">Detail Laporan Kehadiran</h1>
                     </div>
                     <div className="h-6 flex items-center">
-                        {!userData ? <Skeleton className="h-4 w-64 ml-8 sm:ml-0" /> : <p className="text-muted-foreground ml-8 sm:ml-0 font-bold">Laporan harian untuk {userData.name}.</p>}
+                        {!userData ? <Skeleton className="h-4 w-64 ml-8 sm:ml-0" /> : <p className="text-muted-foreground ml-8 sm:ml-0 font-bold text-xs">Laporan harian untuk {userData.name}.</p>}
                     </div>
                 </div>
 
                 <Card className="overflow-hidden border border-muted-foreground/10 shadow-none rounded-xl">
-                    <CardContent className="p-0 sm:p-6">
+                    <CardContent className="p-0">
                         <div className="p-4 space-y-4">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
                                 <div className="flex items-center bg-muted/40 rounded-2xl border border-muted-foreground/5 p-1 shrink-0">
@@ -405,7 +406,7 @@ export default function UserReportDetailPage() {
                                                 <span className="text-sm font-black text-primary">{stats.persentase}</span>
                                             </div>
                                         )}
-                                        <span className="font-bold text-base sm:text-xl text-primary tracking-tight text-center capitalize whitespace-nowrap min-w-[120px]">
+                                        <span className="font-black text-xl text-primary tracking-tight text-center capitalize whitespace-nowrap min-w-[120px]">
                                             {format(currentMonth, 'MMMM yyyy', { locale: id })}
                                         </span>
                                     </div>
@@ -422,9 +423,9 @@ export default function UserReportDetailPage() {
                                 </div>
                             </div>
                             <div className="flex justify-center sm:justify-end">
-                                <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-bold bg-primary hover:bg-primary/90 shadow-none h-11 rounded-xl">
+                                <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-black bg-primary hover:bg-primary/90 shadow-none h-11 rounded-xl text-xs uppercase tracking-wider">
                                     {isLoading || isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                                    Unduh Laporan PDF
+                                    Unduh PDF
                                 </Button>
                             </div>
                         </div>
@@ -434,12 +435,12 @@ export default function UserReportDetailPage() {
                                 <Table>
                                     <TableHeader className="bg-muted/30">
                                         <TableRow className="border-none">
-                                            <TableHead className="w-[60px] text-center font-bold text-xs">No</TableHead>
-                                            <TableHead className="w-[200px] font-bold text-xs">Tanggal</TableHead>
-                                            <TableHead className="text-center font-bold text-xs">Jam Masuk</TableHead>
-                                            <TableHead className="text-center font-bold text-xs">Jam Pulang</TableHead>
-                                            <TableHead className="text-center font-bold text-xs">Status</TableHead>
-                                            <TableHead className="font-bold text-xs">Keterangan</TableHead>
+                                            <TableHead className="w-[60px] text-center font-bold text-xs uppercase tracking-widest">No</TableHead>
+                                            <TableHead className="w-[200px] font-bold text-xs uppercase tracking-widest">Tanggal</TableHead>
+                                            <TableHead className="text-center font-bold text-xs uppercase tracking-widest">Masuk</TableHead>
+                                            <TableHead className="text-center font-bold text-xs uppercase tracking-widest">Pulang</TableHead>
+                                            <TableHead className="text-center font-bold text-xs uppercase tracking-widest">Status</TableHead>
+                                            <TableHead className="font-bold text-xs uppercase tracking-widest">Keterangan</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -472,8 +473,8 @@ export default function UserReportDetailPage() {
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl border-none p-2">
-                                                                    <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleSetHadir(item.date)}>Jadikan Hadir</DropdownMenuItem>
-                                                                    <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleSetLate(item.date)}>Set Terlambat</DropdownMenuItem>
+                                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleSetHadir(item.date)}>Jadikan Hadir</DropdownMenuItem>
+                                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleSetLate(item.date)}>Set Terlambat</DropdownMenuItem>
                                                                     <DropdownMenuSeparator className='my-1 opacity-50' />
                                                                     <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleStatusChange(item.date, 'Sakit', 'Sakit')}>Sakit</DropdownMenuItem>
                                                                     <DropdownMenuItem className="text-xs font-bold rounded-lg" onClick={() => handleStatusChange(item.date, 'Izin Pribadi', 'Izin Pribadi')}>Izin Pribadi</DropdownMenuItem>
@@ -506,3 +507,4 @@ export default function UserReportDetailPage() {
         </div>
     );
 }
+

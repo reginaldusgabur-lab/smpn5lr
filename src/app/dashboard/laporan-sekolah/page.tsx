@@ -340,26 +340,26 @@ export default function SchoolReportPage() {
     const canGoPrev = currentMonth > minDate;
 
     return (
-        <div className="flex-1 pt-4 pb-24 md:p-8">
-            <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex-1 pt-2 pb-24 md:p-8">
+            <div className="max-w-7xl mx-auto space-y-4">
                 <div className="px-4 md:px-0">
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">Laporan sekolah</h1>
-                    <p className="text-muted-foreground mt-1 font-bold">Ringkasan kehadiran bulanan untuk seluruh personil aktif.</p>
+                    <h1 className="text-2xl font-black tracking-tight text-foreground">Laporan sekolah</h1>
+                    <p className="text-muted-foreground mt-0.5 text-xs font-bold">Ringkasan kehadiran bulanan untuk seluruh personil aktif.</p>
                 </div>
 
                 <Card className="overflow-hidden border border-muted-foreground/10 shadow-none rounded-xl bg-card">
-                    <CardHeader className="p-6 border-b border-muted-foreground/10 text-primary">
-                        <CardTitle className="font-bold text-sm tracking-tight">Rekapitulasi kehadiran</CardTitle>
-                        <CardDescription className="text-muted-foreground font-bold">Data kehadiran akumulatif seluruh personil bulan {monthName}.</CardDescription>
+                    <CardHeader className="p-4 border-b border-muted-foreground/10 text-primary">
+                        <CardTitle className="font-bold text-xs tracking-tight uppercase">Rekapitulasi kehadiran</CardTitle>
+                        <CardDescription className="text-muted-foreground font-bold text-[10px]">Data kehadiran akumulatif seluruh personil bulan {monthName}.</CardDescription>
                     </CardHeader>
-                    <CardContent className="p-0 sm:p-6 min-h-[500px]">
-                        <div className="p-6 space-y-6">
-                            <div className="flex flex-col items-center justify-center gap-4 py-2">
+                    <CardContent className="p-0 min-h-[500px]">
+                        <div className="p-4 space-y-4">
+                            <div className="flex flex-col items-center justify-center gap-4">
                                 <div className="flex items-center bg-muted/40 rounded-2xl border border-muted-foreground/5 p-1 shrink-0">
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 
-                                        className="rounded-xl shrink-0 h-10 w-10 shadow-none hover:bg-background/50" 
+                                        className="h-10 w-10 rounded-xl hover:bg-background/50 shadow-none shrink-0" 
                                         onClick={() => setCurrentMonth(prev => {
                                             const n = subMonths(prev, 1);
                                             return n < minDate ? prev : n;
@@ -368,50 +368,47 @@ export default function SchoolReportPage() {
                                     >
                                         <ChevronLeft className="h-5 w-5 text-primary" />
                                     </Button>
-                                    <span className="w-48 text-center font-bold text-xl sm:text-2xl text-primary tracking-tight capitalize whitespace-nowrap">{monthName}</span>
+                                    <span className="w-40 text-center font-black text-xl text-primary tracking-tight capitalize whitespace-nowrap">{monthName}</span>
                                     <Button variant="ghost" size="icon" className="rounded-xl shrink-0 h-10 w-10 shadow-none hover:bg-background/50" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isReportLoading || isSameMonth(currentMonth, new Date())}>
                                         <ChevronRight className="h-5 w-5 text-primary" />
                                     </Button>
                                 </div>
-                                <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent mt-2" />
                             </div>
                             
-                            <div className="flex flex-wrap gap-4 items-center justify-between">
-                                <div className="flex flex-wrap gap-3 flex-1 min-w-[300px]">
-                                    <div className="w-full sm:w-[180px] relative group">
-                                        <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-primary z-10 pointer-events-none transition-colors" />
+                            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+                                <div className="flex flex-col sm:flex-row gap-2 flex-1 w-full">
+                                    <div className="w-full sm:w-[160px] relative group">
+                                        <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary z-10 pointer-events-none" />
                                         <Select value={roleFilter} onValueChange={setRoleFilter}>
-                                            <SelectTrigger className="pl-11 h-12 rounded-2xl bg-muted/40 border-muted-foreground/10 focus:ring-primary focus:bg-background transition-all shadow-none">
+                                            <SelectTrigger className="pl-10 h-11 rounded-xl bg-muted/30 border-muted-foreground/10 focus:bg-background transition-all shadow-none font-bold text-xs">
                                                 <SelectValue placeholder="Peran" />
                                             </SelectTrigger>
-                                            <SelectContent className="rounded-2xl border-none shadow-2xl">
-                                                <SelectItem value="all" className='rounded-xl'>Semua peran</SelectItem>
-                                                <SelectItem value="guru" className='rounded-xl'>Guru</SelectItem>
-                                                <SelectItem value="pegawai" className='rounded-xl'>Pegawai</SelectItem>
-                                                <SelectItem value="kepala_sekolah" className='rounded-xl'>Kepala Sekolah</SelectItem>
+                                            <SelectContent className="rounded-xl border-none shadow-2xl">
+                                                <SelectItem value="all" className='rounded-lg text-xs'>Semua peran</SelectItem>
+                                                <SelectItem value="guru" className='rounded-lg text-xs'>Guru</SelectItem>
+                                                <SelectItem value="pegawai" className='rounded-lg text-xs'>Pegawai</SelectItem>
+                                                <SelectItem value="kepala_sekolah" className='rounded-lg text-xs'>Kepala Sekolah</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <div className="flex-1 relative min-w-[200px] group">
-                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-primary z-10 pointer-events-none" />
+                                    <div className="flex-1 relative w-full">
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary z-10" />
                                         <Input 
                                             placeholder="Cari personil..." 
-                                            className="pl-12 h-12 rounded-2xl bg-muted/40 border-muted-foreground/10 focus:ring-primary focus:bg-background transition-all font-bold shadow-none" 
+                                            className="pl-11 h-11 rounded-xl bg-muted/30 border-muted-foreground/10 focus:bg-background transition-all font-bold text-xs shadow-none" 
                                             value={searchTerm} 
                                             onChange={e => setSearchTerm(e.target.value)} 
                                         />
                                     </div>
                                 </div>
-                                <div className="w-full lg:w-auto">
-                                    <Button 
-                                        className="w-full lg:w-auto h-12 rounded-2xl font-bold shadow-none active:scale-95 transition-all px-8 bg-primary hover:bg-primary/90 text-sm" 
-                                        disabled={isReportLoading || !filteredReports.length || isExporting}
-                                        onClick={handleDownloadPdf}
-                                    >
-                                        {isExporting ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : <Download className="mr-3 h-5 w-5" />}
-                                        <span className="whitespace-nowrap tracking-wider">Unduh PDF</span>
-                                    </Button>
-                                </div>
+                                <Button 
+                                    className="w-full sm:w-auto h-11 rounded-xl font-black shadow-none active:scale-95 transition-all px-6 bg-primary hover:bg-primary/90 text-xs" 
+                                    disabled={isReportLoading || !filteredReports.length || isExporting}
+                                    onClick={handleDownloadPdf}
+                                >
+                                    {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                                    UNDUH PDF
+                                </Button>
                             </div>
                         </div>
 

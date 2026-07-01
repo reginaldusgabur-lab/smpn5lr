@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -246,12 +247,12 @@ export default function LaporanPage() {
 
   return (
     <Card className="overflow-hidden bg-card border border-muted-foreground/10 shadow-none rounded-xl">
-      <CardHeader className="p-4 md:p-6 text-primary border-b border-muted-foreground/10">
-        <CardTitle className="font-bold text-sm tracking-tight">Riwayat Absensi & Izin</CardTitle>
-        <CardDescription className="text-muted-foreground font-medium">Catatan lengkap kehadiran dan pengajuan izin Anda.</CardDescription>
+      <CardHeader className="p-4 text-primary border-b border-muted-foreground/10">
+        <CardTitle className="font-bold text-xs tracking-tight uppercase">Riwayat Absensi & Izin</CardTitle>
+        <CardDescription className="text-muted-foreground font-medium text-[10px]">Catatan lengkap kehadiran dan pengajuan izin Anda.</CardDescription>
       </CardHeader>
-      <CardContent className="p-4 md:p-6 pt-6 min-h-[400px]">
-        <div className="flex flex-col items-center justify-center gap-4 py-2 mb-6">
+      <CardContent className="p-4 pt-6 min-h-[400px]">
+        <div className="flex flex-col items-center justify-center gap-4 py-2 mb-4">
             <div className="flex items-center bg-muted/40 rounded-2xl border border-muted-foreground/5 p-1 shrink-0">
                 <Button 
                     variant="ghost" 
@@ -270,7 +271,7 @@ export default function LaporanPage() {
                             <span className="text-sm font-black text-primary">{stats.persentase}</span>
                         </div>
                     )}
-                    <span className="font-bold text-base sm:text-xl text-primary tracking-tight text-center capitalize whitespace-nowrap min-w-[140px]">
+                    <span className="font-black text-xl text-primary tracking-tight text-center capitalize whitespace-nowrap min-w-[140px]">
                         {format(currentMonth, 'MMMM yyyy', { locale: id })}
                     </span>
                 </div>
@@ -285,18 +286,17 @@ export default function LaporanPage() {
                     <ChevronRight className="h-5 w-5 text-primary" />
                 </Button>
             </div>
-            <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent mt-2" />
         </div>
         <div className="border rounded-xl overflow-hidden border-muted-foreground/5">
             <Table className="min-w-[720px]">
                 <TableHeader className="bg-muted/30">
                     <TableRow className="border-none">
-                        <TableHead className="w-[60px] text-center font-bold text-xs text-muted-foreground">No</TableHead>
-                        <TableHead className="w-[180px] font-bold text-xs text-muted-foreground">Tanggal</TableHead>
-                        <TableHead className="w-[120px] text-center font-bold text-xs text-muted-foreground">Masuk</TableHead>
-                        <TableHead className="w-[120px] text-center font-bold text-xs text-muted-foreground">Pulang</TableHead>
-                        <TableHead className="w-[140px] text-center font-bold text-xs text-muted-foreground">Status</TableHead>
-                        <TableHead className="font-bold text-xs text-muted-foreground">Keterangan</TableHead>
+                        <TableHead className="w-[60px] text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">No</TableHead>
+                        <TableHead className="w-[180px] font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Tanggal</TableHead>
+                        <TableHead className="w-[120px] text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Masuk</TableHead>
+                        <TableHead className="w-[120px] text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Pulang</TableHead>
+                        <TableHead className="w-[140px] text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Status</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Keterangan</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>

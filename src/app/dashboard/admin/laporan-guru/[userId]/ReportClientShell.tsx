@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -17,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from '@/components/ui/badge';
 import { Download, ChevronLeft, ChevronRight, CheckCircle2, XCircle, FileWarning, CalendarClock, MoreVertical } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // --- Type Definitions ---
 interface ReportDetail {
@@ -158,43 +160,45 @@ export default function ReportClientShell({
         }
     };
 
+    const canGoPrev = currentMonth > new Date(2026, 0, 1);
+
     return (
-        <div className="p-4 md:p-6 space-y-6">
+        <div className="p-2 sm:p-6 space-y-4">
             {/* --- Header Cards --- */}
-             <Card>
-                <CardHeader>
-                    <CardTitle>Ringkasan Laporan Bulan {format(currentMonth, 'MMMM yyyy', { locale: id })}</CardTitle>
-                    <CardDescription>Grafik ringkasan kehadiran untuk {userData?.name || 'Pengguna'}.</CardDescription>
+             <Card className="rounded-xl border shadow-none overflow-hidden">
+                <CardHeader className="p-4 border-b border-muted-foreground/10">
+                    <CardTitle className="text-xs uppercase font-bold tracking-tight text-primary">Ringkasan Bulan {format(currentMonth, 'MMMM yyyy', { locale: id })}</CardTitle>
+                    <CardDescription className="text-[10px] font-bold">Grafik ringkasan kehadiran untuk {userData?.name || 'Pengguna'}.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="h-64">
+                <CardContent className="p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="h-56">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis allowDecimals={false} />
-                                    <Tooltip />
-                                    <Bar dataKey="Jumlah" />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                                    <YAxis hide />
+                                    <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+                                    <Bar dataKey="Jumlah" radius={[4, 4, 0, 0]} barSize={40} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <Card className="flex flex-col justify-center items-center text-center">
-                                <CardHeader><CardTitle className="text-3xl">{summaryStats.hadir}</CardTitle></CardHeader>
-                                <CardContent><p className="text-sm text-muted-foreground flex items-center gap-2"><CheckCircle2 className="text-green-500"/> Hadir</p></CardContent>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Card className="flex flex-col justify-center items-center text-center p-3 rounded-xl bg-muted/20 border-none">
+                                <span className="text-2xl font-black text-green-600">{summaryStats.hadir}</span>
+                                <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 uppercase tracking-wider mt-1"><CheckCircle2 className="h-3 w-3 text-green-500"/> Hadir</p>
                             </Card>
-                             <Card className="flex flex-col justify-center items-center text-center">
-                                <CardHeader><CardTitle className="text-3xl">{summaryStats.alpa}</CardTitle></CardHeader>
-                                <CardContent><p className="text-sm text-muted-foreground flex items-center gap-2"><XCircle className="text-red-500"/> Alpa</p></CardContent>
+                             <Card className="flex flex-col justify-center items-center text-center p-3 rounded-xl bg-muted/20 border-none">
+                                <span className="text-2xl font-black text-red-600">{summaryStats.alpa}</span>
+                                <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 uppercase tracking-wider mt-1"><XCircle className="h-3 w-3 text-red-500"/> Alpa</p>
                             </Card>
-                             <Card className="flex flex-col justify-center items-center text-center">
-                                <CardHeader><CardTitle className="text-3xl">{summaryStats.izin}</CardTitle></CardHeader>
-                                <CardContent><p className="text-sm text-muted-foreground flex items-center gap-2"><FileWarning className="text-blue-500"/> Izin</p></CardContent>
+                             <Card className="flex flex-col justify-center items-center text-center p-3 rounded-xl bg-muted/20 border-none">
+                                <span className="text-2xl font-black text-blue-600">{summaryStats.izin}</span>
+                                <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 uppercase tracking-wider mt-1"><FileWarning className="h-3 w-3 text-blue-500"/> Izin</p>
                             </Card>
-                             <Card className="flex flex-col justify-center items-center text-center">
-                                <CardHeader><CardTitle className="text-3xl">{summaryStats.sakit}</CardTitle></CardHeader>
-                                <CardContent><p className="text-sm text-muted-foreground flex items-center gap-2"><CalendarClock className="text-orange-500"/> Sakit</p></CardContent>
+                             <Card className="flex flex-col justify-center items-center text-center p-3 rounded-xl bg-muted/20 border-none">
+                                <span className="text-2xl font-black text-orange-600">{summaryStats.sakit}</span>
+                                <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 uppercase tracking-wider mt-1"><CalendarClock className="h-3 w-3 text-orange-500"/> Sakit</p>
                             </Card>
                         </div>
                     </div>
@@ -202,59 +206,73 @@ export default function ReportClientShell({
             </Card>
 
             {/* --- Details Table --- */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Detail Laporan Harian</CardTitle>
-                    <CardDescription>Rincian data kehadiran harian yang terekam oleh sistem.</CardDescription>
+            <Card className="rounded-xl border shadow-none overflow-hidden">
+                <CardHeader className="p-4 border-b border-muted-foreground/10">
+                    <CardTitle className="text-xs uppercase font-bold tracking-tight text-primary">Detail Laporan Harian</CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" onClick={() => handleMonthChange(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-                            <span className="w-36 text-center font-semibold">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
-                            <Button variant="outline" size="icon" onClick={() => handleMonthChange(1)} disabled={currentMonth >= endOfMonth(new Date())}><ChevronRight className="h-4 w-4" /></Button>
+                <CardContent className="p-0">
+                    <div className="p-4 space-y-4">
+                        <div className="flex flex-col items-center justify-center gap-4 py-2">
+                            <div className="flex items-center bg-muted/40 rounded-2xl border border-muted-foreground/5 p-1 shrink-0">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-10 w-10 rounded-xl hover:bg-background/50 shadow-none shrink-0" 
+                                    onClick={() => handleMonthChange(-1)} 
+                                    disabled={!canGoPrev}
+                                >
+                                    <ChevronLeft className="h-5 w-5 text-primary" />
+                                </Button>
+                                <span className="w-40 text-center font-black text-xl text-primary tracking-tight capitalize whitespace-nowrap">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-10 w-10 rounded-xl hover:bg-background/50 shadow-none shrink-0" 
+                                    onClick={() => handleMonthChange(1)} 
+                                    disabled={currentMonth >= endOfMonth(new Date())}
+                                >
+                                    <ChevronRight className="h-5 w-5 text-primary" />
+                                </Button>
+                            </div>
                         </div>
-                        <Button onClick={() => {}} disabled={!userData || isSubmitting}>
-                            <Download className="mr-2 h-4 w-4" />
-                            Unduh Laporan PDF
-                        </Button>
                     </div>
-                    <div className="overflow-x-auto border rounded-md">
+                    
+                    <div className="overflow-x-auto border-t border-muted-foreground/5">
                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[50px]">No</TableHead>
-                                    <TableHead className="w-[200px]">Tanggal</TableHead>
-                                    <TableHead className="text-center">Jam Masuk</TableHead>
-                                    <TableHead className="text-center">Jam Pulang</TableHead>
-                                    <TableHead className="text-center">Status</TableHead>
-                                    <TableHead>Keterangan</TableHead>
+                            <TableHeader className="bg-muted/30">
+                                <TableRow className="border-none">
+                                    <TableHead className="w-[50px] text-center font-bold text-[10px] uppercase">No</TableHead>
+                                    <TableHead className="font-bold text-[10px] uppercase">Tanggal</TableHead>
+                                    <TableHead className="text-center font-bold text-[10px] uppercase">Masuk</TableHead>
+                                    <TableHead className="text-center font-bold text-[10px] uppercase">Pulang</TableHead>
+                                    <TableHead className="text-center font-bold text-[10px] uppercase">Status</TableHead>
+                                    <TableHead className="font-bold text-[10px] uppercase">Keterangan</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {reportDetails.length > 0 ? (
                                     reportDetails.map((item, index) => (
-                                        <TableRow key={item.id} className="hover:bg-muted/50">
-                                            <TableCell>{index + 1}</TableCell>
-                                            <TableCell>{safeFormat(item.date, 'eeee, dd MMMM yyyy')}</TableCell>
-                                            <TableCell className="text-center">{safeFormat(item.checkInTime, 'HH:mm:ss')}</TableCell>
-                                            <TableCell className="text-center">{safeFormat(item.checkOutTime, 'HH:mm:ss')}</TableCell>
-                                            <TableCell className="text-center font-medium">
+                                        <TableRow key={item.id} className="hover:bg-muted/50 border-muted-foreground/5">
+                                            <TableCell className="text-center font-bold text-xs text-muted-foreground">{index + 1}</TableCell>
+                                            <TableCell className="font-bold text-sm whitespace-nowrap">{safeFormat(item.date, 'eeee, dd MMM yyyy')}</TableCell>
+                                            <TableCell className="text-center font-mono text-xs font-bold">{safeFormat(item.checkInTime, 'HH:mm')}</TableCell>
+                                            <TableCell className="text-center font-mono text-xs font-bold">{safeFormat(item.checkOutTime, 'HH:mm')}</TableCell>
+                                            <TableCell className="text-center">
                                                 {getStatusBadge(item.status)}
                                             </TableCell>
                                             <TableCell>
                                                 {item.status === 'Tidak Absen Pulang' ? (
-                                                    <Button variant="link" size="sm" className="h-auto p-0" onClick={() => handleNavigateToManualEntry(item.date)}>
-                                                        Edit Kehadiran
+                                                    <Button variant="link" size="sm" className="h-auto p-0 text-[10px] font-bold uppercase tracking-tight" onClick={() => handleNavigateToManualEntry(item.date)}>
+                                                        Perbaiki
                                                     </Button>
-                                                ) : item.description}
+                                                ) : <span className="text-[10px] font-medium italic opacity-70">{item.description}</span>}
                                             </TableCell>
                                         </TableRow>
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center">
-                                            Tidak ada data kehadiran untuk ditampilkan pada periode ini.
+                                        <TableCell colSpan={6} className="h-48 text-center font-bold text-muted-foreground">
+                                            Tidak ada data untuk periode ini.
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -266,3 +284,4 @@ export default function ReportClientShell({
         </div>
     );
 }
+
