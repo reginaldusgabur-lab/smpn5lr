@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, limit } from 'firebase/firestore';
-import { format, startOfMonth, endOfMonth, startOfDay } from 'date-fns';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, query, where, limit, doc, Timestamp } from 'firebase/firestore';
+import { format, startOfMonth, endOfMonth, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { TrendingUp, LogIn, LogOut, Sparkles, UserCheck, BookUser, MailWarning, Clock, Lock, AlertCircle, CheckCircle2, UserX } from 'lucide-react';
+import { TrendingUp, LogIn, LogOut, Sparkles, UserCheck, BookUser, MailWarning, Clock, Lock, AlertCircle, CheckCircle2, UserX, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -88,12 +88,29 @@ export default function DashboardPage() {
     return () => { isMounted.current = false; };
   }, [loadDashboardData, user?.uid, isUserLoading]);
 
+  // Check today's personal attendance
   const todaysAttendanceQuery = useMemoFirebase(() => {
       if (!user || !firestore) return null;
       const todayStr = format(new Date(), 'yyyy-MM-dd');
       return query(collection(firestore, 'users', user.uid, 'attendanceRecords'), where('date', '==', todayStr), limit(1));
   }, [firestore, user]);
   const { data: todaysAttendance, isLoading: isAttendanceLoading } = useCollection(user, todaysAttendanceQuery);
+
+  // Check today's active approved leave
+  const todayLeaveQuery = useMemoFirebase(() => {
+      if (!user || !firestore) return null;
+      return query(
+          collection(firestore, 'users', user.uid, 'leaveRequests'),
+          where('status', '==', 'approved')
+      );
+  }, [user, firestore]);
+  const { data: activeLeaves, isLoading: isLeaveLoading } = useCollection(user, todayLeaveQuery);
+
+  const currentActiveLeave = useMemo(() => {
+      if (!activeLeaves) return null;
+      const now = new Date();
+      return activeLeaves.find(l => isWithinInterval(now, { start: startOfDay(l.startDate.toDate()), end: endOfDay(l.endDate.toDate()) }));
+  }, [activeLeaves]);
 
   const chartData = useMemo(() => [
     { name: 'Hadir', value: personalSummary.hadir, color: 'hsl(var(--primary))' },
@@ -109,35 +126,57 @@ export default function DashboardPage() {
 
     const disabledStyle = "w-full bg-primary/5 text-primary/40 border border-primary/10 font-bold rounded-xl h-12 flex items-center justify-center text-sm transition-all cursor-default select-none shadow-none";
 
-    if (windowStatus === 'LOADING' || isAttendanceLoading) {
+    if (windowStatus === 'LOADING' || isAttendanceLoading || isLeaveLoading) {
         return <div className={disabledStyle}><Clock className="mr-2 h-4 w-4 animate-spin" /> Memuat data...</div>;
     }
 
+    // PRIORITY 1: Approved Leave for today
+    if (currentActiveLeave) {
+        return (
+            <div className="w-full bg-blue-500/10 text-blue-600 border border-blue-500/20 font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none">
+                <FileText className="mr-2 w-4 h-4" /> 
+                {currentActiveLeave.type} Disetujui
+            </div>
+        );
+    }
+
+    // PRIORITY 2: Finished for today
     if (isCheckedOut) {
         return <div className="w-full bg-green-500/5 text-green-600 border border-green-500/20 font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><Sparkles className="mr-2 w-4 h-4" /> Absensi selesai</div>;
     }
 
+    // PRIORITY 3: Admin disabled system
     if (windowStatus === 'DISABLED' || stats.isManualDisabled) {
         return <div className="w-full bg-muted text-muted-foreground border border-border font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><Lock className="mr-2 h-4 w-4" /> Sistem sedang dinonaktifkan</div>;
     }
 
-    if (!isCheckedIn) {
-        if (windowStatus === 'SESSION_INACTIVE' || stats.isHoliday) {
-            const label = stats.isCalendarHoliday ? 'Hari libur (Kalender)' : 'Hari libur rutin';
-            return (
-                <div className="w-full bg-muted text-muted-foreground border border-border font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none">
-                    <Lock className="mr-2 h-4 w-4" /> {label}
-                </div>
-            );
-        }
+    // PRIORITY 4: Holiday status (If not checked in)
+    if (!isCheckedIn && (windowStatus === 'SESSION_INACTIVE' || stats.isHoliday)) {
+        const label = stats.isCalendarHoliday ? 'Hari libur (Kalender)' : 'Hari libur rutin';
+        return (
+            <div className="w-full bg-muted text-muted-foreground border border-border font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none">
+                <Lock className="mr-2 h-4 w-4" /> {label}
+            </div>
+        );
+    }
 
+    // PRIORITY 5: Check-out window (Even if missing check-in)
+    if (windowStatus === 'CHECK_OUT_OPEN') {
+        return (
+            <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all bg-blue-600 hover:bg-blue-700">
+                <Link href="/dashboard/absen">Absen pulang</Link>
+            </Button>
+        );
+    }
+
+    // PRIORITY 6: Check-in window
+    if (!isCheckedIn) {
         if (windowStatus === 'BEFORE_IN') return <div className={disabledStyle}><Clock className="mr-2 h-4 w-4" /> Belum waktu jam masuk</div>;
         if (windowStatus === 'CHECK_IN_OPEN') return <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all"><Link href="/dashboard/absen">Absen masuk</Link></Button>;
         return <div className="w-full bg-destructive/5 text-destructive/60 border border-destructive/10 font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><AlertCircle className="mr-2 h-4 w-4" /> Batas jam masuk berakhir</div>;
     }
 
-    if (windowStatus === 'CHECK_OUT_OPEN') return <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all"><Link href="/dashboard/absen">Absen pulang</Link></Button>;
-    
+    // PRIORITY 7: In between windows (After check-in, before check-out)
     if (windowStatus === 'CLOSED') {
         return <div className="w-full bg-blue-500/5 text-blue-600 border border-blue-500/20 font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><CheckCircle2 className="mr-2 w-4 h-4" /> Aktivitas hari ini berakhir</div>;
     }

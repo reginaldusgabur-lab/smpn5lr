@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Html5Qrcode, Html5QrcodeCameraScanConfig } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
-import { X, Loader2, CameraOff, CalendarOff, MapPin, Clock as ClockIcon, CheckCircle, Lock } from 'lucide-react';
+import { X, Loader2, CameraOff, CalendarOff, MapPin, Clock as ClockIcon, CheckCircle, Lock, FileText } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, addDoc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import QuoteOfTheDay from '@/components/layout/quote-of-the-day';
 import { useAttendanceWindow } from '@/hooks/use-attendance-window';
 
@@ -33,7 +33,7 @@ const getCurrentPosition = (options?: PositionOptions): Promise<GeolocationPosit
   });
 
 // --- Types ---
-type FeedbackStatus = 'idle' | 'processing' | 'locating' | 'success_in' | 'success_out' | 'error_radius' | 'error_time' | 'error_already_in' | 'error_already_out' | 'error_generic' | 'error_location' | 'info_holiday' | 'info_checked_out' | 'info_no_camera' | 'info_disabled';
+type FeedbackStatus = 'idle' | 'processing' | 'locating' | 'success_in' | 'success_out' | 'error_radius' | 'error_time' | 'error_already_in' | 'error_already_out' | 'error_generic' | 'error_location' | 'info_holiday' | 'info_checked_out' | 'info_no_camera' | 'info_disabled' | 'info_leave';
 
 // --- Main Component ---
 export default function AbsenPage() {
@@ -62,8 +62,24 @@ export default function AbsenPage() {
   const { data: todaysAttendance, isLoading: isAttendanceLoading } = useCollection(user, todaysAttendanceQuery);
   const todaysRecord = useMemo(() => todaysAttendance?.[0], [todaysAttendance]);
 
+  // Check today's active approved leave
+  const todayLeaveQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(
+        collection(firestore, 'users', user.uid, 'leaveRequests'),
+        where('status', '==', 'approved')
+    );
+  }, [user, firestore]);
+  const { data: activeLeaves, isLoading: isLeaveLoading } = useCollection(user, todayLeaveQuery);
+
+  const currentActiveLeave = useMemo(() => {
+      if (!activeLeaves) return null;
+      const now = new Date();
+      return activeLeaves.find(l => isWithinInterval(now, { start: startOfDay(l.startDate.toDate()), end: endOfDay(l.endDate.toDate()) }));
+  }, [activeLeaves]);
+
   // --- Derived State ---
-  const isDataLoading = isUserLoading || isAttendanceLoading || windowStatus === 'LOADING';
+  const isDataLoading = isUserLoading || isAttendanceLoading || isLeaveLoading || windowStatus === 'LOADING';
   const isCameraInitializing = hasCameraPermission === null;
   const isHoliday = windowStatus === 'SESSION_INACTIVE';
   const isManualDisabled = windowStatus === 'DISABLED';
@@ -72,15 +88,17 @@ export default function AbsenPage() {
   const effectiveStatus: FeedbackStatus = useMemo(() => {
       if (status !== 'idle') return status;
       if (isDataLoading) return 'idle';
+      if (currentActiveLeave) return 'info_leave';
       if (hasCompletedAttendance) return 'info_checked_out';
       if (isManualDisabled) return 'info_disabled';
       if (isHoliday) return 'info_holiday';
       if (windowStatus === 'BEFORE_IN' || windowStatus === 'AFTER_IN' || windowStatus === 'CLOSED') return 'error_time';
       if (hasCameraPermission === false) return 'info_no_camera';
       return 'idle';
-  }, [status, isDataLoading, hasCompletedAttendance, isHoliday, isManualDisabled, windowStatus, hasCameraPermission]);
+  }, [status, isDataLoading, currentActiveLeave, hasCompletedAttendance, isHoliday, isManualDisabled, windowStatus, hasCameraPermission]);
 
-  const showScanner = !isDataLoading && hasCameraPermission && !isHoliday && !isManualDisabled && !hasCompletedAttendance && (windowStatus === 'CHECK_IN_OPEN' || windowStatus === 'CHECK_OUT_OPEN');
+  const canShowScanner = !isDataLoading && hasCameraPermission && !isHoliday && !isManualDisabled && !hasCompletedAttendance && !currentActiveLeave && (windowStatus === 'CHECK_IN_OPEN' || windowStatus === 'CHECK_OUT_OPEN');
+  const showScanner = canShowScanner;
   const showLoader = isDataLoading || isCameraInitializing || (showScanner && !isScannerReady);
 
   // --- Core Functions ---
@@ -133,10 +151,18 @@ export default function AbsenPage() {
         } else if (windowStatus === 'CHECK_OUT_OPEN') {
             if (todaysRecord?.checkOutTime) return setStatus('error_already_out');
             
-            const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', todaysRecord?.id || '');
             if (!todaysRecord) {
-                 await addDoc(collection(firestore, 'users', user.uid, 'attendanceRecords'), { userId: user.uid, date: todayStr, checkInTime: null, checkOutTime: now, checkOutLatitude: latitude, checkOutLongitude: longitude });
+                 await addDoc(collection(firestore, 'users', user.uid, 'attendanceRecords'), { 
+                    userId: user.uid, 
+                    date: todayStr, 
+                    checkInTime: null, 
+                    checkOutTime: now, 
+                    checkOutLatitude: latitude, 
+                    checkOutLongitude: longitude,
+                    reasonForUpdate: 'Absen pulang (Masuk kosong)'
+                });
             } else {
+                const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', todaysRecord.id);
                 await updateDoc(recordRef, { checkOutTime: now, checkOutLatitude: latitude, checkOutLongitude: longitude });
             }
             setStatus('success_out');
@@ -241,7 +267,8 @@ export default function AbsenPage() {
             <StatusFeedbackOverlay 
                 status={effectiveStatus} 
                 locationError={locationError} 
-                onClose={() => effectiveStatus.startsWith('success') || effectiveStatus.startsWith('info') || effectiveStatus === 'error_time' || effectiveStatus === 'info_holiday' || effectiveStatus === 'info_disabled' ? router.push('/dashboard') : setStatus('idle')} 
+                leaveType={currentActiveLeave?.type}
+                onClose={() => effectiveStatus.startsWith('success') || effectiveStatus.startsWith('info') || effectiveStatus === 'error_time' || effectiveStatus === 'info_holiday' || effectiveStatus === 'info_disabled' || effectiveStatus === 'info_leave' ? router.push('/dashboard') : setStatus('idle')} 
                 userData={userData} 
             />
         )}
@@ -249,7 +276,7 @@ export default function AbsenPage() {
   );
 }
 
-const StatusFeedbackOverlay = ({ status, locationError, onClose, userData }: { status: FeedbackStatus, locationError: string | null, onClose: () => void, userData: any }) => {
+const StatusFeedbackOverlay = ({ status, locationError, onClose, userData, leaveType }: { status: FeedbackStatus, locationError: string | null, onClose: () => void, userData: any, leaveType?: string }) => {
     const feedback = useMemo(() => {
         switch (status) {
             case 'processing': return { icon: <Loader2 className="h-16 w-16 animate-spin text-primary" />, title: 'Memproses...', desc: 'Sedang memvalidasi absensi Anda.', cardClass: 'bg-background' };
@@ -265,9 +292,10 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData }: { s
             case 'info_holiday': return { icon: <CalendarOff className="h-16 w-16 text-blue-500" />, title: 'Hari libur', desc: 'Sistem absensi tidak aktif hari ini.', cardClass: 'bg-blue-50 dark:bg-blue-950/50' };
             case 'info_checked_out': return { icon: <CheckCircle className="h-16 w-16 text-green-500" />, title: 'Absensi selesai', desc: 'Anda telah menyelesaikan absensi untuk hari ini.', cardClass: 'bg-green-50 dark:bg-green-950/50' };
             case 'info_no_camera': return { icon: <CameraOff className="h-16 w-16 text-destructive" />, title: 'Kamera tidak tersedia', desc: 'Izinkan akses kamera di pengaturan browser.', cardClass: 'bg-destructive/10' };
+            case 'info_leave': return { icon: <FileText className="h-16 w-16 text-blue-500" />, title: `${leaveType} Disetujui`, desc: `Anda memiliki izin/sakit sah yang berlaku hari ini.`, cardClass: 'bg-blue-50 dark:bg-blue-950/50' };
             default: return { icon: <X className="h-16 w-16 text-destructive" />, title: 'Gagal', desc: 'Terjadi kesalahan sistem. Silakan coba lagi.', cardClass: 'bg-destructive/10' };
         }
-    }, [status, locationError]);
+    }, [status, locationError, leaveType]);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
@@ -275,7 +303,7 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData }: { s
                 <div className="flex flex-col items-center gap-4">
                     <div className="mb-2">{feedback.icon}</div>
                     <h3 className="text-2xl font-bold">{feedback.title}</h3>
-                    <p className="text-muted-foreground text-sm">{feedback.desc}</p>
+                    <p className="text-muted-foreground text-sm font-medium">{feedback.desc}</p>
                     {(status.startsWith('success')) && <QuoteOfTheDay category={userData?.role} attendanceType={status === 'success_in' ? 'in' : 'out'} />}
                     <Button className="mt-6 w-full font-bold rounded-xl" onClick={onClose}>Tutup</Button>
                 </div>
