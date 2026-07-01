@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Html5Qrcode, Html5QrcodeCameraScanConfig } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
-import { X, Loader2, CameraOff, CalendarOff, MapPin, Clock as ClockIcon, CheckCircle, Lock, FileText } from 'lucide-react';
+import { X, Loader2, CameraOff, CalendarOff, MapPin, Clock as ClockIcon, CheckCircle, Lock, FileText, AlertCircle } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where, addDoc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -281,33 +280,44 @@ export default function AbsenPage() {
 const StatusFeedbackOverlay = ({ status, locationError, onClose, userData, leaveType }: { status: FeedbackStatus, locationError: string | null, onClose: () => void, userData: any, leaveType?: string }) => {
     const feedback = useMemo(() => {
         switch (status) {
-            case 'processing': return { icon: <Loader2 className="h-16 w-16 animate-spin text-primary" />, title: 'Memproses...', desc: 'Sedang memvalidasi absensi Anda.', cardClass: 'bg-background' };
-            case 'locating': return { icon: <Loader2 className="h-16 w-16 animate-spin text-primary" />, title: 'Mencari lokasi...', desc: 'Mohon tunggu, sedang mendapatkan data lokasi.', cardClass: 'bg-background' };
-            case 'success_in': return { icon: <CheckCircle className="h-16 w-16 text-green-500" />, title: 'Absen masuk berhasil', desc: 'Kehadiran Anda telah terekam. Selamat beraktivitas!', cardClass: 'bg-green-50 dark:bg-green-950/50' };
-            case 'success_out': return { icon: <CheckCircle className="h-16 w-16 text-blue-500" />, title: 'Absen pulang berhasil', desc: 'Absen pulang terekam. Hati-hati di jalan!', cardClass: 'bg-blue-50 dark:bg-blue-950/50' };
-            case 'error_radius': return { icon: <MapPin className="h-16 w-16 text-destructive" />, title: 'Di luar radius', desc: 'Anda harus berada di dalam area sekolah untuk absensi.', cardClass: 'bg-destructive/10' };
-            case 'error_time': return { icon: <ClockIcon className="h-16 w-16 text-destructive" />, title: 'Waktu Habis', desc: 'Sesi absensi untuk hari ini telah ditutup.', cardClass: 'bg-destructive/10' };
-            case 'error_already_in': return { icon: <X className="h-16 w-16 text-destructive" />, title: 'Sudah absen masuk', desc: 'Anda sudah melakukan absensi masuk hari ini.', cardClass: 'bg-destructive/10' };
-            case 'error_already_out': return { icon: <X className="h-16 w-16 text-destructive" />, title: 'Sudah absen pulang', desc: 'Anda sudah melakukan absensi pulang hari ini.', cardClass: 'bg-destructive/10' };
-            case 'error_location': return { icon: <MapPin className="h-16 w-16 text-destructive" />, title: 'Lokasi error', desc: locationError || 'Pastikan GPS aktif and berikan izin akses.', cardClass: 'bg-destructive/10' };
-            case 'info_disabled': return { icon: <Lock className="h-16 w-16 text-amber-500" />, title: 'Sistem Dinonaktifkan', desc: 'Admin telah menonaktifkan sistem absensi sementara.', cardClass: 'bg-amber-50 dark:bg-amber-950/50' };
-            case 'info_holiday': return { icon: <CalendarOff className="h-16 w-16 text-blue-500" />, title: 'Hari libur', desc: 'Sistem absensi tidak aktif hari ini.', cardClass: 'bg-blue-50 dark:bg-blue-950/50' };
-            case 'info_checked_out': return { icon: <CheckCircle className="h-16 w-16 text-green-500" />, title: 'Absensi selesai', desc: 'Anda telah menyelesaikan absensi untuk hari ini.', cardClass: 'bg-green-50 dark:bg-green-950/50' };
-            case 'info_no_camera': return { icon: <CameraOff className="h-16 w-16 text-destructive" />, title: 'Kamera tidak tersedia', desc: 'Izinkan akses kamera di pengaturan browser.', cardClass: 'bg-destructive/10' };
-            case 'info_leave': return { icon: <FileText className="h-16 w-16 text-blue-500" />, title: `${leaveType} Disetujui`, desc: `Anda memiliki izin/sakit sah yang berlaku hari ini.`, cardClass: 'bg-blue-50 dark:bg-blue-950/50' };
-            default: return { icon: <X className="h-16 w-16 text-destructive" />, title: 'Gagal', desc: 'Terjadi kesalahan sistem. Silakan coba lagi.', cardClass: 'bg-destructive/10' };
+            case 'processing': return { icon: <Loader2 className="h-16 w-16 animate-spin text-primary" />, title: 'Memproses...', desc: 'Sedang memvalidasi absensi Anda.', cardClass: 'border-primary/20' };
+            case 'locating': return { icon: <Loader2 className="h-16 w-16 animate-spin text-primary" />, title: 'Mencari lokasi...', desc: 'Mohon tunggu, sedang mendapatkan data lokasi.', cardClass: 'border-primary/20' };
+            case 'success_in': return { icon: <CheckCircle className="h-16 w-16 text-green-500" />, title: 'Absen masuk berhasil', desc: 'Kehadiran Anda telah terekam. Selamat beraktivitas!', cardClass: 'border-green-500/20' };
+            case 'success_out': return { icon: <CheckCircle className="h-16 w-16 text-blue-500" />, title: 'Absen pulang berhasil', desc: 'Absen pulang terekam. Hati-hati di jalan!', cardClass: 'border-blue-500/20' };
+            case 'error_radius': return { icon: <MapPin className="h-16 w-16 text-destructive" />, title: 'Di luar radius', desc: 'Anda harus berada di dalam area sekolah untuk absensi.', cardClass: 'border-destructive/20' };
+            case 'error_time': return { icon: <ClockIcon className="h-16 w-16 text-destructive" />, title: 'Waktu Habis', desc: 'Sesi absensi untuk hari ini telah ditutup.', cardClass: 'border-destructive/20' };
+            case 'error_already_in': return { icon: <X className="h-16 w-16 text-destructive" />, title: 'Sudah absen masuk', desc: 'Anda sudah melakukan absensi masuk hari ini.', cardClass: 'border-destructive/20' };
+            case 'error_already_out': return { icon: <X className="h-16 w-16 text-destructive" />, title: 'Sudah absen pulang', desc: 'Anda sudah melakukan absensi pulang hari ini.', cardClass: 'border-destructive/20' };
+            case 'error_location': return { icon: <MapPin className="h-16 w-16 text-destructive" />, title: 'Lokasi error', desc: locationError || 'Pastikan GPS aktif and berikan izin akses.', cardClass: 'border-destructive/20' };
+            case 'info_disabled': return { icon: <Lock className="h-16 w-16 text-amber-500" />, title: 'Sistem Dinonaktifkan', desc: 'Admin telah menonaktifkan sistem absensi sementara.', cardClass: 'border-amber-500/20' };
+            case 'info_holiday': return { icon: <CalendarOff className="h-16 w-16 text-blue-500" />, title: 'Hari libur', desc: 'Sistem absensi tidak aktif hari ini.', cardClass: 'border-blue-500/20' };
+            case 'info_checked_out': return { icon: <CheckCircle className="h-16 w-16 text-green-500" />, title: 'Absensi selesai', desc: 'Anda telah menyelesaikan absensi untuk hari ini.', cardClass: 'border-green-500/20' };
+            case 'info_no_camera': return { icon: <CameraOff className="h-16 w-16 text-destructive" />, title: 'Kamera tidak tersedia', desc: 'Izinkan akses kamera di pengaturan browser.', cardClass: 'border-destructive/20' };
+            case 'info_leave': return { icon: <FileText className="h-16 w-16 text-blue-500" />, title: `${leaveType} Disetujui`, desc: `Anda memiliki izin/sakit sah yang berlaku hari ini.`, cardClass: 'border-blue-500/20' };
+            default: return { icon: <X className="h-16 w-16 text-destructive" />, title: 'Gagal', desc: 'Terjadi kesalahan sistem. Silakan coba lagi.', cardClass: 'border-destructive/20' };
         }
     }, [status, locationError, leaveType]);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-            <div className={cn("w-full max-sm text-center p-8 rounded-xl shadow-2xl relative", feedback.cardClass)} onClick={(e) => e.stopPropagation()}>
-                <div className="flex flex-col items-center gap-4">
-                    <div className="mb-2">{feedback.icon}</div>
-                    <h3 className="text-2xl font-bold">{feedback.title}</h3>
-                    <p className="text-muted-foreground text-sm font-medium">{feedback.desc}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-6">
+            <div className={cn(
+                "w-full max-w-[340px] text-center p-10 rounded-[2.5rem] shadow-2xl relative",
+                "bg-card border-2 transition-all duration-500",
+                feedback.cardClass
+            )} onClick={(e) => e.stopPropagation()}>
+                <div className="flex flex-col items-center gap-6">
+                    <div className="mb-2 p-4 bg-background/50 rounded-3xl shadow-inner">{feedback.icon}</div>
+                    <div className="space-y-2">
+                        <h3 className="text-2xl font-black tracking-tight text-foreground">{feedback.title}</h3>
+                        <p className="text-muted-foreground text-xs font-bold leading-relaxed">{feedback.desc}</p>
+                    </div>
                     {(status.startsWith('success')) && <QuoteOfTheDay category={userData?.role} attendanceType={status === 'success_in' ? 'in' : 'out'} />}
-                    <Button className="mt-6 w-full font-bold rounded-xl" onClick={onClose}>Tutup</Button>
+                    <Button 
+                        className="mt-4 w-full font-black rounded-2xl h-14 text-sm shadow-xl active:scale-95 transition-all bg-primary hover:bg-primary/90 text-white" 
+                        onClick={onClose}
+                    >
+                        Tutup
+                    </Button>
                 </div>
             </div>
         </div>
