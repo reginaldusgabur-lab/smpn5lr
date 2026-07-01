@@ -286,7 +286,7 @@ export default function DashboardPage() {
                                     {isStatsLoading ? '...' : stats.pending}
                                 </div>
                             </CardContent>
-                        </Link>
+                        </Card>
                     </Link>
 
                     {/* Alpa Card */}
