@@ -209,8 +209,10 @@ export function Header({ isTransparent }: { isTransparent?: boolean }) {
                   </div>
                   <div className="text-muted-foreground pl-6 space-y-2 leading-relaxed">
                       <p>Agar absensi di sekolah super cepat dan instan:</p>
-                      <ul className="list-disc pl-5 space-y-1 text-[11px] font-bold">
-                          <li><strong>Pre-Loading:</strong> Sebelum berangkat sekolah, buka aplikasi sebentar di rumah lalu tutup/keluarkan aplikasinya (jangan klik Keluar/Logout). Ini akan memuat data konfigurasi lebih awal.</li>
+                      <ul className="list-disc pl-5 space-y-2 text-[11px] font-bold">
+                          <li>
+                            <strong>Pre-Loading:</strong> Sebelum berangkat sekolah, buka aplikasi sebentar di rumah lalu tekan <strong>tombol tengah/home</strong> HP Anda untuk kembali ke layar utama (JANGAN klik Keluar/Logout). Ini memastikan data sekolah sudah siap di HP sehingga saat sampai di sekolah absensi menjadi instan.
+                          </li>
                           <li><strong>Koneksi:</strong> Pastikan paket data aktif dan sinyal dalam kondisi stabil saat melakukan scanning.</li>
                           <li><strong>GPS Aktif:</strong> Aktifkan GPS HP Anda beberapa saat sebelum memasuki area sekolah agar posisi terkunci tepat waktu.</li>
                       </ul>
@@ -230,7 +232,7 @@ export function Header({ isTransparent }: { isTransparent?: boolean }) {
               <div className="pt-4 border-t border-muted-foreground/10 flex items-start gap-3 bg-primary/5 p-4 rounded-xl">
                   <ShieldAlert className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                   <p className="text-[11px] font-bold text-primary leading-tight">
-                      Kejujuran adalah kunci. Sistem memverifikasi lokasi dan waktu secara otomatis untuk menjaga integritas data SMPN 5 Langke Rembong.
+                      Kejujuran adalah kunci. Sistem verifikasi otomatis lokasi dan waktu diaktifkan untuk menjaga integritas data SMPN 5 Langke Rembong.
                   </p>
               </div>
             </div>
