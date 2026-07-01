@@ -87,7 +87,6 @@ export default function LaporanPage() {
 
   const isLoading = isAuthLoading || isHistoryLoading || isLeaveLoading || isConfigLoading || isMonthlyConfigLoading;
   
-  // Efek untuk memuat persentase kehadiran bulanan secara sinkron
   useEffect(() => {
     if (user?.uid && firestore && !isConfigLoading) {
         const fetchStats = async () => {
@@ -227,12 +226,21 @@ export default function LaporanPage() {
   }, [attendanceHistory, leaveHistory, schoolConfig, monthlyConfig, currentMonth]);
 
   const handlePrevMonth = () => {
-    setCurrentMonth(prev => subMonths(prev, 1));
+    const minDate = new Date(2026, 0, 1);
+    setCurrentMonth(prev => {
+        const newDate = subMonths(prev, 1);
+        return newDate < minDate ? prev : newDate;
+    });
   };
 
   const handleNextMonth = () => {
       setCurrentMonth(prev => addMonths(prev, 1));
   };
+
+  const canGoPrev = useMemo(() => {
+    const minDate = new Date(2026, 0, 1);
+    return currentMonth > minDate;
+  }, [currentMonth]);
 
   return (
     <Card className="overflow-hidden bg-card border shadow-none rounded-xl">
@@ -243,7 +251,7 @@ export default function LaporanPage() {
       <CardContent className="p-4 md:p-6 pt-6 min-h-[400px]">
         <div className="flex flex-col items-center justify-center gap-4 py-2 mb-6">
             <div className="flex items-center gap-4 sm:gap-6">
-                <Button variant="outline" size="icon" className="rounded-full shadow-none shrink-0" onClick={handlePrevMonth}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
+                <Button variant="outline" size="icon" className="rounded-full shadow-none shrink-0" onClick={handlePrevMonth} disabled={isLoading || !canGoPrev}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
                 
                 <div className="flex items-center gap-3 px-4 py-2 bg-muted/40 rounded-2xl border border-muted-foreground/5">
                     {stats && (

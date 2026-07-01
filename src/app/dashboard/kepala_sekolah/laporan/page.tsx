@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -268,6 +267,8 @@ function StaffReportView() {
   };
   
   const noData = !summary[activeTab] || summary[activeTab].length === 0;
+  const minDate = new Date(2026, 0, 1);
+  const canGoPrev = currentMonth > minDate;
 
   return (
     <div className="flex-1 pt-4 pb-24 md:p-8">
@@ -312,7 +313,17 @@ function StaffReportView() {
                         <TabsTrigger value="kepala_sekolah">Kepala Sekolah</TabsTrigger>
                     </TabsList>
                     <div className="flex w-full items-center gap-2 md:w-auto">
-                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-4 w-4" /></Button>
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            onClick={() => setCurrentMonth(prev => {
+                                const n = subMonths(prev, 1);
+                                return n < minDate ? prev : n;
+                            })} 
+                            disabled={isLoading || !canGoPrev}
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
                         <span className="font-semibold text-center w-32 capitalize">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
                         <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={isSameMonth(currentMonth, new Date())}><ChevronRight className="h-4 w-4" /></Button>
                         <div className="relative w-full md:w-auto">

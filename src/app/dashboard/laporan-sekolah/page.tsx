@@ -338,6 +338,9 @@ export default function SchoolReportPage() {
         }
     };
 
+    const minDate = new Date(2026, 0, 1);
+    const canGoPrev = currentMonth > minDate;
+
     return (
         <div className="flex-1 pt-4 pb-24 md:p-8">
             <div className="max-w-7xl mx-auto space-y-6">
@@ -355,7 +358,18 @@ export default function SchoolReportPage() {
                         <div className="p-6 space-y-6">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
                                 <div className="flex items-center gap-6">
-                                    <Button variant="outline" size="icon" className="rounded-full shrink-0 h-10 w-10 shadow-none" onClick={() => setCurrentMonth(prev => subMonths(prev, 1))} disabled={isReportLoading}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        className="rounded-full shrink-0 h-10 w-10 shadow-none" 
+                                        onClick={() => setCurrentMonth(prev => {
+                                            const n = subMonths(prev, 1);
+                                            return n < minDate ? prev : n;
+                                        })} 
+                                        disabled={isReportLoading || !canGoPrev}
+                                    >
+                                        <ChevronLeft className="h-5 w-5 text-primary" />
+                                    </Button>
                                     <span className="w-48 text-center font-bold text-2xl text-primary tracking-tight">{monthName}</span>
                                     <Button variant="outline" size="icon" className="rounded-full shrink-0 h-10 w-10 shadow-none" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isReportLoading || isSameMonth(currentMonth, new Date())}><ChevronRight className="h-5 w-5 text-primary" /></Button>
                                 </div>

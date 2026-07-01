@@ -364,7 +364,7 @@ export default function UserReportDetailPage() {
 
     const canGoNext = useMemo(() => !isSameMonth(currentMonth, new Date()), [currentMonth]);
     const canGoPrev = useMemo(() => {
-        const minDate = new Date(2025, 0, 1); // Januari 2025
+        const minDate = new Date(2026, 0, 1); // Januari 2026
         return currentMonth > minDate;
     }, [currentMonth]);
 
@@ -506,4 +506,3 @@ export default function UserReportDetailPage() {
         </div>
     );
 }
-
