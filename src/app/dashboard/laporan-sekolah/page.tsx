@@ -149,7 +149,7 @@ export default function SchoolReportPage() {
                     if (workingDaysSet.has(attDateStr) && !processedDates.has(attDateStr)) {
                         let p = 0;
                         const desc = (att.reasonForUpdate || '').toLowerCase();
-                        if (desc.includes('dinas')) {
+                        if (desc.includes('dinas') || desc.includes('pulang cepat')) {
                             p = 1.0;
                             hadirCount++;
                         } else if (att.checkInTime && att.checkOutTime) {
@@ -181,7 +181,7 @@ export default function SchoolReportPage() {
                             } else if (leave.type === 'Izin' || leave.type === 'Izin Pribadi') {
                                 p = 0.7;
                                 izinCount++;
-                            } else if (leave.type === 'Dinas' || leave.type === 'Pulang Cepat' || leave.type === 'Dinas Pagi') {
+                            } else if (leave.type === 'Dinas' || leave.type === 'Pulang Cepat' || leave.type === 'Dinas Pagi' || leave.type === 'Dinas Siang') {
                                 p = 1.0;
                                 hadirCount++;
                             }
@@ -192,7 +192,9 @@ export default function SchoolReportPage() {
                 });
 
                 const alpaCount = pastWorkingDays.filter(day => !processedDates.has(format(day, 'yyyy-MM-dd'))).length;
-                const denominator = pastWorkingDays.length || 1;
+
+                // Denominator: Seluruh hari kerja dalam sebulan untuk progres bertahap
+                const denominator = workingDays.length || 1;
                 const persentase = Math.min((points / denominator) * 100, 100).toFixed(1) + '%';
 
                 return {

@@ -20,7 +20,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v14_${todayStr}`;
+    const cacheKey = `daily_stats_v15_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -120,7 +120,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v14_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v15_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -165,12 +165,11 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         const holidays: string[] = monthlyConfig?.holidays ?? [];
         const today = startOfDay(new Date());
 
-        const workingDaysInPeriod = eachDayOfInterval({ start, end }).filter(day => 
+        const workingDaysInMonth = eachDayOfInterval({ start, end }).filter(day => 
             !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd'))
         );
 
-        const workingDaysSet = new Set(workingDaysInPeriod.map(day => format(day, 'yyyy-MM-dd')));
-        const pastWorkingDays = workingDaysInPeriod.filter(day => isBefore(day, today) || isSameDay(day, today));
+        const workingDaysSet = new Set(workingDaysInMonth.map(day => format(day, 'yyyy-MM-dd')));
         
         let totalPoints = 0;
         const processedDates = new Set<string>();
@@ -181,6 +180,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                 let point = 0;
                 const desc = (att.reasonForUpdate || '').toLowerCase();
                 
+                // Poin: Dinas (Pagi/Siang/Pulang Cepat) = 1.0
                 if (desc.includes('dinas') || desc.includes('pulang cepat')) {
                     point = 1.0;
                 } else if (att.checkInTime && att.checkOutTime) {
@@ -190,8 +190,10 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                         const deadline = setMinutes(setHours(startOfDay(att.checkInTime.toDate()), h), m);
                         if (att.checkInTime.toDate() > deadline) isLate = true;
                     }
+                    // Poin: Terlambat = 0.95, Hadir Penuh = 1.0
                     point = isLate ? 0.95 : 1.0;
                 } else if (att.checkInTime || att.checkOutTime) {
+                    // Poin: Hanya masuk atau hanya pulang = 0.5
                     point = 0.5;
                 }
                 
@@ -209,7 +211,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                         point = 0.9;
                     } else if (leave.type === 'Izin' || leave.type === 'Izin Pribadi') {
                         point = 0.7;
-                    } else if (leave.type === 'Dinas' || leave.type === 'Pulang Cepat' || leave.type === 'Dinas Pagi') {
+                    } else if (leave.type === 'Dinas' || leave.type === 'Pulang Cepat' || leave.type === 'Dinas Pagi' || leave.type === 'Dinas Siang') {
                         point = 1.0;
                     }
                     totalPoints += point;
@@ -218,14 +220,15 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
             });
         });
 
-        const denominator = pastWorkingDays.length || 1;
+        // Denominator: Total Hari Kerja Efektif dalam SEBULAN (Target 100% di akhir bulan)
+        const denominator = Math.max(1, workingDaysInMonth.length);
         const finalPercentage = (totalPoints / denominator) * 100;
 
         const result = {
             totalHadir: totalPoints, 
             totalIzin: 0,
             totalSakit: 0,
-            totalAlpa: Math.max(0, pastWorkingDays.length - processedDates.size),
+            totalAlpa: 0, // Dihitung di laporan detail jika perlu
             persentase: Math.min(finalPercentage, 100).toFixed(1) + '%',
         };
 

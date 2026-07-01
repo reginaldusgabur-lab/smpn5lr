@@ -77,7 +77,7 @@ function useStaffAttendanceSummary(currentMonth: Date) {
             
             const [attendanceSnapshot, leaveSnapshot] = await Promise.all([ getDocs(attendanceQuery), getDocs(leaveQuery) ]);
 
-            const allAttendance = attendanceSnapshot.docs.map(d => ({...d.data(), id: d.id }));
+            const allAttendance = attendanceSnapshot.docs.map(d => ({...d.data(), id: d.id, checkInTime: d.data().checkInTime.toDate() }));
             const allLeave = leaveSnapshot.docs.map(d => ({ ...d.data(), id: d.id, startDate: d.data().startDate.toDate(), endDate: d.data().endDate.toDate() }));
 
             const offDays: number[] = schoolConfig?.offDays ?? [0, 6];
@@ -86,7 +86,8 @@ function useStaffAttendanceSummary(currentMonth: Date) {
 
             const workingDaysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd }).filter(day => !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd')));
             const workingDaysSet = new Set(workingDaysInMonth.map(d => format(d, 'yyyy-MM-dd')));
-            const pastWorkingDays = workingDaysInMonth.filter(day => isBefore(day, today) || isSameDay(day, today));
+            
+            const totalWorkingDaysInMonth = workingDaysInMonth.length || 1;
 
             const userSummary = users.map((u: any) => {
                 let totalPoints = 0;
@@ -97,19 +98,20 @@ function useStaffAttendanceSummary(currentMonth: Date) {
 
                 // Process attendance
                 allAttendance.filter(att => att.userId === u.id).forEach((att: any) => {
-                    const attDateStr = att.date || format(att.checkInTime.toDate(), 'yyyy-MM-dd');
+                    const attDateStr = att.date || format(att.checkInTime, 'yyyy-MM-dd');
                     if (workingDaysSet.has(attDateStr) && !processedDates.has(attDateStr)) {
                         let point = 0;
                         const desc = (att.reasonForUpdate || '').toLowerCase();
-                        if (desc.includes('dinas')) {
+                        
+                        if (desc.includes('dinas') || desc.includes('pulang cepat')) {
                             point = 1.0;
                             hadirCount++;
                         } else if (att.checkInTime && att.checkOutTime) {
                             let isLate = false;
                             if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
                                 const [h, m] = schoolConfig.checkInEndTime.split(':').map(Number);
-                                const deadline = setMinutes(setHours(startOfDay(att.checkInTime.toDate()), h), m);
-                                if (att.checkInTime.toDate() > deadline) isLate = true;
+                                const deadline = setMinutes(setHours(startOfDay(att.checkInTime), h), m);
+                                if (att.checkInTime > deadline) isLate = true;
                             }
                             point = isLate ? 0.95 : 1.0;
                             hadirCount++;
@@ -134,7 +136,7 @@ function useStaffAttendanceSummary(currentMonth: Date) {
                             } else if (leave.type === 'Izin' || leave.type === 'Izin Pribadi') {
                                 point = 0.7;
                                 izinCount++;
-                            } else if (leave.type === 'Dinas' || leave.type === 'Pulang Cepat') {
+                            } else if (leave.type === 'Dinas' || leave.type === 'Pulang Cepat' || leave.type === 'Dinas Pagi' || leave.type === 'Dinas Siang') {
                                 point = 1.0;
                                 hadirCount++;
                             }
@@ -144,11 +146,10 @@ function useStaffAttendanceSummary(currentMonth: Date) {
                     });
                 });
 
-                const alpaCount = pastWorkingDays.filter(day => !processedDates.has(format(day, 'yyyy-MM-dd'))).length;
-                const denominator = pastWorkingDays.length || 1;
-                const presentasi = Math.min((totalPoints / denominator) * 100, 100).toFixed(1) + '%';
+                // Progres bertahap terhadap target 100% di akhir bulan
+                const presentasi = Math.min((totalPoints / totalWorkingDaysInMonth) * 100, 100).toFixed(1) + '%';
 
-                return { ...u, hadir: hadirCount, izin: izinCount, sakit: sakitCount, alpa: alpaCount, terlambat: 0, presentasi };
+                return { ...u, hadir: hadirCount, izin: izinCount, sakit: sakitCount, alpa: 0, terlambat: 0, presentasi };
             });
 
             const groupedByRole = userSummary.reduce((acc: any, user: any) => {
@@ -204,7 +205,6 @@ const StaffReportTable = ({ data, isLoading, currentMonth }: { data: any[], isLo
                         <TableHead className="text-center">Hadir</TableHead>
                         <TableHead className="text-center">Izin</TableHead>
                         <TableHead className="text-center">Sakit</TableHead>
-                        <TableHead className="text-center">Alpa</TableHead>
                         <TableHead className="text-center">Poin</TableHead>
                         <TableHead className="text-center">Persentase</TableHead>
                         <TableHead className="text-right">Aksi</TableHead> 
@@ -221,7 +221,6 @@ const StaffReportTable = ({ data, isLoading, currentMonth }: { data: any[], isLo
                                 <TableCell className="text-center font-bold">{user.hadir}</TableCell>
                                 <TableCell className="text-center font-bold">{user.izin}</TableCell>
                                 <TableCell className="text-center font-bold">{user.sakit}</TableCell>
-                                <TableCell className="text-center font-bold text-destructive">{user.alpa}</TableCell>
                                 <TableCell className="text-center font-bold">{user.hadir.toFixed(2)}</TableCell>
                                 <TableCell className="text-center font-bold">{user.presentasi}</TableCell>
                                 <TableCell className="text-right">
