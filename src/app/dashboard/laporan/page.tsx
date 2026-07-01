@@ -124,7 +124,7 @@ export default function LaporanPage() {
 
         const attendanceRecord = attendanceHistory.find(a => {
             const checkInDate = a.checkInTime?.toDate();
-            const recordDate = a.date || (checkInDate ? format(checkInTime, 'yyyy-MM-dd') : null);
+            const recordDate = a.date || (checkInDate ? format(checkInDate, 'yyyy-MM-dd') : null);
             return recordDate === dayStr;
         });
 
@@ -250,22 +250,38 @@ export default function LaporanPage() {
       </CardHeader>
       <CardContent className="p-4 md:p-6 pt-6 min-h-[400px]">
         <div className="flex flex-col items-center justify-center gap-4 py-2 mb-6">
-            <div className="flex items-center gap-4 sm:gap-6">
-                <Button variant="outline" size="icon" className="rounded-full shadow-none shrink-0" onClick={handlePrevMonth} disabled={isLoading || !canGoPrev}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
+            <div className="flex items-center bg-muted/40 rounded-2xl border border-muted-foreground/5 p-1 shrink-0">
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-10 w-10 rounded-xl hover:bg-background/50 shadow-none shrink-0" 
+                    onClick={handlePrevMonth} 
+                    disabled={isLoading || !canGoPrev}
+                >
+                    <ChevronLeft className="h-5 w-5 text-primary" />
+                </Button>
                 
-                <div className="flex items-center gap-3 px-4 py-2 bg-muted/40 rounded-2xl border border-muted-foreground/5">
+                <div className="flex items-center gap-3 px-4">
                     {stats && (
                         <div className="flex items-center gap-1.5 pr-3 border-r border-muted-foreground/20">
                             <TrendingUp className="h-4 w-4 text-primary" />
                             <span className="text-sm font-black text-primary">{stats.persentase}</span>
                         </div>
                     )}
-                    <span className="font-bold text-lg sm:text-2xl text-primary tracking-tight min-w-[120px] text-center capitalize">
+                    <span className="font-bold text-base sm:text-xl text-primary tracking-tight text-center capitalize whitespace-nowrap min-w-[120px]">
                         {format(currentMonth, 'MMMM yyyy', { locale: id })}
                     </span>
                 </div>
 
-                <Button variant="outline" size="icon" className="rounded-full shadow-none shrink-0" onClick={handleNextMonth} disabled={isSameMonth(currentMonth, new Date())}><ChevronRight className="h-5 w-5 text-primary" /></Button>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-10 w-10 rounded-xl hover:bg-background/50 shadow-none shrink-0" 
+                    onClick={handleNextMonth} 
+                    disabled={isSameMonth(currentMonth, new Date())}
+                >
+                    <ChevronRight className="h-5 w-5 text-primary" />
+                </Button>
             </div>
             <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent mt-2" />
         </div>

@@ -364,7 +364,7 @@ export default function UserReportDetailPage() {
 
     const canGoNext = useMemo(() => !isSameMonth(currentMonth, new Date()), [currentMonth]);
     const canGoPrev = useMemo(() => {
-        const minDate = new Date(2026, 0, 1); // Januari 2026
+        const minDate = new Date(2026, 0, 1);
         return currentMonth > minDate;
     }, [currentMonth]);
 
@@ -387,37 +387,37 @@ export default function UserReportDetailPage() {
                     <CardContent className="p-0 sm:p-6">
                         <div className="p-4 space-y-4">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
-                                <div className="flex items-center gap-4 sm:gap-6">
+                                <div className="flex items-center bg-muted/40 rounded-2xl border border-muted-foreground/5 p-1 shrink-0">
                                     <Button 
-                                        variant="outline" 
+                                        variant="ghost" 
                                         size="icon" 
-                                        className="rounded-full shadow-none shrink-0" 
+                                        className="h-10 w-10 rounded-xl hover:bg-background/50 shadow-none shrink-0" 
                                         onClick={() => changeMonth(-1)} 
                                         disabled={isLoading || !canGoPrev}
                                     >
-                                        <ChevronLeft className="h-4 w-4" />
+                                        <ChevronLeft className="h-5 w-5 text-primary" />
                                     </Button>
                                     
-                                    <div className="flex items-center gap-3 px-4 py-2 bg-muted/40 rounded-2xl border border-muted-foreground/5">
+                                    <div className="flex items-center gap-3 px-4">
                                         {stats && (
                                             <div className="flex items-center gap-1.5 pr-3 border-r border-muted-foreground/20">
                                                 <TrendingUp className="h-4 w-4 text-primary" />
                                                 <span className="text-sm font-black text-primary">{stats.persentase}</span>
                                             </div>
                                         )}
-                                        <span className="font-bold text-lg sm:text-2xl text-primary tracking-tight min-w-[120px] text-center capitalize">
+                                        <span className="font-bold text-base sm:text-xl text-primary tracking-tight text-center capitalize whitespace-nowrap min-w-[120px]">
                                             {format(currentMonth, 'MMMM yyyy', { locale: id })}
                                         </span>
                                     </div>
 
                                     <Button 
-                                        variant="outline" 
+                                        variant="ghost" 
                                         size="icon" 
-                                        className="rounded-full shadow-none shrink-0" 
+                                        className="h-10 w-10 rounded-xl hover:bg-background/50 shadow-none shrink-0" 
                                         onClick={() => changeMonth(1)} 
                                         disabled={isLoading || !canGoNext}
                                     >
-                                        <ChevronRight className="h-4 w-4" />
+                                        <ChevronRight className="h-5 w-5 text-primary" />
                                     </Button>
                                 </div>
                             </div>

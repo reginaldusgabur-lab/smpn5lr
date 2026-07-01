@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { jsPDF } from 'jspdf';
@@ -141,7 +141,6 @@ export default function SchoolReportPage() {
                 let hadirCount = 0;
                 let izinCount = 0;
                 let sakitCount = 0;
-                let alpaCount = 0;
                 const processedDates = new Set<string>();
 
                 uAtt.forEach(att => {
@@ -197,7 +196,6 @@ export default function SchoolReportPage() {
                     });
                 });
 
-                // Denominator: Seluruh hari kerja dalam sebulan sesuai desain skor progresif
                 const denominator = workingDays.length || 1;
                 const persentase = Math.min((points / denominator) * 100, 100).toFixed(1) + '%';
 
@@ -211,7 +209,7 @@ export default function SchoolReportPage() {
                     totalHadir: hadirCount,
                     totalIzin: izinCount,
                     totalSakit: sakitCount,
-                    totalAlpa: 0, // Alpa logic removed from summary list as requested
+                    totalAlpa: 0,
                     persentase
                 };
             });
@@ -357,11 +355,11 @@ export default function SchoolReportPage() {
                     <CardContent className="p-0 sm:p-6 min-h-[500px]">
                         <div className="p-6 space-y-6">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
-                                <div className="flex items-center gap-6">
+                                <div className="flex items-center bg-muted/40 rounded-2xl border border-muted-foreground/5 p-1 shrink-0">
                                     <Button 
-                                        variant="outline" 
+                                        variant="ghost" 
                                         size="icon" 
-                                        className="rounded-full shrink-0 h-10 w-10 shadow-none" 
+                                        className="rounded-full shrink-0 h-10 w-10 shadow-none hover:bg-background/50" 
                                         onClick={() => setCurrentMonth(prev => {
                                             const n = subMonths(prev, 1);
                                             return n < minDate ? prev : n;
@@ -370,8 +368,10 @@ export default function SchoolReportPage() {
                                     >
                                         <ChevronLeft className="h-5 w-5 text-primary" />
                                     </Button>
-                                    <span className="w-48 text-center font-bold text-2xl text-primary tracking-tight">{monthName}</span>
-                                    <Button variant="outline" size="icon" className="rounded-full shrink-0 h-10 w-10 shadow-none" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isReportLoading || isSameMonth(currentMonth, new Date())}><ChevronRight className="h-5 w-5 text-primary" /></Button>
+                                    <span className="w-48 text-center font-bold text-2xl text-primary tracking-tight capitalize">{monthName}</span>
+                                    <Button variant="ghost" size="icon" className="rounded-full shrink-0 h-10 w-10 shadow-none hover:bg-background/50" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isReportLoading || isSameMonth(currentMonth, new Date())}>
+                                        <ChevronRight className="h-5 w-5 text-primary" />
+                                    </Button>
                                 </div>
                                 <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent mt-2" />
                             </div>
@@ -381,10 +381,10 @@ export default function SchoolReportPage() {
                                     <div className="w-full sm:w-[180px] relative group">
                                         <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-primary z-10 pointer-events-none transition-colors" />
                                         <Select value={roleFilter} onValueChange={setRoleFilter}>
-                                            <SelectTrigger className="pl-11 h-12 rounded-xl bg-muted/40 border-muted-foreground/10 focus:ring-primary focus:bg-background transition-all shadow-none">
+                                            <SelectTrigger className="pl-11 h-12 rounded-2xl bg-muted/40 border-muted-foreground/10 focus:ring-primary focus:bg-background transition-all shadow-none">
                                                 <SelectValue placeholder="Peran" />
                                             </SelectTrigger>
-                                            <SelectContent className="rounded-xl border-none shadow-2xl">
+                                            <SelectContent className="rounded-2xl border-none shadow-2xl">
                                                 <SelectItem value="all" className='rounded-xl'>Semua peran</SelectItem>
                                                 <SelectItem value="guru" className='rounded-xl'>Guru</SelectItem>
                                                 <SelectItem value="pegawai" className='rounded-xl'>Pegawai</SelectItem>
@@ -396,7 +396,7 @@ export default function SchoolReportPage() {
                                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-primary z-10 pointer-events-none" />
                                         <Input 
                                             placeholder="Cari personil..." 
-                                            className="pl-12 h-12 rounded-xl bg-muted/40 border-muted-foreground/10 focus:ring-primary focus:bg-background transition-all font-bold shadow-none" 
+                                            className="pl-12 h-12 rounded-2xl bg-muted/40 border-muted-foreground/10 focus:ring-primary focus:bg-background transition-all font-bold shadow-none" 
                                             value={searchTerm} 
                                             onChange={e => setSearchTerm(e.target.value)} 
                                         />
@@ -404,7 +404,7 @@ export default function SchoolReportPage() {
                                 </div>
                                 <div className="w-full lg:w-auto">
                                     <Button 
-                                        className="w-full lg:w-auto h-12 rounded-xl font-bold shadow-none active:scale-95 transition-all px-8 bg-primary hover:bg-primary/90 text-sm" 
+                                        className="w-full lg:w-auto h-12 rounded-2xl font-bold shadow-none active:scale-95 transition-all px-8 bg-primary hover:bg-primary/90 text-sm" 
                                         disabled={isReportLoading || !filteredReports.length || isExporting}
                                         onClick={handleDownloadPdf}
                                     >
