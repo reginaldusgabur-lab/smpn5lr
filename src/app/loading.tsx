@@ -16,6 +16,10 @@ export default function Loading() {
             sizes="96px"
           />
         </div>
+        <div className="flex flex-col items-center gap-1">
+          <h2 className="text-xl font-bold tracking-[0.3em] text-primary uppercase ml-1">E-SPENLI</h2>
+          <p className="text-[9px] font-bold text-muted-foreground tracking-widest uppercase opacity-60">Memuat sistem...</p>
+        </div>
       </div>
       <style jsx global>{`
         @keyframes pulse-custom {
