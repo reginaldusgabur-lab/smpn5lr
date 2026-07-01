@@ -5,8 +5,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
- * Komponen titik indikator status jaringan.
- * Memantau koneksi internet secara real-time dan memberikan feedback warna:
+ * Komponen titik indikator status jaringan yang diperkecil.
  * Hijau (Kuat), Kuning (Lemah), Merah (Buruk), Abu-abu (Offline).
  */
 export function NetworkStatusDot() {
@@ -15,14 +14,12 @@ export function NetworkStatusDot() {
 
   useEffect(() => {
     const updateStatus = () => {
-      // 1. Cek apakah perangkat sedang offline sepenuhnya
       if (!navigator.onLine) {
         setStatus('offline');
         setLabel('Offline');
         return;
       }
 
-      // 2. Cek API Network Information (didukung di Chrome, Edge, Android)
       const connection = (navigator as any).connection || 
                         (navigator as any).mozConnection || 
                         (navigator as any).webkitConnection;
@@ -30,7 +27,6 @@ export function NetworkStatusDot() {
       if (connection) {
         const { effectiveType, rtt } = connection;
         
-        // Penentuan kualitas berdasarkan tipe jaringan dan estimasi latensi (RTT)
         if (effectiveType === '4g' && (rtt === undefined || rtt < 200)) {
           setStatus('strong');
           setLabel('Sinyal Kuat');
@@ -42,20 +38,16 @@ export function NetworkStatusDot() {
           setLabel('Sinyal Buruk');
         }
       } else {
-        // Fallback untuk browser yang tidak mendukung API Network (seperti Safari)
         setStatus('strong');
         setLabel('Online');
       }
     };
 
-    // Jalankan pengecekan saat komponen dimuat
     updateStatus();
 
-    // Pasang listener untuk event online/offline
     window.addEventListener('online', updateStatus);
     window.addEventListener('offline', updateStatus);
     
-    // Pasang listener untuk perubahan kualitas jaringan (jika API didukung)
     const connection = (navigator as any).connection || 
                       (navigator as any).mozConnection || 
                       (navigator as any).webkitConnection;
@@ -73,18 +65,17 @@ export function NetworkStatusDot() {
     };
   }, []);
 
-  // Definisi warna dan shadow berdasarkan status
   const colorClass = {
-    strong: 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]',
-    weak: 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]',
-    bad: 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]',
+    strong: 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]',
+    weak: 'bg-yellow-500 shadow-[0_0_5px_rgba(234,179,8,0.5)]',
+    bad: 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]',
     offline: 'bg-gray-400 grayscale shadow-none',
   }[status];
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="flex h-3 w-3 items-center justify-center rounded-full bg-background ring-1 ring-border/50 shrink-0">
+        <div className="flex h-2 w-2 items-center justify-center rounded-full bg-background ring-1 ring-border/30 shrink-0">
           <div className={cn(
             "h-full w-full rounded-full transition-all duration-700 ease-in-out", 
             colorClass,
@@ -92,7 +83,7 @@ export function NetworkStatusDot() {
           )} />
         </div>
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="text-[10px] font-black uppercase tracking-widest py-1.5 px-3 rounded-lg border-none shadow-2xl bg-card text-foreground">
+      <TooltipContent side="bottom" className="text-[9px] font-black uppercase tracking-widest py-1 px-2 rounded-md border-none shadow-2xl bg-card text-foreground">
         {label}
       </TooltipContent>
     </Tooltip>
