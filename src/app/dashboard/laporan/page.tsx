@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -18,14 +18,15 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, RefreshCw } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useCollection, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
-import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths, isBefore, eachDayOfInterval, startOfDay, endOfDay, isWithinInterval, isSameDay } from 'date-fns';
+import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths, isBefore, eachDayOfInterval, startOfDay, endOfDay, isWithinInterval, isSameDay, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
-import { calculateAttendanceStats } from '@/lib/attendance';
-import { cn } from '@/lib/utils';
+import { calculateAttendanceStats, fetchUserMonthlyReportData } from '@/lib/attendance';
+import { getFromCache, setInCache, invalidateCache } from '@/lib/cache';
+import { useToast } from '@/hooks/use-toast';
 
 const statusVariant: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
     'Hadir': 'default',
@@ -45,7 +46,7 @@ const approvalStatusVariant: { [key: string]: 'default' | 'secondary' | 'destruc
 
 interface ReportItem {
   id: string;
-  date: Date;
+  date: string;
   dateString: string;
   checkIn: string;
   checkOut: string;
@@ -57,8 +58,11 @@ interface ReportItem {
 export default function LaporanPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [monthlyReportData, setMonthlyReportData] = useState<ReportItem[]>([]);
   const [stats, setStats] = useState<{ persentase: string } | null>(null);
+  const [isReportLoading, setIsReportLoading] = useState(true);
 
   const schoolConfigRef = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -66,28 +70,52 @@ export default function LaporanPage() {
   }, [firestore]);
   const { data: schoolConfig, isLoading: isConfigLoading } = useDoc(user, schoolConfigRef);
 
-  const monthlyConfigId = useMemo(() => format(currentMonth, 'yyyy-MM'), [currentMonth]);
-  const monthlyConfigRef = useMemoFirebase(() => {
-      if (!firestore) return null;
-      return doc(firestore, 'monthlyConfigs', monthlyConfigId);
-  }, [firestore, monthlyConfigId]);
-  const { data: monthlyConfig, isLoading: isMonthlyConfigLoading } = useDoc(user, monthlyConfigRef);
+  const cacheKey = useMemo(() => user ? `user_report_${user.uid}_${format(currentMonth, 'yyyyMM')}` : null, [user, currentMonth]);
 
-  const attendanceHistoryQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return query(collection(firestore, 'users', user.uid, 'attendanceRecords'), orderBy('checkInTime', 'desc'));
-  }, [user, firestore]);
+  const fetchReport = useCallback(async (forceRefresh = false) => {
+    if (!user || !firestore || !schoolConfig || !cacheKey) return;
+    
+    setIsReportLoading(true);
 
-  const leaveHistoryQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return query(collection(firestore, 'users', user.uid, 'leaveRequests'), orderBy('startDate', 'desc'));
-  }, [user, firestore]);
+    if (!forceRefresh) {
+        const cachedData = getFromCache(cacheKey);
+        if (cachedData) {
+            setMonthlyReportData(cachedData);
+            setIsReportLoading(false);
+            return;
+        }
+    }
 
-  const { data: attendanceHistory, isLoading: isHistoryLoading } = useCollection(user, attendanceHistoryQuery);
-  const { data: leaveHistory, isLoading: isLeaveLoading } = useCollection(user, leaveHistoryQuery);
+    try {
+        const rawReport = await fetchUserMonthlyReportData(firestore, user.uid, currentMonth, schoolConfig);
+        
+        const formattedReport: ReportItem[] = rawReport.map((record: any) => ({
+            id: record.id,
+            date: record.date, 
+            dateString: format(parseISO(record.date), 'eee, dd/MM/yy', { locale: id }),
+            checkIn: record.checkInTime ? format(parseISO(record.checkInTime), 'HH:mm') : '-',
+            checkOut: record.checkOutTime ? format(parseISO(record.checkOutTime), 'HH:mm') : '-',
+            status: record.status,
+            description: record.description,
+            approvalStatus: record.approvalStatus
+        }));
 
-  const isLoading = isAuthLoading || isHistoryLoading || isLeaveLoading || isConfigLoading || isMonthlyConfigLoading;
-  
+        setMonthlyReportData(formattedReport);
+        setInCache(cacheKey, formattedReport);
+    } catch (error) {
+        console.error("Failed to fetch monthly report:", error);
+        toast({ title: "Gagal Memuat Laporan", description: "Terjadi kesalahan saat mengambil data.", variant: "destructive" });
+    } finally {
+        setIsReportLoading(false);
+    }
+  }, [user, firestore, currentMonth, schoolConfig, cacheKey, toast]);
+
+  useEffect(() => {
+    if (!isConfigLoading && schoolConfig) {
+        fetchReport();
+    }
+  }, [fetchReport, isConfigLoading, schoolConfig]);
+
   useEffect(() => {
     if (user?.uid && firestore && !isConfigLoading) {
         const fetchStats = async () => {
@@ -100,131 +128,11 @@ export default function LaporanPage() {
     }
   }, [user?.uid, firestore, currentMonth, isConfigLoading]);
 
-  const monthlyReportData = useMemo(() => {
-    if (!attendanceHistory || !leaveHistory || !schoolConfig) {
-      return [];
-    }
-
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
-    const today = startOfDay(new Date());
-
-    const offDays: number[] = schoolConfig.offDays ?? [0, 6];
-    const holidays: string[] = monthlyConfig?.holidays ?? [];
-
-    const allDaysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
-    const report: (ReportItem | null)[] = allDaysInMonth.map(day => {
-        const dayStr = format(day, 'yyyy-MM-dd');
-        const isToday = isSameDay(day, today);
-        const isWorkingDay = !offDays.includes(day.getDay()) && !holidays.includes(dayStr);
-
-        if (!isWorkingDay) {
-            return null;
-        }
-
-        const attendanceRecord = attendanceHistory.find(a => {
-            const checkInDate = a.checkInTime?.toDate();
-            const recordDate = a.date || (checkInDate ? format(checkInTime, 'yyyy-MM-dd') : null);
-            return recordDate === dayStr;
-        });
-
-        const leaveRecord = leaveHistory.find(l => 
-            l.status === 'approved' && isWithinInterval(day, { start: startOfDay(l.startDate.toDate()), end: endOfDay(l.endDate.toDate()) })
-        );
-
-        if (leaveRecord) {
-            return {
-                id: `${leaveRecord.id}-${dayStr}`,
-                date: day,
-                dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
-                checkIn: '-',
-                checkOut: '-',
-                status: leaveRecord.type,
-                description: leaveRecord.reason,
-                approvalStatus: leaveRecord.status,
-            };
-        }
-
-        if (attendanceRecord) {
-            const checkInTime = attendanceRecord.checkInTime?.toDate() || null;
-            const checkOutTime = attendanceRecord.checkOutTime?.toDate() || null;
-            const isManual = attendanceRecord.manualEntry || false;
-
-            if (isManual) {
-                 return {
-                    id: attendanceRecord.id,
-                    date: day,
-                    dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
-                    checkIn: checkInTime ? format(checkInTime, 'HH:mm') : '-',
-                    checkOut: checkOutTime ? format(checkOutTime, 'HH:mm') : '-',
-                    status: 'Hadir',
-                    description: attendanceRecord.reasonForUpdate || 'Hadir penuh',
-                };
-            }
-
-            if (checkInTime && checkOutTime) {
-                let description = 'Kehadiran Penuh';
-                if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
-                    const [endH, endM] = schoolConfig.checkInEndTime.split(':').map(Number);
-                    const checkInDeadline = new Date(checkInTime);
-                    checkInDeadline.setHours(endH, endM, 0, 0);
-                    if (isBefore(checkInTime, checkInDeadline) === false) {
-                        description = 'Terlambat';
-                    }
-                }
-                return {
-                    id: attendanceRecord.id,
-                    date: day,
-                    dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
-                    checkIn: format(checkInTime, 'HH:mm'),
-                    checkOut: format(checkOutTime, 'HH:mm'),
-                    status: 'Hadir',
-                    description: description,
-                };
-            } else if (checkInTime) {
-                if (isBefore(day, today)) {
-                     return {
-                        id: attendanceRecord.id,
-                        date: day,
-                        dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
-                        checkIn: format(checkInTime, 'HH:mm'),
-                        checkOut: '-',
-                        status: 'Alpa',
-                        description: 'Tidak Absen Pulang',
-                    };
-                } else {
-                     return {
-                        id: attendanceRecord.id,
-                        date: day,
-                        dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
-                        checkIn: format(checkInTime, 'HH:mm'),
-                        checkOut: '-',
-                        status: 'Hadir',
-                        description: 'Belum Absen Pulang',
-                    };
-                }
-            }
-        }
-        
-        if (isToday || (isWorkingDay && isBefore(day, today))) {
-             return {
-                id: dayStr,
-                date: day,
-                dateString: format(day, 'eee, dd/MM/yy', { locale: id }),
-                checkIn: '-',
-                checkOut: '-',
-                status: 'Alpa',
-                description: isToday ? 'Belum Ada Aktivitas' : 'Tidak Ada Keterangan',
-            };
-        }
-
-        return null;
-    });
-
-    return report.filter((record): record is ReportItem => record !== null).sort((a, b) => b.date.getTime() - a.date.getTime());
-
-  }, [attendanceHistory, leaveHistory, schoolConfig, monthlyConfig, currentMonth]);
+  const handleRefresh = () => {
+      if (cacheKey) invalidateCache(cacheKey);
+      toast({ title: 'Sinkronisasi Data', description: 'Memaksa pembaruan data dari server.' });
+      fetchReport(true);
+  };
 
   const handlePrevMonth = () => {
     const minDate = new Date(2026, 0, 1);
@@ -238,16 +146,38 @@ export default function LaporanPage() {
       setCurrentMonth(prev => addMonths(prev, 1));
   };
 
-  const canGoPrev = useMemo(() => {
-    const minDate = new Date(2026, 0, 1);
-    return currentMonth > minDate;
-  }, [currentMonth]);
+  const isLoading = isAuthLoading || isConfigLoading || isReportLoading;
+  const canGoPrev = currentMonth > new Date(2026, 0, 1);
+
+  if (isLoading && monthlyReportData.length === 0) {
+    return (
+        <Card className="rounded-xl shadow-none border-muted-foreground/10 overflow-hidden">
+            <CardHeader className="p-4 border-b border-muted-foreground/5 bg-muted/20">
+                <Skeleton className="h-4 w-32 mb-2" />
+                <Skeleton className="h-3 w-48" />
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+                <div className="flex justify-center py-4"><Skeleton className="h-12 w-64 rounded-2xl" /></div>
+                <div className="space-y-2">
+                    {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
+                </div>
+            </CardContent>
+        </Card>
+    );
+  }
 
   return (
     <Card className="overflow-hidden bg-card border border-muted-foreground/10 shadow-none rounded-xl">
       <CardHeader className="p-4 text-primary border-b border-muted-foreground/10">
-        <CardTitle className="font-bold text-xs tracking-tight uppercase">Riwayat Absensi & Izin</CardTitle>
-        <CardDescription className="text-muted-foreground font-medium text-[10px]">Catatan lengkap kehadiran dan pengajuan izin Anda.</CardDescription>
+        <div className="flex items-center justify-between">
+            <div>
+                <CardTitle className="font-bold text-xs tracking-tight uppercase">Riwayat Absensi & Izin</CardTitle>
+                <CardDescription className="text-muted-foreground font-medium text-[10px]">Catatan lengkap kehadiran Anda.</CardDescription>
+            </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={handleRefresh} disabled={isLoading}>
+                <RefreshCw className={cn("h-4 w-4 text-muted-foreground", isLoading && "animate-spin")} />
+            </Button>
+        </div>
       </CardHeader>
       <CardContent className="p-4 pt-6 min-h-[400px]">
         <div className="flex flex-col items-center justify-center gap-4 py-2 mb-4">
@@ -298,18 +228,7 @@ export default function LaporanPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {isLoading ? (
-                        [...Array(8)].map((_, i) => (
-                            <TableRow key={i} className="border-muted-foreground/5">
-                                <TableCell><Skeleton className="h-4 w-4 mx-auto" /></TableCell>
-                                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                                <TableCell><Skeleton className="h-4 w-16 mx-auto" /></TableCell>
-                                <TableCell><Skeleton className="h-4 w-16 mx-auto" /></TableCell>
-                                <TableCell className="text-center"><Skeleton className="h-5 w-20 mx-auto rounded-full" /></TableCell>
-                                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
-                            </TableRow>
-                        ))
-                    ) : monthlyReportData.length > 0 ? (
+                    {monthlyReportData.length > 0 ? (
                         monthlyReportData.map((record, index) => (
                             <TableRow key={record.id} className="hover:bg-primary/5 transition-colors border-muted-foreground/5">
                                 <TableCell className="text-center font-bold text-muted-foreground">{index + 1}</TableCell>
@@ -341,3 +260,4 @@ export default function LaporanPage() {
     </Card>
   );
 }
+

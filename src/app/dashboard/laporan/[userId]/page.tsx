@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, getDoc, writeBatch, collection, serverTimestamp, Timestamp, query, where, getDocs } from 'firebase/firestore';
-import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isSameDay, setHours, setMinutes, isBefore, isSameMonth, startOfMonth, endOfMonth } from 'date-fns';
+import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isBefore, isSameMonth, startOfMonth, endOfMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -75,7 +75,7 @@ export default function UserReportDetailPage() {
     const [error, setError] = useState<string | null>(null);
 
     const schoolConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'schoolConfig', 'default') : null, [firestore]);
-    const { data: schoolConfigData } = useDoc(currentUser, schoolConfigRef);
+    const { data: schoolConfigData, isLoading: isConfigLoading } = useDoc(currentUser, schoolConfigRef);
 
     const fetchData = useCallback(async () => {
         if (!firestore || !userId || !schoolConfigData || !currentUser || !isMounted.current) return;

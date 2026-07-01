@@ -79,7 +79,7 @@ export default function LoginPage() {
   const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     setIsLoginLoading(true);
     if (!auth) {
-      toast({ variant: "destructive", title: "Layanan belum siap", description: "Layanan otentikasi belum tersedia." });
+      toast({ variant: "destructive", title: "Layanan Belum Siap", description: "Layanan otentikasi belum siap." });
       setIsLoginLoading(false);
       return;
     }
@@ -94,7 +94,7 @@ export default function LoginPage() {
   const handlePasswordReset = async (values: z.infer<typeof resetPasswordSchema>) => {
     setIsResetLoading(true);
     if (!auth) {
-      toast({ variant: "destructive", title: "Layanan belum siap", description: "Layanan otentikasi belum tersedia." });
+      toast({ variant: "destructive", title: "Layanan Belum Siap", description: "Layanan otentikasi belum siap." });
       setIsLoginLoading(false);
       return;
     }
