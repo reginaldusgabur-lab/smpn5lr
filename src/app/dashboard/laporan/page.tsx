@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -21,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, ChevronRight, TrendingUp, RefreshCw } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, orderBy, doc } from 'firebase/firestore';
+import { doc, query, orderBy, collection } from 'firebase/firestore';
 import { format, isSameMonth, addMonths, subMonths, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -147,18 +146,10 @@ export default function LaporanPage() {
 
   if (isLoading && monthlyReportData.length === 0) {
     return (
-        <Card className="rounded-xl shadow-none border-muted-foreground/10 overflow-hidden">
-            <CardHeader className="p-4 border-b border-muted-foreground/5 bg-muted/20">
-                <Skeleton className="h-4 w-32 mb-2" />
-                <Skeleton className="h-3 w-48" />
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-                <div className="flex justify-center py-4"><Skeleton className="h-12 w-64 rounded-2xl" /></div>
-                <div className="space-y-2">
-                    {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-10 w-full rounded-lg" />)}
-                </div>
-            </CardContent>
-        </Card>
+        <div className="p-4 space-y-4">
+            <Skeleton className="h-12 w-full rounded-xl" />
+            <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
     );
   }
 
@@ -236,11 +227,6 @@ export default function LaporanPage() {
                                     <Badge variant="outline" className={cn("text-[9px] font-bold uppercase px-3 py-1 rounded-full", getStatusBadgeStyle(record.status))}>
                                         {record.status}
                                     </Badge>
-                                    {record.approvalStatus && record.approvalStatus !== 'approved' && (
-                                        <Badge variant="outline" className="capitalize ml-1 text-[8px] font-bold py-0.5">
-                                            {record.approvalStatus}
-                                        </Badge>
-                                    )}
                                 </TableCell>
                                 <TableCell className="text-[11px] font-medium text-muted-foreground italic truncate max-w-[200px]" title={record.description}>{record.description}</TableCell>
                             </TableRow>

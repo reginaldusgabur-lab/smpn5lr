@@ -16,21 +16,9 @@ export const metadata: Metadata = {
     statusBarStyle: 'default',
     title: 'E-SPENLI',
   },
-  formatDetection: {
-    telephone: false,
-  },
   icons: {
     icon: '/logo-3d-v2.png',
     apple: '/logo-3d-v2.png',
-  },
-  other: {
-    'mobile-web-app-capable': 'yes',
-    'apple-mobile-web-app-capable': 'yes',
-    'application-name': 'E-SPENLI',
-    'apple-mobile-web-app-title': 'E-SPENLI',
-    'theme-color': '#FFFFFF',
-    'msapplication-navbutton-color': '#FFFFFF',
-    'apple-mobile-web-app-status-bar-style': 'default',
   }
 };
 
@@ -56,16 +44,9 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <link rel="apple-touch-icon" href="/logo-3d-v2.png" />
-        <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="font-body antialiased bg-background text-foreground" suppressHydrationWarning>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <FirebaseClientProvider>
             {children}
           </FirebaseClientProvider>

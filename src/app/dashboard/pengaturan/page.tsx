@@ -14,8 +14,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useUser, useDoc, useFirestore, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
-import { doc, updateDoc, setDoc } from 'firebase/firestore';
+import { useUser, useDoc, useFirestore, useMemoFirebase, useAuth, setDocumentNonBlocking } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { Loader2, Camera, Eye, EyeOff, UserCircle } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +26,7 @@ import { invalidateCache } from '@/lib/cache';
 export default function PengaturanPage() {
   const { user, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
   
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
@@ -104,13 +105,13 @@ export default function PengaturanPage() {
 
   useEffect(() => {
     if (schoolConfigData) {
-      setGovernmentAgency(schoolConfigData.governmentAgency ?? 'PEMERINTAH KABUPATEN MANGGARAI');
-      setEducationAgency(schoolConfigData.educationAgency ?? 'DINAS PENDIDIKAN, KEPEMUDAAN DAN OLAHRAGA');
-      setSchoolName(schoolConfigData.schoolName ?? 'SMP NEGERI 5 LANGKE REMBONG');
-      setAddress(schoolConfigData.address ?? 'Jl. Ranaka, Karot, Langke Rembong, Kabupaten Manggarai, Nusa Tenggara Tim.');
-      setHeadmasterName(schoolConfigData.headmasterName ?? 'Fransiskus Sales, S.Pd');
-      setHeadmasterNip(schoolConfigData.headmasterNip ?? '196805121994121004');
-      setReportCity(schoolConfigData.reportCity ?? 'Mando');
+      setGovernmentAgency(schoolConfigData.governmentAgency ?? '');
+      setEducationAgency(schoolConfigData.educationAgency ?? '');
+      setSchoolName(schoolConfigData.schoolName ?? '');
+      setAddress(schoolConfigData.address ?? '');
+      setHeadmasterName(schoolConfigData.headmasterName ?? '');
+      setHeadmasterNip(schoolConfigData.headmasterNip ?? '');
+      setReportCity(schoolConfigData.reportCity ?? '');
       setAcademicYear(schoolConfigData.academicYear ?? '');
       
       setNotificationTitle(schoolConfigData.notificationTitle ?? '');
@@ -124,89 +125,58 @@ export default function PengaturanPage() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       if (file.size > 750 * 1024) {
-          toast({
-              variant: 'destructive',
-              title: 'File terlalu besar',
-              description: 'Ukuran foto profil tidak boleh melebihi 750KB.',
-          });
+          toast({ variant: 'destructive', title: 'File terlalu besar', description: 'Maksimal 750KB.' });
           return;
       }
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
+      reader.onloadend = () => setPhotoPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !userDocRef) return;
+    const rawUser = auth.currentUser;
+    if (!rawUser || !userDocRef) return;
     setIsProfileLoading(true);
 
     try {
       const authUpdates: any = {};
       const firestoreUpdates: any = {};
 
-      // Nama wajib ada
-      if (name.trim()) {
-          if (name !== userData?.name) {
-            authUpdates.displayName = name;
-            firestoreUpdates.name = name;
-          }
-      }
-
-      // Update bidang berdasarkan peran - Izinkan perubahan parsial
-      if (userData?.role !== 'admin') {
-          if (isTeacherOrStaff && nip !== (userData?.nip || '')) {
-              firestoreUpdates.nip = nip;
-          }
-          if (isStudent && nisn !== (userData?.nisn || '')) {
-              firestoreUpdates.nisn = nisn;
-          }
-          if (position !== (userData?.position || '')) {
-              firestoreUpdates.position = position;
-          }
+      if (name.trim() && name !== userData?.name) {
+          authUpdates.displayName = name;
+          firestoreUpdates.name = name;
       }
 
       if (photoPreview) {
-        firestoreUpdates.photoURL = photoPreview;
-        authUpdates.photoURL = photoPreview;
+          authUpdates.photoURL = photoPreview;
+          firestoreUpdates.photoURL = photoPreview;
+      }
+
+      if (userData?.role !== 'admin') {
+          if (nip !== (userData?.nip || '')) firestoreUpdates.nip = nip;
+          if (nisn !== (userData?.nisn || '')) firestoreUpdates.nisn = nisn;
+          if (position !== (userData?.position || '')) firestoreUpdates.position = position;
       }
 
       const updatePromises: Promise<any>[] = [];
       if (Object.keys(authUpdates).length > 0) {
-        updatePromises.push(updateProfile(user, authUpdates));
+          updatePromises.push(updateProfile(rawUser, authUpdates));
       }
-      
       if (Object.keys(firestoreUpdates).length > 0) {
-        // Menggunakan setDoc dengan merge: true agar lebih aman dibanding updateDoc
-        updatePromises.push(setDoc(userDocRef, firestoreUpdates, { merge: true }));
+          updatePromises.push(setDoc(userDocRef, firestoreUpdates, { merge: true }));
       }
       
       if (updatePromises.length > 0) {
           await Promise.all(updatePromises);
-          toast({
-            title: 'Berhasil',
-            description: 'Profil Anda telah berhasil diperbarui.',
-          });
-          // Bersihkan cache agar data baru muncul di seluruh aplikasi
           invalidateCache();
-      } else {
-          toast({
-            title: 'Informasi',
-            description: 'Tidak ada data baru untuk diperbarui.',
-          });
+          toast({ title: 'Berhasil', description: 'Profil telah diperbarui.' });
       }
-      
       setPhotoPreview(null);
     } catch (error: any) {
       console.error("Update Profile Error:", error);
-      toast({
-        variant: 'destructive',
-        title: 'Gagal',
-        description: error.message || 'Terjadi kesalahan saat memperbarui profil.',
-      });
+      toast({ variant: 'destructive', title: 'Gagal', description: error.message });
     } finally {
       setIsProfileLoading(false);
     }
@@ -214,30 +184,21 @@ export default function PengaturanPage() {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+    const rawUser = auth.currentUser;
+    if (!rawUser) return;
     if (newPassword !== confirmPassword) {
-      toast({ variant: 'destructive', title: 'Gagal', description: 'Konfirmasi password baru tidak cocok.' });
+      toast({ variant: 'destructive', title: 'Gagal', description: 'Konfirmasi password tidak cocok.' });
       return;
     }
-    if (newPassword.length < 6) {
-        toast({ variant: 'destructive', title: 'Gagal', description: 'Password minimal harus 6 karakter.' });
-        return;
-    }
     setIsPasswordLoading(true);
-    if (user) {
-      try {
-        await updatePassword(user, newPassword);
-        toast({ title: 'Berhasil', description: 'Password telah berhasil diubah.' });
-        setNewPassword('');
-        setConfirmPassword('');
-      } catch (error: any) {
-        toast({ 
-            variant: 'destructive', 
-            title: 'Gagal', 
-            description: 'Sesi Anda mungkin sudah berakhir. Silakan login ulang.',
-        });
-      } finally {
-        setIsPasswordLoading(false);
-      }
+    try {
+      await updatePassword(rawUser, newPassword);
+      toast({ title: 'Berhasil', description: 'Password telah diubah.' });
+      setNewPassword(''); setConfirmPassword('');
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Gagal', description: 'Silakan login ulang untuk keamanan.' });
+    } finally {
+      setIsPasswordLoading(false);
     }
   };
 
@@ -245,19 +206,9 @@ export default function PengaturanPage() {
     if (!schoolConfigRef) return;
     setIsReportSaving(true);
     setDocumentNonBlocking(schoolConfigRef, {
-      governmentAgency,
-      educationAgency,
-      schoolName,
-      address,
-      headmasterName,
-      headmasterNip,
-      reportCity,
-      academicYear,
+      governmentAgency, educationAgency, schoolName, address, headmasterName, headmasterNip, reportCity, academicYear,
     }, { merge: true });
-    toast({
-      title: 'Disimpan',
-      description: 'Data laporan PDF telah diperbarui.',
-    });
+    toast({ title: 'Disimpan', description: 'Data laporan diperbarui.' });
     setIsReportSaving(false);
   };
 
@@ -265,275 +216,129 @@ export default function PengaturanPage() {
     if (!schoolConfigRef) return;
     setIsNotificationSaving(true);
     setDocumentNonBlocking(schoolConfigRef, {
-      notificationTitle,
-      notificationContent,
-      isNotificationActive,
-      notificationInterval: Number(notificationInterval),
+      notificationTitle, notificationContent, isNotificationActive, notificationInterval: Number(notificationInterval),
     }, { merge: true });
-    toast({
-      title: 'Disimpan',
-      description: 'Pemberitahuan sistem telah diperbarui.',
-    });
+    toast({ title: 'Disimpan', description: 'Pengumuman diperbarui.' });
     setIsNotificationSaving(false);
   };
 
-  const getInitials = (name: string | undefined | null) => {
-    if (!name) return 'U';
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-  }
-
-  const isLoading = isUserDataLoading || isAuthLoading || isConfigLoading;
-  const isAdmin = userData?.role === 'admin';
-  const isTeacherOrStaff = userData?.role === 'guru' || userData?.role === 'pegawai' || userData?.role === 'kepala_sekolah';
-  const isStudent = userData?.role === 'siswa';
-  const currentPhoto = photoPreview || userData?.photoURL || user?.photoURL;
-
+  const getInitials = (n: string | null) => n ? n.split(' ').map(x => x[0]).join('').substring(0, 2).toUpperCase() : 'U';
+  const currentPhoto = photoPreview || userData?.photoURL;
+  const isTeacherOrStaff = ['guru', 'pegawai', 'kepala_sekolah'].includes(userData?.role || '');
   const positions = isTeacherOrStaff ? ["PNS", "PPPK", "Honorer", "PW"] : ["Pelajar Aktif"];
 
-  if (isLoading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (isUserDataLoading || isAuthLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
-    <div className="grid gap-6 pb-20">
+    <div className="grid gap-6 pb-20 max-w-4xl mx-auto">
       <form onSubmit={handleProfileUpdate}>
-        <Card className="overflow-hidden bg-card border border-muted-foreground/10 shadow-none rounded-xl">
-          <CardHeader className="p-6 text-primary border-b border-muted-foreground/5 bg-muted/20">
+        <Card className="overflow-hidden border border-muted-foreground/10 shadow-none rounded-xl">
+          <CardHeader className="p-6 bg-muted/20 border-b border-muted-foreground/5">
             <div className="flex items-center gap-3">
-              <UserCircle className="h-5 w-5" />
-              <div>
-                <CardTitle className="font-bold text-sm tracking-tight uppercase">Profil Pengguna</CardTitle>
-                <CardDescription className="text-muted-foreground font-medium">Informasi identitas personil di sistem.</CardDescription>
-              </div>
+              <UserCircle className="h-5 w-5 text-primary" />
+              <CardTitle className="font-bold text-sm uppercase tracking-tight">Profil Pengguna</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="grid gap-6 pt-8">
-            <div className="flex flex-col sm:flex-row items-center gap-6 pb-2">
-                <div className="relative shrink-0">
-                  <Avatar className="h-24 w-24 border-2 border-primary/10 shadow-none">
-                    <AvatarImage src={currentPhoto ?? undefined} alt="Avatar" />
-                    <AvatarFallback className="bg-primary/5 text-primary text-xl font-bold">{getInitials(name)}</AvatarFallback>
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+                <div className="relative">
+                  <Avatar className="h-24 w-24 border-2 border-primary/10">
+                    <AvatarImage src={currentPhoto ?? undefined} />
+                    <AvatarFallback className="bg-primary/5 text-primary font-bold">{getInitials(name)}</AvatarFallback>
                   </Avatar>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="absolute -bottom-1 -right-1 rounded-full h-8 w-8 border-2 border-background bg-primary text-white hover:bg-primary/90 shadow-lg"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Camera className="h-4 w-4" />
-                  </Button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    accept="image/png, image/jpeg"
-                    onChange={handleFileChange}
-                  />
+                  <Button type="button" size="icon" variant="outline" className="absolute -bottom-1 -right-1 rounded-full h-8 w-8 bg-primary text-white" onClick={() => fileInputRef.current?.click()}><Camera className="h-4 w-4" /></Button>
+                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
                 </div>
                 <div className="text-center sm:text-left space-y-1">
-                   <h3 className="font-bold text-lg text-primary">{name || 'Nama Belum Diatur'}</h3>
+                   <h3 className="font-bold text-lg text-primary">{name || 'User'}</h3>
                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{userData?.role.replace('_', ' ')}</p>
-                   <p className="text-[10px] text-muted-foreground/60 italic font-bold">PNG atau JPG (Maks 750KB).</p>
                 </div>
             </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-xs font-bold ml-1 text-muted-foreground">Nama Lengkap</Label>
-                    <Input id="fullName" className="h-12 rounded-xl bg-muted/30 border-muted-foreground/10 font-bold focus:bg-background" value={name} onChange={(e) => setName(e.target.value)} />
+                    <Label className="text-xs font-bold ml-1">Nama Lengkap</Label>
+                    <Input className="h-12 rounded-xl bg-muted/30 font-bold" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="email" className="text-xs font-bold ml-1 text-muted-foreground">Alamat Email (Akun)</Label>
-                    <Input id="email" type="email" className="h-12 rounded-xl bg-muted/50 border-muted-foreground/10 font-bold opacity-60 cursor-not-allowed" value={userData?.email || ''} readOnly />
+                <div className="space-y-2">
+                    <Label className="text-xs font-bold ml-1">Email</Label>
+                    <Input className="h-12 rounded-xl bg-muted/50 font-bold opacity-60" value={userData?.email} readOnly />
                 </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 {isTeacherOrStaff && (
                   <div className="space-y-2">
-                      <Label htmlFor="nip" className="text-xs font-bold ml-1 text-muted-foreground">Nomor Induk Pegawai (NIP)</Label>
-                      <Input id="nip" className="h-12 rounded-xl bg-muted/30 border-muted-foreground/10 font-bold focus:bg-background" value={nip} onChange={(e) => setNip(e.target.value)} placeholder="Masukkan NIP Anda" />
+                      <Label className="text-xs font-bold ml-1">NIP</Label>
+                      <Input className="h-12 rounded-xl bg-muted/30 font-bold" value={nip} onChange={(e) => setNip(e.target.value)} />
                   </div>
                 )}
-                {isStudent && (
+                {userData?.role === 'siswa' && (
                   <div className="space-y-2">
-                      <Label htmlFor="nisn" className="text-xs font-bold ml-1 text-muted-foreground">NISN</Label>
-                      <Input id="nisn" className="h-12 rounded-xl bg-muted/30 border-muted-foreground/10 font-bold focus:bg-background" value={nisn} onChange={(e) => setNisn(e.target.value)} placeholder="Nomor Induk Siswa" />
+                      <Label className="text-xs font-bold ml-1">NISN</Label>
+                      <Input className="h-12 rounded-xl bg-muted/30 font-bold" value={nisn} onChange={(e) => setNisn(e.target.value)} />
                   </div>
                 )}
-                {(isTeacherOrStaff || isStudent) && (
-                  <div className="space-y-2">
-                    <Label htmlFor="status" className="text-xs font-bold ml-1 text-muted-foreground">Status Kepegawaian</Label>
+                <div className="space-y-2">
+                    <Label className="text-xs font-bold ml-1">Status</Label>
                     <Select onValueChange={setPosition} value={position}>
-                        <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-muted-foreground/10 font-bold focus:bg-background">
-                            <SelectValue placeholder="Pilih status" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border-none shadow-xl">
-                            {positions.map(p => (
-                                <SelectItem key={p} value={p} className="rounded-lg font-bold text-xs">{p}</SelectItem>
-                            ))}
-                        </SelectContent>
+                        <SelectTrigger className="h-12 rounded-xl bg-muted/30 font-bold"><SelectValue placeholder="Pilih status" /></SelectTrigger>
+                        <SelectContent className="rounded-xl">{positions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                     </Select>
-                  </div>
-                )}
+                </div>
             </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-5 bg-muted/5">
-            <Button type="submit" className="font-bold rounded-xl h-12 px-10 shadow-none active:scale-95 transition-all" disabled={isProfileLoading}>
-                {isProfileLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Perbarui Profil
-            </Button>
+            <Button type="submit" className="font-bold rounded-xl h-12 px-10" disabled={isProfileLoading}>{isProfileLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Simpan Profil</Button>
           </CardFooter>
         </Card>
       </form>
 
-      <Card className="overflow-hidden bg-card border border-muted-foreground/10 shadow-none rounded-xl">
-        <CardHeader className="p-6 text-primary border-b border-muted-foreground/5 bg-muted/20">
-          <CardTitle className="font-bold text-sm tracking-tight uppercase">Ganti Kata Sandi</CardTitle>
-          <CardDescription className="text-muted-foreground font-medium">Pastikan gunakan kombinasi yang sulit ditebak.</CardDescription>
+      {isAdmin && (
+        <Card className="overflow-hidden border border-muted-foreground/10 shadow-none rounded-xl">
+            <CardHeader className="p-6 bg-muted/20 border-b border-muted-foreground/5">
+                <CardTitle className="font-bold text-sm uppercase tracking-tight">Kop Laporan & Pengumuman</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 pt-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Input placeholder="Instansi" value={governmentAgency} onChange={e => setGovernmentAgency(e.target.value)} className="h-11 rounded-xl bg-muted/30" />
+                    <Input placeholder="Dinas" value={educationAgency} onChange={e => setEducationAgency(e.target.value)} className="h-11 rounded-xl bg-muted/30" />
+                    <Input placeholder="Nama Sekolah" value={schoolName} onChange={e => setSchoolName(e.target.value)} className="h-11 rounded-xl bg-muted/30 sm:col-span-2" />
+                    <Input placeholder="Nama Kepsek" value={headmasterName} onChange={e => setHeadmasterName(e.target.value)} className="h-11 rounded-xl bg-muted/30" />
+                    <Input placeholder="NIP Kepsek" value={headmasterNip} onChange={e => setHeadmasterNip(e.target.value)} className="h-11 rounded-xl bg-muted/30" />
+                </div>
+                <div className="pt-6 border-t mt-4">
+                    <div className="flex items-center justify-between mb-4">
+                        <Label className="font-bold">Pengumuman Sistem</Label>
+                        <Switch checked={isNotificationActive} onCheckedChange={setIsNotificationActive} />
+                    </div>
+                    <Input placeholder="Judul" value={notificationTitle} onChange={e => setNotificationTitle(e.target.value)} className="h-11 rounded-xl bg-muted/30 mb-2" />
+                    <Textarea placeholder="Isi pesan" value={notificationContent} onChange={e => setNotificationContent(e.target.value)} className="rounded-xl bg-muted/30" />
+                </div>
+            </CardContent>
+            <CardFooter className="border-t px-6 py-4 bg-muted/5 gap-3">
+                <Button onClick={handleReportSettingsSave} disabled={isReportSaving} className="font-bold rounded-xl">Simpan Kop</Button>
+                <Button onClick={handleNotificationSettingsSave} disabled={isNotificationSaving} variant="outline" className="font-bold rounded-xl">Simpan Pengumuman</Button>
+            </CardFooter>
+        </Card>
+      )}
+
+      <Card className="overflow-hidden border border-muted-foreground/10 shadow-none rounded-xl">
+        <CardHeader className="p-6 bg-muted/20 border-b border-muted-foreground/5">
+          <CardTitle className="font-bold text-sm uppercase tracking-tight">Ganti Password</CardTitle>
         </CardHeader>
         <form onSubmit={handlePasswordChange}>
           <CardContent className="grid gap-5 pt-8">
-              <div className="space-y-2">
-                <Label htmlFor="new-password" className="text-xs font-bold ml-1 text-muted-foreground">Password Baru</Label>
-                <div className="relative">
-                  <Input id="new-password" type={showNewPass ? "text" : "password"} className="h-12 rounded-xl bg-muted/30 border-muted-foreground/10 font-bold pr-10 focus:bg-background" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Minimal 6 karakter" />
-                  <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute inset-y-0 right-0 h-full px-3 text-muted-foreground hover:bg-transparent"
-                      onClick={() => setShowNewPass(!showNewPass)}
-                  >
-                      {showNewPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
+              <div className="relative">
+                <Input type={showNewPass ? "text" : "password"} className="h-12 rounded-xl bg-muted/30 pr-10" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Password Baru" />
+                <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full" onClick={() => setShowNewPass(!showNewPass)}>{showNewPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password" className="text-xs font-bold ml-1 text-muted-foreground">Konfirmasi Password Baru</Label>
-                <div className="relative">
-                  <Input id="confirm-password" type={showConfirmPass ? "text" : "password"} className="h-12 rounded-xl bg-muted/30 border-muted-foreground/10 font-bold pr-10 focus:bg-background" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ulangi password baru" />
-                   <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute inset-y-0 right-0 h-full px-3 text-muted-foreground hover:bg-transparent"
-                      onClick={() => setShowConfirmPass(!showConfirmPass)}
-                  >
-                      {showConfirmPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
+              <div className="relative">
+                <Input type={showConfirmPass ? "text" : "password"} className="h-12 rounded-xl bg-muted/30 pr-10" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Konfirmasi Password" />
+                <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-full" onClick={() => setShowConfirmPass(!showConfirmPass)}>{showConfirmPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
               </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-5 bg-muted/5">
-            <Button type="submit" className="font-bold rounded-xl h-12 px-10 shadow-none active:scale-95 transition-all" disabled={isPasswordLoading}>
-                {isPasswordLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Ubah Password
-            </Button>
+            <Button type="submit" className="font-bold rounded-xl h-12" disabled={isPasswordLoading}>Simpan Password</Button>
           </CardFooter>
         </form>
       </Card>
-      
-      {isAdmin && (
-        <>
-         <Card className="overflow-hidden bg-card border border-muted-foreground/10 shadow-none rounded-xl">
-            <CardHeader className="p-6 text-primary border-b border-muted-foreground/5 bg-muted/20">
-                <CardTitle className="font-bold text-sm tracking-tight uppercase">Pengaturan Laporan PDF</CardTitle>
-                <CardDescription className="text-muted-foreground font-medium">Informasi resmi untuk kop dan footer laporan PDF.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 pt-6">
-                <div className="space-y-2">
-                    <Label htmlFor="government-agency" className="text-xs font-bold ml-1">Instansi Pemerintah</Label>
-                    <Input id="government-agency" className="h-11 rounded-xl bg-muted/30" value={governmentAgency} onChange={e => setGovernmentAgency(e.target.value)} />
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="education-agency" className="text-xs font-bold ml-1">Dinas Pendidikan</Label>
-                    <Input id="education-agency" className="h-11 rounded-xl bg-muted/30" value={educationAgency} onChange={e => setEducationAgency(e.target.value)} />
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="school-name" className="text-xs font-bold ml-1">Nama Sekolah</Label>
-                    <Input id="school-name" className="h-11 rounded-xl bg-muted/30" value={schoolName} onChange={e => setSchoolName(e.target.value)} />
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="address" className="text-xs font-bold ml-1">Alamat Sekolah</Label>
-                    <Input id="address" className="h-11 rounded-xl bg-muted/30" value={address} onChange={e => setAddress(e.target.value)} />
-                </div>
-                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="report-city" className="text-xs font-bold ml-1">Kota Laporan</Label>
-                        <Input id="report-city" className="h-11 rounded-xl bg-muted/30" value={reportCity} onChange={e => setReportCity(e.target.value)} />
-                    </div>
-                    <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="headmaster-name" className="text-xs font-bold ml-1">Nama Kepala Sekolah</Label>
-                        <Input id="headmaster-name" className="h-11 rounded-xl bg-muted/30" value={headmasterName} onChange={e => setHeadmasterName(e.target.value)} />
-                    </div>
-                 </div>
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="headmaster-nip" className="text-xs font-bold ml-1">NIP Kepala Sekolah</Label>
-                        <Input id="headmaster-nip" className="h-11 rounded-xl bg-muted/30" value={headmasterNip} onChange={e => setHeadmasterNip(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="academic-year" className="text-xs font-bold ml-1">Tahun Ajaran</Label>
-                        <Input id="academic-year" className="h-11 rounded-xl bg-muted/30" value={academicYear} onChange={e => setAcademicYear(e.target.value)} placeholder="Contoh: 2025/2026" />
-                    </div>
-                 </div>
-            </CardContent>
-            <CardFooter className="border-t px-6 py-4 bg-muted/5">
-                <Button onClick={handleReportSettingsSave} className="font-bold rounded-xl h-11 shadow-none" disabled={isReportSaving}>
-                  <span className="flex items-center justify-center">
-                    {isReportSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Simpan Data Laporan
-                  </span>
-                </Button>
-            </CardFooter>
-        </Card>
-
-        <Card className="overflow-hidden bg-card border border-muted-foreground/10 shadow-none rounded-xl">
-            <CardHeader className="p-6 text-primary border-b border-muted-foreground/5 bg-muted/20">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <CardTitle className="font-bold text-sm tracking-tight uppercase">Pengumuman & Kutipan Hari Ini</CardTitle>
-                        <CardDescription className="text-muted-foreground font-medium">Pesan yang muncul di layar semua pengguna.</CardDescription>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Label htmlFor="notification-active" className="text-xs font-bold">Aktifkan</Label>
-                        <Switch id="notification-active" checked={isNotificationActive} onCheckedChange={setIsNotificationActive} />
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent className="grid gap-4 pt-6">
-                <div className="space-y-2">
-                    <Label htmlFor="notif-title" className="text-xs font-bold ml-1">Judul Pesan</Label>
-                    <Input id="notif-title" className="h-11 rounded-xl bg-muted/30" value={notificationTitle} onChange={e => setNotificationTitle(e.target.value)} placeholder="Contoh: Kutipan Hari Ini" />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="notif-content" className="text-xs font-bold ml-1">Isi Pesan / Kutipan</Label>
-                    <Textarea id="notif-content" className="rounded-xl bg-muted/30 min-h-[100px]" value={notificationContent} onChange={e => setNotificationContent(e.target.value)} placeholder="Tuliskan isi pengumuman..." />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="notif-interval" className="text-xs font-bold ml-1">Jeda Muncul (Detik)</Label>
-                    <div className="flex items-center gap-4">
-                        <Input id="notif-interval" type="number" min="0" max="60" className="h-11 rounded-xl bg-muted/30 w-32" value={notificationInterval} onChange={e => setNotificationInterval(Number(e.target.value))} />
-                    </div>
-                </div>
-            </CardContent>
-            <CardFooter className="border-t px-6 py-4 bg-muted/5">
-                <Button onClick={handleNotificationSettingsSave} className="font-bold rounded-xl h-11 shadow-none" disabled={isNotificationSaving}>
-                  <span className="flex items-center justify-center">
-                    {isNotificationSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Simpan & Aktifkan
-                  </span>
-                </Button>
-            </CardFooter>
-        </Card>
-        </>
-      )}
     </div>
   )
 }

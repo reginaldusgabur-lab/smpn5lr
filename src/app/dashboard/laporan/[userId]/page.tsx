@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
@@ -97,7 +96,6 @@ export default function UserReportDetailPage() {
                 setStats(reportStats);
             }
         } catch (err: any) {
-            console.error("Fetch Data Error:", err);
             if (isMounted.current) setError(err.message || 'Gagal memuat data laporan.');
         } finally {
             if (isMounted.current) setIsLoading(false);
@@ -120,8 +118,6 @@ export default function UserReportDetailPage() {
         try {
             const targetDate = parseISO(dateStr);
             const batch = writeBatch(firestore);
-            const now = new Date();
-            const isPast = isBefore(startOfDay(targetDate), startOfDay(now));
             
             if (newStatus === 'Dinas Pagi' || newStatus === 'Dinas Siang' || newStatus === 'Pulang Cepat') {
                 const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
@@ -129,41 +125,28 @@ export default function UserReportDetailPage() {
                 const snap = await getDocs(q);
                 
                 const inStart = schoolConfigData.checkInStartTime || '07:00';
-                const inEnd = schoolConfigData.checkInEndTime || '07:30';
                 const outStart = schoolConfigData.checkOutStartTime || '14:00';
                 const outEnd = schoolConfigData.checkOutEndTime || '16:00';
                 
-                let realInTime: Date | null = null;
-                let realOutTime: Date | null = null;
-
-                if (newStatus === 'Dinas Pagi') {
-                    realInTime = null;
-                    realOutTime = getRandomTime(targetDate, outStart, outEnd);
-                } else if (newStatus === 'Dinas Siang') {
-                    realInTime = getRandomTime(targetDate, inStart, inEnd);
-                    realOutTime = null;
-                } else if (newStatus === 'Pulang Cepat') {
-                    realInTime = getRandomTime(targetDate, inStart, inEnd);
-                    realOutTime = null;
-                }
-
-                const dataToSave = {
+                let dataToSave: any = {
                     userId, date: format(targetDate, 'yyyy-MM-dd'),
-                    checkInTime: realInTime ? Timestamp.fromDate(realInTime) : null, 
-                    checkOutTime: realOutTime ? Timestamp.fromDate(realOutTime) : null,
                     manualEntry: true, reasonForUpdate: reason,
                     updatedBy: currentUser.uid, updatedAt: serverTimestamp()
                 };
 
-                if (!snap.empty) {
-                    batch.update(snap.docs[0].ref, dataToSave);
+                if (newStatus === 'Dinas Pagi') {
+                    dataToSave.checkInTime = null;
+                    dataToSave.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, outStart, outEnd));
                 } else {
-                    batch.set(doc(attendanceRef), dataToSave);
+                    dataToSave.checkInTime = Timestamp.fromDate(getRandomTime(targetDate, inStart, inStart));
+                    dataToSave.checkOutTime = null;
                 }
+
+                if (!snap.empty) batch.update(snap.docs[0].ref, dataToSave);
+                else batch.set(doc(attendanceRef), dataToSave);
             } else {
                 const leaveRef = collection(firestore, 'users', userId, 'leaveRequests');
-                const newLeaveDoc = doc(leaveRef);
-                batch.set(newLeaveDoc, {
+                batch.set(doc(leaveRef), {
                     userId, type: newStatus === 'Izin Pribadi' ? 'Izin' : newStatus, status: 'approved',
                     reason: reason, startDate: Timestamp.fromDate(startOfDay(targetDate)),
                     endDate: Timestamp.fromDate(endOfDay(targetDate)), createdAt: serverTimestamp(),
@@ -187,18 +170,11 @@ export default function UserReportDetailPage() {
         setIsMutating(true);
         try {
             const targetDate = parseISO(dateStr);
-            const now = new Date();
-            const isPast = isBefore(startOfDay(targetDate), startOfDay(now));
-
             const inEnd = schoolConfigData.checkInEndTime || '08:00';
             const [endH, endM] = inEnd.split(':').map(Number);
             const baseLateTime = new Date(targetDate);
             baseLateTime.setHours(endH, endM, 0);
             const realInTime = addMinutes(baseLateTime, Math.floor(Math.random() * 15) + 1);
-
-            const outStart = schoolConfigData.checkOutStartTime || '14:00';
-            const outEnd = schoolConfigData.checkOutEndTime || '15:00';
-            const realOutTime = isPast ? getRandomTime(targetDate, outStart, outEnd) : null;
 
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
             const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
@@ -207,16 +183,12 @@ export default function UserReportDetailPage() {
             const data = {
                 userId, date: format(targetDate, 'yyyy-MM-dd'),
                 checkInTime: Timestamp.fromDate(realInTime),
-                checkOutTime: realOutTime ? Timestamp.fromDate(realOutTime) : null,
                 manualEntry: true, reasonForUpdate: 'Terlambat',
                 updatedBy: currentUser.uid, updatedAt: serverTimestamp()
             };
 
-            if (!snap.empty) {
-                await writeBatch(firestore).update(snap.docs[0].ref, data).commit();
-            } else {
-                await writeBatch(firestore).set(doc(attendanceRef), data).commit();
-            }
+            if (!snap.empty) await writeBatch(firestore).update(snap.docs[0].ref, data).commit();
+            else await writeBatch(firestore).set(doc(attendanceRef), data).commit();
 
             invalidateCache();
             toast({ title: 'Berhasil', description: 'Ditandai sebagai terlambat.' });
@@ -233,44 +205,26 @@ export default function UserReportDetailPage() {
         setIsMutating(true);
         try {
             const targetDate = parseISO(dateStr);
-            const now = new Date();
-            const isPast = isBefore(startOfDay(targetDate), startOfDay(now));
-
             const inStart = schoolConfigData.checkInStartTime || '07:00';
             const inEnd = schoolConfigData.checkInEndTime || '07:30';
             const checkInTime = getRandomTime(targetDate, inStart, inEnd);
-
-            const outStart = schoolConfigData.checkOutStartTime || '14:00';
-            const outEnd = schoolConfigData.checkOutEndTime || '16:00';
-            
-            const [outH, outM] = outStart.split(':').map(Number);
-            const checkoutStartTimeToday = setMinutes(setHours(startOfDay(targetDate), outH), outM);
-            const shouldFillCheckout = isPast || now >= checkoutStartTimeToday;
-            
-            const checkOutTime = shouldFillCheckout ? getRandomTime(targetDate, outStart, outEnd) : null;
 
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
             const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
             const snap = await getDocs(q);
 
-            const batch = writeBatch(firestore);
             const dataToSave = {
                 userId: userId, date: format(targetDate, 'yyyy-MM-dd'),
                 checkInTime: Timestamp.fromDate(checkInTime), 
-                checkOutTime: checkOutTime ? Timestamp.fromDate(checkOutTime) : null,
                 manualEntry: true,
                 reasonForUpdate: 'Kehadiran penuh',
                 updatedBy: currentUser.uid,
                 updatedAt: serverTimestamp()
             };
 
-            if (!snap.empty) {
-                batch.update(snap.docs[0].ref, dataToSave);
-            } else {
-                batch.set(doc(attendanceRef), dataToSave);
-            }
+            if (!snap.empty) await writeBatch(firestore).update(snap.docs[0].ref, dataToSave).commit();
+            else await writeBatch(firestore).set(doc(attendanceRef), dataToSave).commit();
 
-            await batch.commit();
             invalidateCache();
             toast({ title: 'Berhasil', description: 'Ditandai sebagai hadir.' });
             fetchData();
@@ -316,7 +270,7 @@ export default function UserReportDetailPage() {
         currentY += 6;
         doc.text(`Jabatan / Status`, margin, currentY);
         
-        const displayRole = userData.role.replace('_', ' ').split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        const displayRole = (userData.role || 'user').replace('_', ' ').split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
         doc.text(`: ${displayRole} / ${userData.position || '-'}`, margin + 40, currentY);
         currentY += 10;
 
@@ -362,12 +316,8 @@ export default function UserReportDetailPage() {
     };
 
     const isAdmin = currentUser?.role === 'admin';
-
-    const canGoNext = useMemo(() => !isSameMonth(currentMonth, new Date()), [currentMonth]);
-    const canGoPrev = useMemo(() => {
-        const minDate = new Date(2026, 0, 1);
-        return currentMonth > minDate;
-    }, [currentMonth]);
+    const canGoNext = !isSameMonth(currentMonth, new Date());
+    const canGoPrev = currentMonth > new Date(2026, 0, 1);
 
     return (
         <div className="flex-1 pt-2 pb-24 md:p-8">
@@ -389,16 +339,7 @@ export default function UserReportDetailPage() {
                         <div className="p-4 space-y-4">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
                                 <div className="flex items-center bg-muted/40 rounded-2xl border border-muted-foreground/5 p-1 shrink-0">
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-10 w-10 rounded-xl hover:bg-background/50 shadow-none shrink-0" 
-                                        onClick={() => changeMonth(-1)} 
-                                        disabled={isLoading || !canGoPrev}
-                                    >
-                                        <ChevronLeft className="h-5 w-5 text-primary" />
-                                    </Button>
-                                    
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-background/50 shadow-none" onClick={() => changeMonth(-1)} disabled={isLoading || !canGoPrev}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
                                     <div className="flex items-center gap-3 px-4">
                                         {stats && (
                                             <div className="flex items-center gap-1.5 pr-3 border-r border-muted-foreground/20">
@@ -406,26 +347,14 @@ export default function UserReportDetailPage() {
                                                 <span className="text-sm font-black text-primary">{stats.persentase}</span>
                                             </div>
                                         )}
-                                        <span className="font-black text-xl text-primary tracking-tight text-center capitalize whitespace-nowrap min-w-[120px]">
-                                            {format(currentMonth, 'MMMM yyyy', { locale: id })}
-                                        </span>
+                                        <span className="font-black text-xl text-primary tracking-tight text-center capitalize whitespace-nowrap min-w-[120px]">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
                                     </div>
-
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-10 w-10 rounded-xl hover:bg-background/50 shadow-none shrink-0" 
-                                        onClick={() => changeMonth(1)} 
-                                        disabled={isLoading || !canGoNext}
-                                    >
-                                        <ChevronRight className="h-5 w-5 text-primary" />
-                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-background/50 shadow-none" onClick={() => changeMonth(1)} disabled={isLoading || !canGoNext}><ChevronRight className="h-5 w-5 text-primary" /></Button>
                                 </div>
                             </div>
                             <div className="flex justify-center sm:justify-end">
                                 <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-black bg-primary hover:bg-primary/90 shadow-none h-11 rounded-xl text-xs uppercase tracking-wider">
-                                    {isLoading || isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                                    UNDUH PDF
+                                    {isLoading || isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}UNDUH PDF
                                 </Button>
                             </div>
                         </div>
@@ -456,7 +385,7 @@ export default function UserReportDetailPage() {
                                                 </TableRow>
                                             ))
                                         ) : error ? (
-                                            <TableRow><TableCell colSpan={6} className="h-48 text-center text-destructive font-bold"><AlertCircle className="h-10 w-10 mx-auto mb-2 opacity-50" /><p>{error}</p></TableCell></TableRow>
+                                            <TableRow><TableCell colSpan={6} className="h-48 text-center text-destructive font-bold"><p>{error}</p></TableCell></TableRow>
                                         ) : monthlyReportData.length > 0 ? (
                                             monthlyReportData.map((item, index) => (
                                                 <TableRow key={item.id} className={cn("border-muted-foreground/5 hover:bg-muted/20 transition-colors", item.status === 'Alpa' && "bg-destructive/5")}>
@@ -484,11 +413,7 @@ export default function UserReportDetailPage() {
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
                                                         ) : (
-                                                            <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold", 
-                                                                item.status === 'Hadir' ? 'bg-green-100 text-green-700' : 
-                                                                item.status === 'Alpa' ? 'bg-red-100 text-red-700' : 
-                                                                'bg-blue-100 text-blue-700' 
-                                                            )}>
+                                                            <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold", item.status === 'Hadir' ? 'bg-green-100 text-green-700' : item.status === 'Alpa' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700')}>
                                                                 {item.status}
                                                             </span>
                                                         )}
