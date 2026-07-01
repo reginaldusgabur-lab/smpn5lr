@@ -168,12 +168,18 @@ const AbsentUsersTable = () => {
 
   const getStatusStyle = (status: string) => {
       const s = status.toLowerCase();
-      if (s === 'alpa') return 'bg-red-100 text-red-700 border-red-200 hover:bg-red-100';
-      if (s === 'sakit') return 'bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-100';
-      if (s === 'izin' || s.includes('izin pribadi')) return 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100';
-      if (s.includes('dinas') || s.includes('pulang cepat')) return 'bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-100';
-      if (s === 'menunggu') return 'bg-muted text-muted-foreground border-transparent hover:bg-muted';
-      return 'bg-primary/10 text-primary border-transparent hover:bg-primary/10';
+      // Alpa: Merah
+      if (s === 'alpa') return 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800';
+      // Sakit: Oranye
+      if (s === 'sakit') return 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800';
+      // Izin: Biru
+      if (s === 'izin' || s.includes('izin pribadi')) return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800';
+      // Dinas / Pulang Cepat: Ungu
+      if (s.includes('dinas') || s.includes('pulang cepat')) return 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800';
+      // Menunggu: Abu-abu
+      if (s === 'menunggu') return 'bg-muted text-muted-foreground border-transparent hover:bg-muted dark:bg-muted/20';
+      
+      return 'bg-primary/10 text-primary border-transparent hover:bg-primary/20';
   }
 
   return (
@@ -214,7 +220,7 @@ const AbsentUsersTable = () => {
                           <div className="text-[10px] text-muted-foreground font-bold tracking-tight">{user.position}</div>
                       </TableCell>
                       <TableCell className="text-center">
-                          <Badge variant="outline" className={cn("text-[9px] font-bold px-3 py-1 rounded-lg", getStatusStyle(user.status))}>
+                          <Badge variant="outline" className={cn("text-[10px] font-bold px-3 py-1 rounded-xl", getStatusStyle(user.status))}>
                               {user.status}
                           </Badge>
                       </TableCell>
