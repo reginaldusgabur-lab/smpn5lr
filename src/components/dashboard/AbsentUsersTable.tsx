@@ -15,13 +15,14 @@ import { collection, query, where, getDocs, collectionGroup, Timestamp, doc, get
 import { isWithinInterval, startOfDay, endOfDay, format } from 'date-fns';
 import { Loader2, UserCheck, AlertCircle, CalendarOff, AlertTriangle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface AbsentUser {
   no: number;
   name: string;
   nip: string;
   position: string;
-  status: 'Alpa' | 'Menunggu persetujuan' | 'Izin' | 'Sakit' | 'Dinas';
+  status: string;
 }
 
 interface UserData {
@@ -125,13 +126,13 @@ const AbsentUsersTable = () => {
           .sort((a, b) => (a.sequenceNumber ?? 999) - (b.sequenceNumber ?? 999)) 
           .map((user, index) => {
             const leaveInfo = onLeaveOrPendingUserIds.get(user.id);
-            let status: AbsentUser['status'] = 'Alpa';
+            let status = 'Alpa';
 
             if(leaveInfo) {
                 if(leaveInfo.status === 'approved') {
-                    status = (leaveInfo.type as any) || 'Izin';
+                    status = leaveInfo.type || 'Izin';
                 } else if (leaveInfo.status === 'pending') {
-                    status = 'Menunggu persetujuan';
+                    status = 'Menunggu';
                 }
             }
             
@@ -165,15 +166,14 @@ const AbsentUsersTable = () => {
       return <div className="flex flex-col items-center justify-center h-40 text-muted-foreground"><UserCheck className="h-8 w-8 mb-3 text-green-500" /><span>Semua staf telah hadir hari ini.</span></div>;
   }
 
-  const getBadgeVariant = (status: string) => {
-      switch(status) {
-          case 'Alpa': return 'destructive';
-          case 'Sakit': return 'destructive';
-          case 'Izin': return 'secondary';
-          case 'Dinas': return 'secondary';
-          case 'Menunggu persetujuan': return 'outline';
-          default: return 'default';
-      }
+  const getStatusStyle = (status: string) => {
+      const s = status.toLowerCase();
+      if (s === 'alpa') return 'bg-red-100 text-red-700 border-red-200 hover:bg-red-100';
+      if (s === 'sakit') return 'bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-100';
+      if (s === 'izin' || s.includes('izin pribadi')) return 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100';
+      if (s.includes('dinas') || s.includes('pulang cepat')) return 'bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-100';
+      if (s === 'menunggu') return 'bg-muted text-muted-foreground border-transparent hover:bg-muted';
+      return 'bg-primary/10 text-primary border-transparent hover:bg-primary/10';
   }
 
   return (
@@ -207,14 +207,14 @@ const AbsentUsersTable = () => {
                   </TableHeader>
                   <TableBody>
                   {absentUsers.map((user, index) => (
-                      <TableRow key={index} className="border-muted-foreground/5 hover:bg-destructive/5 transition-colors">
+                      <TableRow key={index} className="border-muted-foreground/5 hover:bg-muted/30 transition-colors">
                       <TableCell className="text-center font-bold text-xs text-muted-foreground">{index + 1}</TableCell>
                       <TableCell>
                           <div className="font-bold text-sm text-foreground">{user.name}</div>
                           <div className="text-[10px] text-muted-foreground font-bold tracking-tight">{user.position}</div>
                       </TableCell>
                       <TableCell className="text-center">
-                          <Badge variant={getBadgeVariant(user.status)} className="text-[9px] font-bold px-3">
+                          <Badge variant="outline" className={cn("text-[9px] font-bold px-3 py-1 rounded-lg", getStatusStyle(user.status))}>
                               {user.status}
                           </Badge>
                       </TableCell>
