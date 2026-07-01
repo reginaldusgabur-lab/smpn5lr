@@ -120,10 +120,10 @@ export default function DashboardPage() {
   }, [activeLeaves]);
 
   const chartData = useMemo(() => [
-    { name: 'Hadir', value: personalSummary.hadir, color: 'hsl(var(--primary))' },
-    { name: 'Sakit', value: personalSummary.sakit, color: '#f59e0b' },
-    { name: 'Izin', value: personalSummary.izin, color: '#3b82f6' },
-    { name: 'Alpa', value: personalSummary.alpa, color: '#ef4444' },
+    { name: 'Hadir', Jumlah: personalSummary.hadir, color: 'hsl(var(--primary))' },
+    { name: 'Sakit', Jumlah: personalSummary.sakit, color: '#f59e0b' },
+    { name: 'Izin', Jumlah: personalSummary.izin, color: '#3b82f6' },
+    { name: 'Alpa', Jumlah: personalSummary.alpa, color: '#ef4444' },
   ], [personalSummary]);
 
   const handlePrevMonth = () => {
@@ -317,7 +317,7 @@ export default function DashboardPage() {
                                             allowDecimals={false} 
                                         />
                                         <Tooltip cursor={{ fill: 'rgba(0,0,0,0.03)' }} contentStyle={{ borderRadius: '12px', border: 'none', shadow: 'none', fontSize: '11px', fontWeight: 'bold' }} />
-                                        <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={45}>
+                                        <Bar dataKey="Jumlah" radius={[6, 6, 0, 0]} barSize={45}>
                                             {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                                         </Bar>
                                     </BarChart>
