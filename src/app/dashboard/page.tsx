@@ -45,7 +45,7 @@ export default function DashboardPage() {
   const { status: windowStatus } = useAttendanceWindow();
   const isMounted = useRef(true);
 
-  const [stats, setStats] = useState({ hadir: 0, izin: 0, sakit: 0, pending: 0, alpa: 0, isHoliday: false, isManualDisabled: false });
+  const [stats, setStats] = useState({ hadir: 0, izin: 0, sakit: 0, pending: 0, alpa: 0, isHoliday: false, isManualDisabled: false, isCalendarHoliday: false });
   const [isStatsLoading, setIsStatsLoading] = useState(true);
   const [personalSummary, setPersonalSummary] = useState({ percentage: '0', hadir: 0, izin: 0, sakit: 0, alpa: 0 });
   const [isPersonalSummaryLoading, setIsPersonalSummaryLoading] = useState(true);
@@ -123,10 +123,10 @@ export default function DashboardPage() {
 
     if (!isCheckedIn) {
         if (windowStatus === 'SESSION_INACTIVE' || stats.isHoliday) {
-            const isSpecificHoliday = stats.isHoliday && windowStatus !== 'SESSION_INACTIVE';
+            const label = stats.isCalendarHoliday ? 'Hari libur (Kalender)' : 'Hari libur rutin';
             return (
                 <div className="w-full bg-muted text-muted-foreground border border-border font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none">
-                    <Lock className="mr-2 h-4 w-4" /> {isSpecificHoliday ? 'Hari libur (Kalender)' : 'Hari libur rutin'}
+                    <Lock className="mr-2 h-4 w-4" /> {label}
                 </div>
             );
         }
@@ -197,7 +197,7 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="w-full border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden bg-card mt-6">
+                <Card className="w-full border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden bg-card">
                     <CardHeader className="p-6 text-primary border-b border-muted-foreground/5">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -235,7 +235,6 @@ export default function DashboardPage() {
         {isAdminOrKepsek && (
             <div className="w-full space-y-4 pt-4 border-t border-dashed border-border/50 flex flex-col items-stretch">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
-                    {/* Hadir Card */}
                     <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden">
                         <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
                             <CardTitle className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Hadir</CardTitle>
@@ -250,7 +249,6 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Izin / Sakit Card */}
                     <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden">
                         <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
                             <CardTitle className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Izin / Sakit</CardTitle>
@@ -265,7 +263,6 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Menunggu Card */}
                     <Link href="/dashboard/izin-kepala-sekolah" className="block">
                         <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-xl hover:bg-muted/30 transition-all group overflow-hidden">
                             <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
@@ -282,7 +279,6 @@ export default function DashboardPage() {
                         </Card>
                     </Link>
 
-                    {/* Alpa Card */}
                     <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden">
                         <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
                             <CardTitle className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Alpa</CardTitle>

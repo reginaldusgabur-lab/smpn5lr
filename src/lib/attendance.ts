@@ -20,7 +20,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v15_${todayStr}`;
+    const cacheKey = `daily_stats_v16_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -39,19 +39,20 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
         const monthlyConfig = monthlyConfigSnap.data();
 
         const isManualOff = schoolConfig?.isAttendanceActive === false;
+        const isCalendarHoliday = monthlyConfig?.holidays?.includes(todayStr);
+        const dayOfWeek = today.getDay();
+        const offDays: number[] = schoolConfig?.offDays ?? [0, 6];
+        const isRecurringOff = offDays.includes(dayOfWeek);
 
-        const isHoliday = (() => {
-            if (!schoolConfig) return false;
-            if (isManualOff) return true;
-            const dayOfWeek = today.getDay();
-            const offDays: number[] = schoolConfig.offDays ?? [0, 6];
-            if (offDays.includes(dayOfWeek)) return true;
-            if (monthlyConfig?.holidays?.includes(todayStr)) return true;
-            return false;
-        })();
+        const isHoliday = !isManualOff && (isCalendarHoliday || isRecurringOff);
 
-        if (isHoliday) {
-            return { totalStaff: 0, hadir: 0, izin: 0, sakit: 0, pending: 0, alpa: 0, isHoliday: !isManualOff, isManualDisabled: isManualOff };
+        if (isManualOff || isHoliday) {
+            return { 
+                totalStaff: 0, hadir: 0, izin: 0, sakit: 0, pending: 0, alpa: 0, 
+                isHoliday: isHoliday, 
+                isCalendarHoliday: isCalendarHoliday,
+                isManualDisabled: isManualOff 
+            };
         }
 
         const startOfToday = startOfDay(today);
