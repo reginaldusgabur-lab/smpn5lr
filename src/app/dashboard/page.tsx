@@ -25,12 +25,12 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-// Custom Tooltip Component to match the user's provided image exactly
+// Custom Tooltip Component centered, bold title, muted subtitle with "hari"
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="bg-card border border-border shadow-2xl rounded-2xl p-4 text-center min-w-[110px] animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-card border border-border shadow-2xl rounded-2xl p-4 text-center min-w-[120px] animate-in fade-in zoom-in-95 duration-200">
         <p className="font-black text-foreground text-base tracking-tight leading-none mb-1.5">{data.name}</p>
         <p className="text-muted-foreground text-xs font-bold tracking-wide">
           {data.Jumlah} hari
@@ -201,6 +201,7 @@ export default function DashboardPage() {
         );
     }
 
+    // ADAPTIVE LOGIC: If it's checkout time, show checkout even if check-in is missing
     if (windowStatus === 'CHECK_OUT_OPEN') {
         return (
             <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all bg-blue-600 hover:bg-blue-700 text-white">
