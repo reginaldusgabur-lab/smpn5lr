@@ -23,11 +23,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useUser, useFirestore, FirestorePermissionError, errorEmitter, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { addDoc, collection, serverTimestamp, query, where, Timestamp, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
-import { startOfDay, endOfDay, addDays, setHours, setMinutes } from 'date-fns';
+import { Loader2, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { startOfDay, endOfDay, addDays, setHours, setMinutes, format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useMemo } from 'react';
 import { PageWrapper } from '@/components/layout/page-wrapper';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const leaveRequestSchema = z.object({
   leaveDate: z.enum(['today', 'tomorrow'], {
@@ -74,6 +76,7 @@ export default function IzinPage() {
     const targetDateStart = useMemo(() => startOfDay(targetDate), [targetDate]);
     const targetDateEnd = useMemo(() => endOfDay(targetDate), [targetDate]);
 
+    // Query untuk mengecek absensi pada tanggal target
     const attendanceQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
         return query(
@@ -84,6 +87,17 @@ export default function IzinPage() {
     }, [user, firestore, targetDateStart, targetDateEnd]);
     const { data: targetDateAttendance, isLoading: isAttendanceLoading } = useCollection(user, attendanceQuery);
     
+    // Query untuk mengecek apakah sudah ada pengajuan izin pada tanggal target
+    const existingLeaveQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return query(
+            collection(firestore, 'users', user.uid, 'leaveRequests'),
+            where('startDate', '==', Timestamp.fromDate(targetDateStart))
+        );
+    }, [user, firestore, targetDateStart]);
+    const { data: existingLeaves, isLoading: isLeavesLoading } = useCollection(user, existingLeaveQuery);
+    const currentDayLeave = existingLeaves?.[0];
+
     const hasCheckedIn = useMemo(() => !!(targetDateAttendance && targetDateAttendance[0]?.checkInTime), [targetDateAttendance]);
     const hasCheckedOut = useMemo(() => !!(targetDateAttendance && targetDateAttendance[0]?.checkOutTime), [targetDateAttendance]);
 
@@ -100,25 +114,25 @@ export default function IzinPage() {
             {
                 value: 'Pulang Cepat',
                 label: 'Izin Pulang Cepat',
-                disabled: !isToday || !hasCheckedIn || hasCheckedOut
+                disabled: !isToday || !hasCheckedIn || hasCheckedOut || !!currentDayLeave
             },
             {
                 value: 'Sakit',
                 label: 'Sakit',
-                disabled: hasCheckedIn || (isToday && isPastCheckoutTime)
+                disabled: hasCheckedIn || (isToday && isPastCheckoutTime) || !!currentDayLeave
             },
             {
                 value: 'Izin',
                 label: 'Izin',
-                disabled: hasCheckedIn || (isToday && isPastCheckoutTime)
+                disabled: hasCheckedIn || (isToday && isPastCheckoutTime) || !!currentDayLeave
             },
             {
                 value: 'Dinas',
                 label: 'Perjalanan Dinas',
-                disabled: hasCheckedIn
+                disabled: hasCheckedIn || !!currentDayLeave
             },
         ];
-    }, [selectedDateValue, hasCheckedIn, hasCheckedOut, isPastCheckoutTime]);
+    }, [selectedDateValue, hasCheckedIn, hasCheckedOut, isPastCheckoutTime, currentDayLeave]);
 
     useEffect(() => {
         const selectedType = form.getValues('type');
@@ -133,6 +147,11 @@ export default function IzinPage() {
     async function onSubmit(values: z.infer<typeof leaveRequestSchema>) {
         if (!user || !firestore) return;
         
+        if (currentDayLeave) {
+            toast({ variant: 'destructive', title: 'Sudah ada pengajuan', description: 'Anda sudah mengirim pengajuan untuk tanggal ini.' });
+            return;
+        }
+
         if (values.type === 'Pulang Cepat') {
             if (!hasCheckedIn) {
                 toast({ variant: 'destructive', title: 'Gagal', description: 'Anda harus absen masuk terlebih dahulu.' });
@@ -163,7 +182,7 @@ export default function IzinPage() {
         addDoc(leaveCollectionRef, dataToSave)
             .then(() => {
                 toast({ title: 'Terkirim', description: 'Pengajuan Anda telah dikirim.' });
-                router.push('/dashboard/laporan');
+                form.reset();
             })
             .catch((error) => {
                 const contextualError = new FirestorePermissionError({ operation: 'create', path: leaveCollectionRef.path, requestResourceData: dataToSave });
@@ -173,7 +192,7 @@ export default function IzinPage() {
             .finally(() => setIsSubmitting(false));
     }
 
-    const isChecking = isAttendanceLoading || isSchoolConfigLoading;
+    const isChecking = isAttendanceLoading || isSchoolConfigLoading || isLeavesLoading;
 
     return (
         <PageWrapper>
@@ -181,10 +200,43 @@ export default function IzinPage() {
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)}>
                         <CardHeader className="p-4 sm:p-6 text-primary border-b border-muted-foreground/10">
-                            <CardTitle className="font-bold text-sm tracking-tight">Formulir Pengajuan Izin</CardTitle>
-                            <CardDescription className="text-muted-foreground font-medium pt-1">Isi formulir untuk mengajukan ketidakhadiran atau izin pulang cepat.</CardDescription>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div>
+                                    <CardTitle className="font-bold text-sm tracking-tight">Formulir Pengajuan Izin</CardTitle>
+                                    <CardDescription className="text-muted-foreground font-medium pt-1">Isi formulir untuk mengajukan ketidakhadiran atau izin pulang cepat.</CardDescription>
+                                </div>
+                                {currentDayLeave && (
+                                    <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-xl border border-border/50">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status Anda:</span>
+                                        {currentDayLeave.status === 'pending' ? (
+                                            <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 animate-pulse font-bold px-3">
+                                                <Clock className="w-3 h-3 mr-1.5" /> Menunggu
+                                            </Badge>
+                                        ) : currentDayLeave.status === 'approved' ? (
+                                            <Badge variant="default" className="bg-green-500 text-white font-bold px-3">
+                                                <CheckCircle2 className="w-3 h-3 mr-1.5" /> Disetujui
+                                            </Badge>
+                                        ) : (
+                                            <Badge variant="destructive" className="font-bold px-3">Ditolak</Badge>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
+                            {currentDayLeave && (
+                                <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl flex items-start gap-3">
+                                    <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-xs font-bold text-primary">Informasi Pengajuan</p>
+                                        <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
+                                            Anda telah mengajukan <strong>{currentDayLeave.type}</strong> untuk tanggal ini. 
+                                            Harap tunggu persetujuan dari Kepala Sekolah sebelum mengajukan izin kembali.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <FormField
                                     control={form.control}
@@ -213,7 +265,7 @@ export default function IzinPage() {
                                     render={({ field }) => (
                                         <FormItem className="space-y-1.5">
                                             <FormLabel className="text-xs font-bold ml-1">Jenis Pengajuan</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
+                                            <Select onValueChange={field.onChange} value={field.value} disabled={!!currentDayLeave}>
                                                 <FormControl>
                                                     <SelectTrigger className="h-11 rounded-xl bg-muted/30 border-muted-foreground/10 shadow-none">
                                                         <SelectValue placeholder="Pilih jenis" />
@@ -239,7 +291,12 @@ export default function IzinPage() {
                                     <FormItem className="space-y-1.5">
                                         <FormLabel className="text-xs font-bold ml-1">Alasan</FormLabel>
                                         <FormControl>
-                                            <Textarea placeholder="Contoh: Demam, Kegiatan Keluarga..." {...field} className="min-h-[120px] rounded-xl bg-muted/30 border-muted-foreground/10 focus:bg-background transition-all" />
+                                            <Textarea 
+                                                placeholder="Contoh: Demam, Kegiatan Keluarga..." 
+                                                disabled={!!currentDayLeave}
+                                                {...field} 
+                                                className="min-h-[120px] rounded-xl bg-muted/30 border-muted-foreground/10 focus:bg-background transition-all" 
+                                            />
                                         </FormControl>
                                         <FormMessage className="text-[10px] font-bold" />
                                     </FormItem>
@@ -247,9 +304,23 @@ export default function IzinPage() {
                             />
                         </CardContent>
                         <CardFooter className="border-t p-6 bg-muted/5">
-                            <Button type="submit" disabled={isSubmitting || isChecking} className="w-full sm:w-auto h-11 rounded-xl font-bold tracking-normal shadow-none active:scale-95 transition-all bg-primary">
-                               {(isSubmitting || isChecking) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                               Kirim Pengajuan
+                            <Button 
+                                type="submit" 
+                                disabled={isSubmitting || isChecking || !!currentDayLeave} 
+                                className={cn(
+                                    "w-full sm:w-auto h-11 rounded-xl font-bold tracking-normal shadow-none active:scale-95 transition-all",
+                                    currentDayLeave?.status === 'pending' ? "bg-amber-500 hover:bg-amber-600" : "bg-primary"
+                                )}
+                            >
+                               {isSubmitting || isChecking ? (
+                                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memproses...</>
+                               ) : currentDayLeave?.status === 'pending' ? (
+                                   <><Clock className="mr-2 h-4 w-4" /> Menunggu Persetujuan</>
+                               ) : currentDayLeave?.status === 'approved' ? (
+                                   <><CheckCircle2 className="mr-2 h-4 w-4" /> Sudah Disetujui</>
+                               ) : (
+                                   "Kirim Pengajuan"
+                               )}
                             </Button>
                         </CardFooter>
                     </form>
