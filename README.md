@@ -1,4 +1,4 @@
-pmpnp# Aplikasi Absensi SMPN 5 Langke Rembong (E-SPENLI)
+# Aplikasi Absensi SMPN 5 Langke Rembong (E-SPENLI)
 
 Selamat datang di dokumentasi resmi E-SPENLI, sebuah aplikasi absensi digital modern yang dirancang khusus untuk SMPN 5 Langke Rembong. Aplikasi ini dibangun untuk mengotomatiskan dan meningkatkan akurasi proses absensi bagi seluruh warga sekolah.
 
