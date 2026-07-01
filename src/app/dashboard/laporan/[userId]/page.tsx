@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { invalidateCache } from '@/lib/cache';
+import { cn } from '@/lib/utils';
 
 const safeFormat = (dateInput: any, formatString: string): string => {
     if (!dateInput) return '-';
@@ -95,6 +96,7 @@ export default function UserReportDetailPage() {
                 setStats(reportStats);
             }
         } catch (err: any) {
+            console.error("Fetch Data Error:", err);
             if (isMounted.current) setError(err.message || 'Gagal memuat data laporan.');
         } finally {
             if (isMounted.current) setIsLoading(false);
@@ -169,7 +171,7 @@ export default function UserReportDetailPage() {
             }
 
             await batch.commit();
-            invalidateCache(); // Clear cache to ensure percentage syncs immediately
+            invalidateCache();
             toast({ title: 'Berhasil', description: `Status diperbarui menjadi ${reason}.` });
             fetchData();
         } catch (err) {
@@ -215,7 +217,7 @@ export default function UserReportDetailPage() {
                 await writeBatch(firestore).set(doc(attendanceRef), data).commit();
             }
 
-            invalidateCache(); // Clear cache
+            invalidateCache();
             toast({ title: 'Berhasil', description: 'Ditandai sebagai terlambat.' });
             fetchData();
         } catch (err) {
@@ -268,7 +270,7 @@ export default function UserReportDetailPage() {
             }
 
             await batch.commit();
-            invalidateCache(); // Clear cache
+            invalidateCache();
             toast({ title: 'Berhasil', description: 'Ditandai sebagai hadir.' });
             fetchData();
         } catch (err) {
@@ -360,6 +362,12 @@ export default function UserReportDetailPage() {
 
     const isAdmin = currentUser?.role === 'admin';
 
+    const canGoNext = useMemo(() => !isSameMonth(currentMonth, new Date()), [currentMonth]);
+    const canGoPrev = useMemo(() => {
+        const minDate = new Date(2025, 0, 1); // Januari 2025
+        return currentMonth > minDate;
+    }, [currentMonth]);
+
     return (
         <div className="flex-1 pt-4 pb-24 md:p-8">
             <div className="max-w-7xl mx-auto space-y-6">
@@ -380,7 +388,15 @@ export default function UserReportDetailPage() {
                         <div className="p-4 space-y-4">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
                                 <div className="flex items-center gap-4 sm:gap-6">
-                                    <Button variant="outline" size="icon" className="rounded-full shadow-none shrink-0" onClick={() => changeMonth(-1)} disabled={isLoading}><ChevronLeft className="h-4 w-4" /></Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        className="rounded-full shadow-none shrink-0" 
+                                        onClick={() => changeMonth(-1)} 
+                                        disabled={isLoading || !canGoPrev}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
                                     
                                     <div className="flex items-center gap-3 px-4 py-2 bg-muted/40 rounded-2xl border border-muted-foreground/5">
                                         {stats && (
@@ -394,7 +410,15 @@ export default function UserReportDetailPage() {
                                         </span>
                                     </div>
 
-                                    <Button variant="outline" size="icon" className="rounded-full shadow-none shrink-0" onClick={() => changeMonth(1)} disabled={isLoading || isSameMonth(currentMonth, new Date())}><ChevronRight className="h-4 w-4" /></Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        className="rounded-full shadow-none shrink-0" 
+                                        onClick={() => changeMonth(1)} 
+                                        disabled={isLoading || !canGoNext}
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
                                 </div>
                             </div>
                             <div className="flex justify-center sm:justify-end">
@@ -434,7 +458,7 @@ export default function UserReportDetailPage() {
                                             <TableRow><TableCell colSpan={6} className="h-48 text-center text-destructive font-bold"><AlertCircle className="h-10 w-10 mx-auto mb-2 opacity-50" /><p>{error}</p></TableCell></TableRow>
                                         ) : monthlyReportData.length > 0 ? (
                                             monthlyReportData.map((item, index) => (
-                                                <TableRow key={item.id} className={`${item.status === 'Alpa' ? 'bg-destructive/5' : ''} border-muted-foreground/5 hover:bg-muted/20 transition-colors`}>
+                                                <TableRow key={item.id} className={cn("border-muted-foreground/5 hover:bg-muted/20 transition-colors", item.status === 'Alpa' && "bg-destructive/5")}>
                                                     <TableCell className='text-center font-bold text-muted-foreground text-sm'>{index + 1}</TableCell>
                                                     <TableCell className="whitespace-nowrap font-bold text-sm">{safeFormat(item.date, 'eeee, dd MMM yyyy')}</TableCell>
                                                     <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkInTime, 'HH:mm:ss')}</TableCell>
@@ -443,7 +467,7 @@ export default function UserReportDetailPage() {
                                                         {isAdmin && (item.status === 'Alpa' || item.description === 'Tidak absen pulang' || item.description === 'Belum absen pulang') ? (
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger asChild>
-                                                                    <Button variant="outline" size="sm" className={`${item.status === 'Alpa' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200'} font-bold text-[9px] h-7 rounded-lg shadow-none`}>
+                                                                    <Button variant="outline" size="sm" className={cn("font-bold text-[9px] h-7 rounded-lg shadow-none", item.status === 'Alpa' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200')}>
                                                                         {item.status === 'Alpa' ? 'Alpa' : 'Hadir'} <MoreVertical className="h-3 w-3 ml-1" />
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
@@ -459,11 +483,11 @@ export default function UserReportDetailPage() {
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
                                                         ) : (
-                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold ${ 
+                                                            <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold", 
                                                                 item.status === 'Hadir' ? 'bg-green-100 text-green-700' : 
                                                                 item.status === 'Alpa' ? 'bg-red-100 text-red-700' : 
                                                                 'bg-blue-100 text-blue-700' 
-                                                            }`}>
+                                                            )}>
                                                                 {item.status}
                                                             </span>
                                                         )}
@@ -482,3 +506,4 @@ export default function UserReportDetailPage() {
         </div>
     );
 }
+

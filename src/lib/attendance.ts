@@ -20,7 +20,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v17_${todayStr}`;
+    const cacheKey = `daily_stats_v18_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -130,7 +130,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v17_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v18_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -184,8 +184,8 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         const processedDates = new Set<string>();
 
         attendanceData.forEach((att: any) => {
-            const attDateStr = att.date || format(att.checkInTime.toDate(), 'yyyy-MM-dd');
-            if (workingDaysSet.has(attDateStr) && !processedDates.has(attDateStr)) {
+            const attDateStr = att.date || (att.checkInTime ? format(att.checkInTime.toDate(), 'yyyy-MM-dd') : null);
+            if (attDateStr && workingDaysSet.has(attDateStr) && !processedDates.has(attDateStr)) {
                 let point = 0;
                 const desc = (att.reasonForUpdate || '').toLowerCase();
                 
@@ -280,19 +280,21 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
             getDocs(leaveHistoryQuery),
         ]);
 
-        const monthlyConfig = monthlyConfigSnap.data();
+        const monthlyConfig = monthlyConfigSnap.exists() ? monthlyConfigSnap.data() : {};
         const attendanceHistory = [...attendanceHistorySnap.docs, ...attendanceFallbackSnap.docs].map(d => ({ ...d.data(), id: d.id }));
         const leaveHistory = leaveHistorySnap.docs.map(d => d.data());
 
         const now = new Date();
         const todayStart = startOfDay(now);
-        const offDays = schoolConfig.offDays ?? [0, 6];
+        const offDays = schoolConfig?.offDays ?? [0, 6];
         const holidays = monthlyConfig?.holidays ?? [];
 
         const attendanceMap = new Map();
-        attendanceHistory.forEach(rec => {
-            const d = (rec as any).date || (rec as any).checkInTime ? format((rec as any).checkInTime.toDate(), 'yyyy-MM-dd') : null;
-            if (d) attendanceMap.set(d, rec);
+        attendanceHistory.forEach((rec: any) => {
+            const dateStr = rec.date || (rec.checkInTime ? format(rec.checkInTime.toDate(), 'yyyy-MM-dd') : null);
+            if (dateStr) {
+                attendanceMap.set(dateStr, rec);
+            }
         });
 
         const leaveMap = new Map<string, any>();
@@ -323,7 +325,6 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                 let description = attendanceRecord.reasonForUpdate || 'Kehadiran penuh';
                 description = cleanDesc(description) || 'Kehadiran penuh';
 
-                // Handle special manual statuses that should NOT be marked as Alpa even if checkOut is missing
                 const terminalDescriptions = ['dinas pagi', 'dinas siang', 'pulang cepat'];
                 if (isManual && terminalDescriptions.includes(description.toLowerCase())) {
                     return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime, status: 'Hadir', description, manualEntry: true };
@@ -352,6 +353,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
             checkOutTime: item.checkOutTime ? item.checkOutTime.toISOString() : null,
         }));
     } catch (e) {
+        console.error("Error fetching report data:", e);
         return [];
     }
 }
