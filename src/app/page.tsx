@@ -126,7 +126,7 @@ export default function LoginPage() {
               </div>
             </div>
             <div className="space-y-0.5">
-              <CardTitle className="text-4xl font-medium tracking-tight text-primary">E-SPENLI</CardTitle>
+              <CardTitle className="text-4xl font-bold tracking-tight text-primary">E-SPENLI</CardTitle>
               <CardDescription className="font-normal text-muted-foreground/80 text-[10px] whitespace-nowrap px-4">
                 Aplikasi absensi digital resmi SMP Negeri 5 Langke Rembong
               </CardDescription>

@@ -17,7 +17,7 @@ export default function Loading() {
           />
         </div>
         <div className="flex flex-col items-center gap-0.5">
-          <h2 className="text-2xl font-medium tracking-tight text-primary">E-SPENLI</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-primary">E-SPENLI</h2>
           <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.2em] opacity-40">Menyiapkan Sistem</p>
         </div>
       </div>
