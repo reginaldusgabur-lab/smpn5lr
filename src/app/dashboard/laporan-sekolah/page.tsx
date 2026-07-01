@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -155,7 +154,7 @@ export default function SchoolReportPage() {
                             p = 1.0;
                             hadirCount++;
                         } else if (desc.includes('pulang cepat')) {
-                            p = 0.95; // Pulang cepat = 0.95
+                            p = 0.95; // Same as late
                             hadirCount++;
                         } else if (att.checkInTime && att.checkOutTime) {
                             let isLate = false;

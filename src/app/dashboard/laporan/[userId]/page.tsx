@@ -116,17 +116,19 @@ export default function UserReportDetailPage() {
         try {
             const targetDate = parseISO(dateStr);
             const batch = writeBatch(firestore);
+            const now = new Date();
+            const isPast = isBefore(startOfDay(targetDate), startOfDay(now));
             
-            const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
-            const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
-            const snap = await getDocs(q);
-
-            const inStart = schoolConfigData.checkInStartTime || '07:00';
-            const inEnd = schoolConfigData.checkInEndTime || '07:30';
-            const outStart = schoolConfigData.checkOutStartTime || '14:00';
-            const outEnd = schoolConfigData.checkOutEndTime || '16:00';
-
             if (newStatus === 'Dinas Pagi' || newStatus === 'Dinas Siang' || newStatus === 'Pulang Cepat') {
+                const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
+                const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
+                const snap = await getDocs(q);
+                
+                const inStart = schoolConfigData.checkInStartTime || '07:00';
+                const inEnd = schoolConfigData.checkInEndTime || '07:30';
+                const outStart = schoolConfigData.checkOutStartTime || '14:00';
+                const outEnd = schoolConfigData.checkOutEndTime || '16:00';
+                
                 let realInTime: Date | null = null;
                 let realOutTime: Date | null = null;
 
@@ -135,10 +137,10 @@ export default function UserReportDetailPage() {
                     realOutTime = getRandomTime(targetDate, outStart, outEnd);
                 } else if (newStatus === 'Dinas Siang') {
                     realInTime = getRandomTime(targetDate, inStart, inEnd);
-                    realOutTime = null; 
+                    realOutTime = null;
                 } else if (newStatus === 'Pulang Cepat') {
                     realInTime = getRandomTime(targetDate, inStart, inEnd);
-                    realOutTime = null; 
+                    realOutTime = null;
                 }
 
                 const dataToSave = {
@@ -155,9 +157,6 @@ export default function UserReportDetailPage() {
                     batch.set(doc(attendanceRef), dataToSave);
                 }
             } else {
-                if (!snap.empty) {
-                    batch.delete(snap.docs[0].ref);
-                }
                 const leaveRef = collection(firestore, 'users', userId, 'leaveRequests');
                 const newLeaveDoc = doc(leaveRef);
                 batch.set(newLeaveDoc, {

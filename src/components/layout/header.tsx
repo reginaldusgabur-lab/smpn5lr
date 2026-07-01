@@ -24,7 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { LogOut, Settings, ShieldAlert, BookOpen, Clock, QrCode, FileText, UserCircle, TrendingUp, AlertTriangle, Zap } from 'lucide-react';
+import { LogOut, Settings, ShieldAlert, BookOpen, UserCircle, TrendingUp, QrCode, FileText, Zap, AlertTriangle } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { ModeToggle } from '@/components/theme-toggle';
 
@@ -129,116 +129,114 @@ export function Header({ isTransparent }: { isTransparent?: boolean }) {
         <ModeToggle />
       </div>
 
-      <div className="flex items-center gap-2">
-        <Dialog>
-          <DialogTrigger asChild>
-            <button className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full transition-transform active:scale-95">
-              <Image
-                src={appLogo?.imageUrl || '/logo-3d-v2.png'}
-                alt="App Logo"
-                width={36}
-                height={36}
-                priority
-                data-ai-hint="app logo"
-              />
-            </button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-xl">
-            <DialogHeader className="border-b pb-4">
-              <DialogTitle className="flex items-center gap-2 text-primary">
-                  <BookOpen className="h-6 w-6" />
-                  <span className="font-bold">Sistem & Alur Kerja E-SPENLI</span>
-              </DialogTitle>
-              <DialogDescription className="text-left font-medium">
-                Panduan lengkap penggunaan fitur aplikasi absensi digital untuk Guru dan Pegawai.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="text-sm space-y-6 py-4 pr-2 text-left">
-              <section className="space-y-2">
-                  <div className="flex items-center gap-2 font-bold text-foreground">
-                      <UserCircle className="h-4 w-4 text-primary" />
-                      1. Akses & Login
-                  </div>
-                  <p className="text-muted-foreground pl-6 leading-relaxed">
-                      Masuk menggunakan <strong>Email dan Kata Sandi</strong> terdaftar. Anda dapat memperbarui profil dan mengganti sandi secara mandiri di menu Pengaturan.
-                  </p>
-              </section>
+      <Dialog>
+        <DialogTrigger asChild>
+          <button className="focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full transition-transform active:scale-95">
+            <Image
+              src={appLogo?.imageUrl || '/logo-3d-v2.png'}
+              alt="App Logo"
+              width={36}
+              height={36}
+              priority
+              data-ai-hint="app logo"
+            />
+          </button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-xl">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="flex items-center gap-2 text-primary">
+                <BookOpen className="h-6 w-6" />
+                <span className="font-bold">Sistem Kerja E-SPENLI 2026</span>
+            </DialogTitle>
+            <DialogDescription className="text-left font-medium">
+              Panduan fitur aplikasi absensi digital untuk Guru dan Pegawai.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="text-sm space-y-6 py-4 pr-2 text-left">
+            <section className="space-y-2">
+                <div className="flex items-center gap-2 font-bold text-foreground">
+                    <UserCircle className="h-4 w-4 text-primary" />
+                    1. Akses & Login
+                </div>
+                <p className="text-muted-foreground pl-6 leading-relaxed">
+                    Masuk menggunakan <strong>Email dan Kata Sandi</strong> terdaftar. Anda dapat memperbarui profil dan mengganti sandi secara mandiri di menu Pengaturan. Jika lupa sandi, Admin dapat membantu melakukan reset secara manual.
+                </p>
+            </section>
 
-              <section className="space-y-2">
-                  <div className="flex items-center gap-2 font-bold text-foreground">
-                      <TrendingUp className="h-4 w-4 text-primary" />
-                      2. Beranda (Dashboard)
-                  </div>
-                  <p className="text-muted-foreground pl-6 leading-relaxed">
-                      Menampilkan jam digital dan <strong>Skor Progres Bulanan</strong>. Skor ini menunjukkan akumulasi poin kehadiran Anda dibandingkan target total hari kerja dalam sebulan.
-                  </p>
-              </section>
+            <section className="space-y-2">
+                <div className="flex items-center gap-2 font-bold text-foreground">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    2. Beranda & Skor Progres
+                </div>
+                <p className="text-muted-foreground pl-6 leading-relaxed">
+                    Menampilkan jam digital dan <strong>Skor Progres Bulanan</strong>. Skor ini menunjukkan akumulasi poin kehadiran Anda yang akan terus meningkat secara bertahap menuju 100% hingga akhir bulan.
+                </p>
+            </section>
 
-              <section className="space-y-2">
-                  <div className="flex items-center gap-2 font-bold text-foreground">
-                      <QrCode className="h-4 w-4 text-primary" />
-                      3. Absensi QR Code
-                  </div>
-                  <p className="text-muted-foreground pl-6 leading-relaxed">
-                      Lakukan scan QR Code resmi sekolah. Pastikan Anda berada dalam <strong>Radius Lokasi Sekolah (GPS)</strong> agar absensi dianggap sah oleh sistem.
-                  </p>
-              </section>
+            <section className="space-y-2">
+                <div className="flex items-center gap-2 font-bold text-foreground">
+                    <QrCode className="h-4 w-4 text-primary" />
+                    3. Absensi QR Code
+                </div>
+                <p className="text-muted-foreground pl-6 leading-relaxed">
+                    Lakukan scan QR Code resmi sekolah. Sistem memvalidasi absensi berdasarkan <strong>Radius Lokasi Sekolah (GPS)</strong> dan rentang waktu yang telah ditetapkan Admin.
+                </p>
+            </section>
 
-              <section className="space-y-2">
-                  <div className="flex items-center gap-2 font-bold text-foreground">
-                      <FileText className="h-4 w-4 text-primary" />
-                      4. Laporan & Poin Dinamis
-                  </div>
-                  <div className="text-muted-foreground pl-6 space-y-2 leading-relaxed">
-                      <p>Akumulasi poin harian yang menentukan skor persentase:</p>
-                      <ul className="list-disc pl-5 space-y-1 text-xs font-bold">
-                          <li>Hadir Penuh / Dinas: 1.0 Poin</li>
-                          <li>Terlambat / Izin Pulang Cepat: 0.95 Poin</li>
-                          <li>Sakit: 0.9 Poin</li>
-                          <li>Izin Pribadi: 0.7 Poin</li>
-                          <li>Absen Parsial (Masuk/Pulang saja): 0.5 Poin</li>
-                      </ul>
-                  </div>
-              </section>
+            <section className="space-y-2">
+                <div className="flex items-center gap-2 font-bold text-foreground">
+                    <FileText className="h-4 w-4 text-primary" />
+                    4. Rincian Poin Laporan
+                </div>
+                <div className="text-muted-foreground pl-6 space-y-2 leading-relaxed">
+                    <p>Setiap aktivitas harian menyumbang poin ke skor progres Anda:</p>
+                    <ul className="list-disc pl-5 space-y-1 text-xs font-bold">
+                        <li>Hadir Penuh / Dinas: 1.0 Poin</li>
+                        <li>Terlambat / Izin Pulang Cepat: 0.95 Poin</li>
+                        <li>Sakit: 0.9 Poin</li>
+                        <li>Izin Pribadi: 0.7 Poin</li>
+                        <li>Hanya Absen Masuk/Pulang saja: 0.5 Poin</li>
+                    </ul>
+                </div>
+            </section>
 
-              <section className="space-y-2">
-                  <div className="flex items-center gap-2 font-bold text-foreground text-green-600">
-                      <Zap className="h-4 w-4" />
-                      5. Tips Penggunaan Lancar
-                  </div>
-                  <div className="text-muted-foreground pl-6 space-y-2 leading-relaxed">
-                      <p>Agar absensi di sekolah super cepat dan instan:</p>
-                      <ul className="list-disc pl-5 space-y-2 text-[11px] font-bold">
-                          <li>
-                            <strong>Pre-Loading:</strong> Sebelum berangkat sekolah, buka aplikasi sebentar di rumah lalu tekan <strong>tombol tengah/home</strong> HP Anda untuk kembali ke layar utama (JANGAN klik Keluar/Logout). Ini memastikan data sekolah sudah siap di HP sehingga saat sampai di sekolah absensi menjadi instan.
-                          </li>
-                          <li><strong>Koneksi:</strong> Pastikan paket data aktif dan sinyal dalam kondisi stabil saat melakukan scanning.</li>
-                          <li><strong>GPS Aktif:</strong> Aktifkan GPS HP Anda beberapa saat sebelum memasuki area sekolah agar posisi terkunci tepat waktu.</li>
-                      </ul>
-                  </div>
-              </section>
+            <section className="space-y-2">
+                <div className="flex items-center gap-2 font-bold text-foreground text-green-600">
+                    <Zap className="h-4 w-4" />
+                    5. Tips Penggunaan Lancar
+                </div>
+                <div className="text-muted-foreground pl-6 space-y-2 leading-relaxed">
+                    <p>Agar absensi di sekolah super cepat dan instan:</p>
+                    <ul className="list-disc pl-5 space-y-2 text-[11px] font-bold">
+                        <li>
+                          <strong>Pre-Loading:</strong> Sebelum berangkat sekolah, buka aplikasi sebentar di rumah lalu tekan <strong>tombol tengah/home</strong> HP Anda untuk kembali ke layar utama (JANGAN tekan Logout). Ini memastikan data sekolah sudah siap di HP sehingga saat sampai di sekolah proses scan menjadi instan.
+                        </li>
+                        <li><strong>Koneksi:</strong> Pastikan paket data aktif dan sinyal stabil saat melakukan scanning.</li>
+                        <li><strong>GPS Aktif:</strong> Aktifkan GPS HP Anda beberapa saat sebelum memasuki area sekolah agar posisi cepat terkunci.</li>
+                    </ul>
+                </div>
+            </section>
 
-              <div className="bg-destructive/5 border border-destructive/10 p-4 rounded-xl flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-                  <div>
-                      <p className="text-xs font-black text-destructive uppercase tracking-widest">Catatan Penting</p>
-                      <p className="text-[11px] font-bold text-destructive/80 leading-relaxed mt-1">
-                          Skor persentase kehadiran Anda hanya akan dihitung dan meningkat <strong>jika Anda berada di area sekolah (GPS Aktif)</strong> saat melakukan absensi.
-                      </p>
-                  </div>
-              </div>
-
-              <div className="pt-4 border-t border-muted-foreground/10 flex items-start gap-3 bg-primary/5 p-4 rounded-xl">
-                  <ShieldAlert className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                  <p className="text-[11px] font-bold text-primary leading-tight">
-                      Kejujuran adalah kunci. Sistem verifikasi otomatis lokasi dan waktu diaktifkan untuk menjaga integritas data SMPN 5 Langke Rembong.
-                  </p>
-              </div>
+            <div className="bg-destructive/5 border border-destructive/10 p-4 rounded-xl flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                <div>
+                    <p className="text-xs font-black text-destructive uppercase tracking-widest">Catatan Penting</p>
+                    <p className="text-[11px] font-bold text-destructive/80 leading-relaxed mt-1">
+                        Skor persentase kehadiran Anda hanya akan dihitung dan meningkat <strong>jika Anda berada di area sekolah (GPS Aktif)</strong> saat melakukan absensi.
+                    </p>
+                </div>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+
+            <div className="pt-4 border-t border-muted-foreground/10 flex items-start gap-3 bg-primary/5 p-4 rounded-xl">
+                <ShieldAlert className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                <p className="text-[11px] font-bold text-primary leading-tight">
+                    Kejujuran adalah kunci. Sistem verifikasi otomatis lokasi dan waktu diaktifkan untuk menjaga integritas data di SMPN 5 Langke Rembong.
+                </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </header>
   );
 }
