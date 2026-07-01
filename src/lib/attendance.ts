@@ -20,7 +20,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v16_${todayStr}`;
+    const cacheKey = `daily_stats_v17_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -130,7 +130,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v16_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v17_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -291,8 +291,8 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
 
         const attendanceMap = new Map();
         attendanceHistory.forEach(rec => {
-            const d = (rec as any).date || format((rec as any).checkInTime.toDate(), 'yyyy-MM-dd');
-            attendanceMap.set(d, rec);
+            const d = (rec as any).date || (rec as any).checkInTime ? format((rec as any).checkInTime.toDate(), 'yyyy-MM-dd') : null;
+            if (d) attendanceMap.set(d, rec);
         });
 
         const leaveMap = new Map<string, any>();
@@ -319,20 +319,20 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
             if (attendanceRecord) {
                 const checkInTime = attendanceRecord.checkInTime?.toDate() || null;
                 const checkOutTime = attendanceRecord.checkOutTime?.toDate() || null;
+                const isManual = attendanceRecord.manualEntry || false;
                 let description = attendanceRecord.reasonForUpdate || 'Kehadiran penuh';
                 description = cleanDesc(description) || 'Kehadiran penuh';
 
-                if (description === 'Dinas pagi') {
-                    return { id: attendanceRecord.id, date: day, checkInTime: null, checkOutTime, status: 'Hadir', description, manualEntry: true };
-                }
-                if (description === 'Dinas siang' || description === 'Pulang cepat') {
-                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: 'Hadir', description, manualEntry: true };
+                // Handle special manual statuses that should NOT be marked as Alpa even if checkOut is missing
+                const terminalDescriptions = ['dinas pagi', 'dinas siang', 'pulang cepat'];
+                if (isManual && terminalDescriptions.includes(description.toLowerCase())) {
+                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime, status: 'Hadir', description, manualEntry: true };
                 }
 
                 if (!checkOutTime && !isToday && isBefore(day, todayStart)) {
-                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: 'Alpa', description: 'Tidak absen pulang', manualEntry: attendanceRecord.manualEntry || false };
+                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: 'Alpa', description: 'Tidak absen pulang', manualEntry: isManual };
                 }
-                return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime, status: 'Hadir', description: !checkOutTime && isToday ? 'Belum absen pulang' : description, manualEntry: attendanceRecord.manualEntry || false };
+                return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime, status: 'Hadir', description: !checkOutTime && isToday ? 'Belum absen pulang' : description, manualEntry: isManual };
             }
 
             if (leaveRecord && leaveRecord.type !== 'Pulang Cepat') {

@@ -63,7 +63,16 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 const config = schoolConfigSnap.data() || {};
                 if (isMounted.current) setSchoolConfig(config);
                 const reportData = await fetchUserMonthlyReportData(firestore, user.uid, month, config);
-                const problems = reportData.filter(d => (d.status === 'Alpa') || (d.description === 'Tidak absen pulang') || (d.description === 'Belum absen pulang'));
+                
+                // FILTER: Only show days that are really missing or Alpa, 
+                // excluding those already manually set to terminal states like 'Pulang cepat'
+                const problems = reportData.filter(d => {
+                    const isManualTerminal = d.manualEntry && (d.description === 'Pulang cepat' || d.description === 'Dinas pagi' || d.description === 'Dinas siang');
+                    if (isManualTerminal) return false;
+                    
+                    return (d.status === 'Alpa') || (d.description === 'Tidak absen pulang') || (d.description === 'Belum absen pulang');
+                });
+
                 if (isMounted.current) {
                     setProblematicDays(problems);
                     setSelectedDays({});
@@ -132,17 +141,14 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 checkOutTime = getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00');
                 reasonForUpdate = 'Terlambat';
             } else if (type === 'dinas-pagi') {
-                // Masuk Kosong, Pulang Isi
                 checkInTime = null;
                 checkOutTime = getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00');
                 reasonForUpdate = 'Dinas pagi';
             } else if (type === 'dinas-siang') {
-                // Masuk Isi, Pulang Kosong
                 checkInTime = getRandomTime(recordDate, checkInStartTime || '07:00', checkInEndTime || '07:30');
                 checkOutTime = null;
                 reasonForUpdate = 'Dinas siang';
             } else { // pulang-cepat
-                // Masuk Isi, Pulang Kosong
                 checkInTime = getRandomTime(recordDate, checkInStartTime || '07:00', checkInEndTime || '07:30');
                 checkOutTime = null;
                 reasonForUpdate = 'Pulang cepat';
