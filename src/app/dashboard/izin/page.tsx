@@ -21,15 +21,26 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useUser, useFirestore, FirestorePermissionError, errorEmitter, useCollection, useDoc, useMemoFirebase } from '@/firebase';
-import { addDoc, collection, serverTimestamp, query, where, Timestamp, doc } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp, query, where, Timestamp, doc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, Clock, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
 import { startOfDay, endOfDay, addDays, setHours, setMinutes, format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useMemo } from 'react';
 import { PageWrapper } from '@/components/layout/page-wrapper';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const leaveRequestSchema = z.object({
   leaveDate: z.enum(['today', 'tomorrow'], {
@@ -57,6 +68,7 @@ export default function IzinPage() {
     const { toast } = useToast();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isCancelling, setIsCancelling] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
@@ -144,6 +156,20 @@ export default function IzinPage() {
         }
     }, [availableLeaveTypes, form]);
 
+    async function handleCancelLeave() {
+        if (!user || !firestore || !currentDayLeave) return;
+        setIsCancelling(true);
+        try {
+            const leaveRef = doc(firestore, 'users', user.uid, 'leaveRequests', currentDayLeave.id);
+            await deleteDoc(leaveRef);
+            toast({ title: 'Berhasil dibatalkan', description: 'Pengajuan izin Anda telah dihapus.' });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Gagal membatalkan', description: error.message });
+        } finally {
+            setIsCancelling(false);
+        }
+    }
+
     async function onSubmit(values: z.infer<typeof leaveRequestSchema>) {
         if (!user || !firestore) return;
         
@@ -206,12 +232,34 @@ export default function IzinPage() {
                                     <CardDescription className="text-muted-foreground font-medium pt-1">Isi formulir untuk mengajukan ketidakhadiran atau izin pulang cepat.</CardDescription>
                                 </div>
                                 {currentDayLeave && (
-                                    <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-xl border border-border/50">
-                                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status Anda:</span>
+                                    <div className="flex items-center gap-3 px-4 py-2 bg-muted/50 rounded-xl border border-border/50">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status:</span>
                                         {currentDayLeave.status === 'pending' ? (
-                                            <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 animate-pulse font-bold px-3">
-                                                <Clock className="w-3 h-3 mr-1.5" /> Menunggu
-                                            </Badge>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 animate-pulse font-bold px-3">
+                                                    <Clock className="w-3 h-3 mr-1.5" /> Menunggu
+                                                </Badge>
+                                                
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-full" disabled={isCancelling}>
+                                                            {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent className="rounded-2xl">
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle className="font-bold">Batalkan pengajuan?</AlertDialogTitle>
+                                                            <AlertDialogDescription className="text-sm font-medium">
+                                                                Apakah Anda yakin ingin membatalkan pengajuan <strong>{currentDayLeave.type}</strong> ini? Data yang sudah dihapus tidak dapat dikembalikan.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel className="rounded-xl font-bold">Kembali</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={handleCancelLeave} className="bg-destructive hover:bg-destructive/90 rounded-xl font-bold">Ya, Batalkan</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </div>
                                         ) : currentDayLeave.status === 'approved' ? (
                                             <Badge variant="default" className="bg-green-500 text-white font-bold px-3">
                                                 <CheckCircle2 className="w-3 h-3 mr-1.5" /> Disetujui
@@ -231,7 +279,7 @@ export default function IzinPage() {
                                         <p className="text-xs font-bold text-primary">Informasi Pengajuan</p>
                                         <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
                                             Anda telah mengajukan <strong>{currentDayLeave.type}</strong> untuk tanggal ini. 
-                                            Harap tunggu persetujuan dari Kepala Sekolah sebelum mengajukan izin kembali.
+                                            {currentDayLeave.status === 'pending' ? ' Anda dapat membatalkan pengajuan ini sebelum diproses oleh Kepala Sekolah.' : ' Pengajuan Anda sudah diproses.'}
                                         </p>
                                     </div>
                                 </div>
