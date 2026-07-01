@@ -310,6 +310,9 @@ export default function KonfigurasiAbsenPage() {
 
   const isLoading = isAuthLoading || isConfigLoading || isUserDataLoading;
   const isAdmin = !isLoading && userData?.role === 'admin';
+
+  // Memastikan accordion jam pulang terbuka sesuai hari saat ini (0-6)
+  const currentDayValue = useMemo(() => new Date().getDay().toString(), []);
   
 
   useEffect(() => {
@@ -633,7 +636,7 @@ export default function KonfigurasiAbsenPage() {
                           </div>
                           <p className="text-[10px] text-muted-foreground font-bold">Atur jam pulang berbeda untuk setiap hari.</p>
                           
-                          <Accordion type="single" collapsible className="w-full">
+                          <Accordion type="single" collapsible className="w-full" defaultValue={currentDayValue}>
                               {daysOfWeek.map((day) => (
                                   <AccordionItem key={day.value} value={day.value.toString()} className="border-muted-foreground/10">
                                       <AccordionTrigger className="hover:no-underline py-3 px-1 shadow-none">
