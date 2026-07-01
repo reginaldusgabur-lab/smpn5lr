@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -367,7 +368,7 @@ export default function SchoolReportPage() {
                                     >
                                         <ChevronLeft className="h-5 w-5 text-primary" />
                                     </Button>
-                                    <span className="w-48 text-center font-bold text-2xl text-primary tracking-tight capitalize">{monthName}</span>
+                                    <span className="w-48 text-center font-bold text-xl sm:text-2xl text-primary tracking-tight capitalize whitespace-nowrap">{monthName}</span>
                                     <Button variant="ghost" size="icon" className="rounded-xl shrink-0 h-10 w-10 shadow-none hover:bg-background/50" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isReportLoading || isSameMonth(currentMonth, new Date())}>
                                         <ChevronRight className="h-5 w-5 text-primary" />
                                     </Button>
@@ -489,3 +490,4 @@ export default function SchoolReportPage() {
         </div>
     );
 }
+

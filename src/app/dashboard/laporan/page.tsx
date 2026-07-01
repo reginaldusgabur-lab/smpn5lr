@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -269,7 +270,7 @@ export default function LaporanPage() {
                             <span className="text-sm font-black text-primary">{stats.persentase}</span>
                         </div>
                     )}
-                    <span className="font-bold text-base sm:text-xl text-primary tracking-tight text-center capitalize whitespace-nowrap min-w-[120px]">
+                    <span className="font-bold text-base sm:text-xl text-primary tracking-tight text-center capitalize whitespace-nowrap min-w-[140px]">
                         {format(currentMonth, 'MMMM yyyy', { locale: id })}
                     </span>
                 </div>
@@ -342,3 +343,4 @@ export default function LaporanPage() {
     </Card>
   );
 }
+
