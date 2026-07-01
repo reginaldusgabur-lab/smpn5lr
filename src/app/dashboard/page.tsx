@@ -316,8 +316,16 @@ export default function DashboardPage() {
                                             tick={{ fontSize: 11, fill: 'currentColor' }} 
                                             allowDecimals={false} 
                                         />
-                                        <Tooltip cursor={{ fill: 'rgba(0,0,0,0.03)' }} contentStyle={{ borderRadius: '12px', border: 'none', shadow: 'none', fontSize: '11px', fontWeight: 'bold' }} />
-                                        <Bar dataKey="Jumlah" radius={[6, 6, 0, 0]} barSize={45}>
+                                        <Tooltip 
+                                            cursor={{ fill: 'rgba(0,0,0,0.03)' }} 
+                                            contentStyle={{ borderRadius: '12px', border: 'none', shadow: 'none', fontSize: '11px', fontWeight: 'bold' }} 
+                                        />
+                                        <Bar 
+                                            dataKey="Jumlah" 
+                                            radius={[6, 6, 0, 0]} 
+                                            barSize={45}
+                                            background={{ fill: 'rgba(0,0,0,0.02)', radius: 6 }}
+                                        >
                                             {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                                         </Bar>
                                     </BarChart>
