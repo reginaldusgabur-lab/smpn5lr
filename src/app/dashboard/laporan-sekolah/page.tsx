@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/input";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { jsPDF } from 'jspdf';
@@ -125,7 +125,6 @@ export default function SchoolReportPage() {
                 if (uid) (leaveByUserId[uid] = leaveByUserId[uid] || []).push(data);
             });
 
-            const today = startOfDay(new Date());
             const offDays: number[] = (schoolConfigData as any)?.offDays ?? [0, 6];
             const holidays: string[] = monthlyConfig.holidays ?? [];
             const workingDays = eachDayOfInterval({ start, end }).filter(day => 
@@ -359,7 +358,7 @@ export default function SchoolReportPage() {
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 
-                                        className="rounded-full shrink-0 h-10 w-10 shadow-none hover:bg-background/50" 
+                                        className="rounded-xl shrink-0 h-10 w-10 shadow-none hover:bg-background/50" 
                                         onClick={() => setCurrentMonth(prev => {
                                             const n = subMonths(prev, 1);
                                             return n < minDate ? prev : n;
@@ -369,7 +368,7 @@ export default function SchoolReportPage() {
                                         <ChevronLeft className="h-5 w-5 text-primary" />
                                     </Button>
                                     <span className="w-48 text-center font-bold text-2xl text-primary tracking-tight capitalize">{monthName}</span>
-                                    <Button variant="ghost" size="icon" className="rounded-full shrink-0 h-10 w-10 shadow-none hover:bg-background/50" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isReportLoading || isSameMonth(currentMonth, new Date())}>
+                                    <Button variant="ghost" size="icon" className="rounded-xl shrink-0 h-10 w-10 shadow-none hover:bg-background/50" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isReportLoading || isSameMonth(currentMonth, new Date())}>
                                         <ChevronRight className="h-5 w-5 text-primary" />
                                     </Button>
                                 </div>
@@ -490,3 +489,4 @@ export default function SchoolReportPage() {
         </div>
     );
 }
+

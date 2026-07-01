@@ -25,6 +25,7 @@ import { format, isSameMonth, startOfMonth, endOfMonth, addMonths, subMonths, is
 import { id } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
 import { calculateAttendanceStats } from '@/lib/attendance';
+import { cn } from '@/lib/utils';
 
 const statusVariant: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
     'Hadir': 'default',
@@ -243,7 +244,7 @@ export default function LaporanPage() {
   }, [currentMonth]);
 
   return (
-    <Card className="overflow-hidden bg-card border shadow-none rounded-xl">
+    <Card className="overflow-hidden bg-card border border-muted-foreground/10 shadow-none rounded-xl">
       <CardHeader className="p-4 md:p-6 text-primary border-b border-muted-foreground/10">
         <CardTitle className="font-bold text-sm tracking-tight">Riwayat Absensi & Izin</CardTitle>
         <CardDescription className="text-muted-foreground font-medium">Catatan lengkap kehadiran dan pengajuan izin Anda.</CardDescription>
@@ -341,3 +342,4 @@ export default function LaporanPage() {
     </Card>
   );
 }
+
