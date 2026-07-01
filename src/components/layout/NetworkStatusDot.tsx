@@ -84,7 +84,7 @@ export function NetworkStatusDot() {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-background p-[2px] ring-1 ring-border/50">
+        <div className="flex h-3 w-3 items-center justify-center rounded-full bg-background ring-1 ring-border/50 shrink-0">
           <div className={cn(
             "h-full w-full rounded-full transition-all duration-700 ease-in-out", 
             colorClass,
