@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -232,7 +233,7 @@ export default function DashboardPage() {
                         </CardContent>
                     </Card>
                 </div>
-                <div className="w-full space-y-6 flex flex-col items-stretch">
+                <div className="w-full space-y-4 pt-4 border-t border-dashed border-border/50 flex flex-col items-stretch">
                     <RecentAttendanceTable />
                     <AbsentUsersTable />
                 </div>
@@ -245,7 +246,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <TrendingUp className="w-5 h-5" />
-                            <h2 className="text-xs font-bold tracking-widest">Ringkasan bulanan</h2>
+                            <h2 className="text-xs font-bold tracking-widest text-primary uppercase">Ringkasan bulanan</h2>
                         </div>
                         <p className="text-[10px] font-bold tracking-widest opacity-80 bg-primary/10 px-2 py-1 rounded-lg">Skor: {isPersonalSummaryLoading ? '...' : `${personalSummary.percentage}%`}</p>
                     </div>

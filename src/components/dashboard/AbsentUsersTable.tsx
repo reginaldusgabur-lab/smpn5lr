@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -168,15 +169,15 @@ const AbsentUsersTable = () => {
 
   const getStatusStyle = (status: string) => {
       const s = status.toLowerCase();
-      // Alpa: Merah Solid (Sesuai Gambar)
+      // Alpa: Merah Tua Solid
       if (s === 'alpa') return 'bg-red-800 text-white border-none rounded-full px-5 py-1.5 h-auto shadow-sm';
-      // Sakit: Oranye Solid (Sesuai Permintaan)
+      // Sakit: Oranye Solid
       if (s === 'sakit') return 'bg-orange-600 text-white border-none rounded-full px-5 py-1.5 h-auto shadow-sm';
       // Izin: Biru Solid
       if (s === 'izin' || s.includes('izin pribadi')) return 'bg-blue-800 text-white border-none rounded-full px-5 py-1.5 h-auto shadow-sm';
       // Dinas / Pulang Cepat: Ungu Solid
       if (s.includes('dinas') || s.includes('pulang cepat')) return 'bg-purple-800 text-white border-none rounded-full px-5 py-1.5 h-auto shadow-sm';
-      // Menunggu: Abu-abu Solid
+      // Menunggu: Slate Solid
       if (s === 'menunggu') return 'bg-slate-700 text-white border-none rounded-full px-5 py-1.5 h-auto shadow-sm';
       
       return 'bg-primary text-white border-none rounded-full px-5 py-1.5 h-auto shadow-sm';

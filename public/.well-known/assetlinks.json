@@ -1,3 +1,4 @@
+
 [
   {
     "relation": ["delegate_permission/common.handle_all_urls"],
@@ -5,7 +6,7 @@
       "namespace": "android_app",
       "package_name": "app.vercel.smpn5lr_v2.twa",
       "sha256_cert_fingerprints": [
-        "GANTI_DENGAN_SHA256_ASLI_ANDA_DI_SINI"
+        "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"
       ]
     }
   }

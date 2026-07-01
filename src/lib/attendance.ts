@@ -1,3 +1,4 @@
+
 'use client';
 
 import { doc, getDoc, collection, getDocs, query, where, collectionGroup } from 'firebase/firestore';
@@ -169,7 +170,6 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
 
         const offDays: number[] = schoolConfig?.offDays ?? [0, 6];
         const holidays: string[] = monthlyConfig?.holidays ?? [];
-        const today = startOfDay(new Date());
 
         const workingDaysInMonth = eachDayOfInterval({ start, end }).filter(day => 
             !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd'))
