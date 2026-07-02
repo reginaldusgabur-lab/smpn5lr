@@ -278,38 +278,38 @@ export default function AbsenPage() {
 
 const StatusFeedbackOverlay = ({ status, locationError, onClose, userData, leaveType }: { status: FeedbackStatus, locationError: string | null, onClose: () => void, userData: any, leaveType?: string }) => {
     const feedback = useMemo(() => {
-        const iconSize = "h-12 w-12";
-        const iconWrapper = "p-6 rounded-full border-2 mb-8";
+        const iconSize = "h-10 w-10";
+        const iconWrapper = "p-6 rounded-full border-[0.5px] mb-8 transition-colors duration-500";
         switch (status) {
             case 'processing': return { icon: <div className={cn(iconWrapper, "border-primary/20")}><Loader2 className={cn(iconSize, "animate-spin text-primary")} /></div>, title: 'Memproses...', desc: 'Sedang memvalidasi absensi Anda.' };
             case 'locating': return { icon: <div className={cn(iconWrapper, "border-primary/20")}><Loader2 className={cn(iconSize, "animate-spin text-primary")} /></div>, title: 'Mencari Lokasi...', desc: 'Mohon tunggu, sedang mendapatkan data GPS.' };
-            case 'success_in': return { icon: <div className={cn(iconWrapper, "border-primary/40")}><CheckCircle className={cn(iconSize, "text-primary")} /></div>, title: 'Absen Masuk Berhasil', desc: 'Kehadiran Anda telah terekam. Selamat beraktivitas!' };
-            case 'success_out': return { icon: <div className={cn(iconWrapper, "border-primary/40")}><CheckCircle className={cn(iconSize, "text-primary")} /></div>, title: 'Absen Pulang Berhasil', desc: 'Absen pulang terekam. Hati-hati di jalan!' };
-            case 'error_radius': return { icon: <div className={cn(iconWrapper, "border-destructive/40")}><MapPin className={cn(iconSize, "text-destructive")} /></div>, title: 'Di Luar Radius', desc: 'Anda harus berada di dalam area sekolah untuk absensi.' };
-            case 'error_time': return { icon: <div className={cn(iconWrapper, "border-destructive/40")}><ClockIcon className={cn(iconSize, "text-destructive")} /></div>, title: 'Waktu Habis', desc: 'Sesi absensi untuk hari ini telah ditutup.' };
-            case 'error_already_in': return { icon: <div className={cn(iconWrapper, "border-destructive/40")}><X className={cn(iconSize, "text-destructive")} /></div>, title: 'Sudah Absen Masuk', desc: 'Anda sudah melakukan absensi masuk hari ini.' };
-            case 'error_already_out': return { icon: <div className={cn(iconWrapper, "border-destructive/40")}><X className={cn(iconSize, "text-destructive")} /></div>, title: 'Sudah Absen Pulang', desc: 'Anda sudah melakukan absensi pulang hari ini.' };
-            case 'error_location': return { icon: <div className={cn(iconWrapper, "border-destructive/40")}><MapPin className={cn(iconSize, "text-destructive")} /></div>, title: 'Lokasi Error', desc: locationError || 'Pastikan GPS aktif and berikan izin akses.' };
-            case 'info_disabled': return { icon: <div className={cn(iconWrapper, "border-amber-500/40")}><Lock className={cn(iconSize, "text-amber-500")} /></div>, title: 'Sistem Dinonaktifkan', desc: 'Admin telah menonaktifkan sistem absensi sementara.' };
-            case 'info_holiday': return { icon: <div className={cn(iconWrapper, "border-blue-500/40")}><CalendarOff className={cn(iconSize, "text-blue-500")} /></div>, title: 'Hari Libur', desc: 'Sistem absensi tidak aktif hari ini.' };
-            case 'info_checked_out': return { icon: <div className={cn(iconWrapper, "border-green-500/40")}><CheckCircle className={cn(iconSize, "text-green-500")} /></div>, title: 'Absensi Selesai', desc: 'Anda telah menyelesaikan absensi untuk hari ini.' };
-            case 'info_no_camera': return { icon: <div className={cn(iconWrapper, "border-destructive/40")}><CameraOff className={cn(iconSize, "text-destructive")} /></div>, title: 'Kamera Error', desc: 'Izinkan akses kamera di pengaturan browser.' };
-            case 'info_leave': return { icon: <div className={cn(iconWrapper, "border-blue-500/40")}><FileText className={cn(iconSize, "text-blue-500")} /></div>, title: `${leaveType} Disetujui`, desc: `Anda memiliki izin/sakit sah yang berlaku hari ini.` };
-            default: return { icon: <div className={cn(iconWrapper, "border-destructive/40")}><X className={cn(iconSize, "text-destructive")} /></div>, title: 'Gagal', desc: 'Terjadi kesalahan sistem. Silakan coba lagi.' };
+            case 'success_in': return { icon: <div className={cn(iconWrapper, "border-primary/20")}><CheckCircle className={cn(iconSize, "text-primary")} /></div>, title: 'Absen Masuk Berhasil', desc: 'Kehadiran Anda telah terekam. Selamat beraktivitas!' };
+            case 'success_out': return { icon: <div className={cn(iconWrapper, "border-primary/20")}><CheckCircle className={cn(iconSize, "text-primary")} /></div>, title: 'Absen Pulang Berhasil', desc: 'Absen pulang terekam. Hati-hati di jalan!' };
+            case 'error_radius': return { icon: <div className={cn(iconWrapper, "border-destructive/20")}><MapPin className={cn(iconSize, "text-destructive")} /></div>, title: 'Di Luar Radius', desc: 'Anda harus berada di dalam area sekolah untuk absensi.' };
+            case 'error_time': return { icon: <div className={cn(iconWrapper, "border-destructive/20")}><ClockIcon className={cn(iconSize, "text-destructive")} /></div>, title: 'Waktu Habis', desc: 'Sesi absensi untuk hari ini telah ditutup.' };
+            case 'error_already_in': return { icon: <div className={cn(iconWrapper, "border-destructive/20")}><X className={cn(iconSize, "text-destructive")} /></div>, title: 'Sudah Absen Masuk', desc: 'Anda sudah melakukan absensi masuk hari ini.' };
+            case 'error_already_out': return { icon: <div className={cn(iconWrapper, "border-destructive/20")}><X className={cn(iconSize, "text-destructive")} /></div>, title: 'Sudah Absen Pulang', desc: 'Anda sudah melakukan absensi pulang hari ini.' };
+            case 'error_location': return { icon: <div className={cn(iconWrapper, "border-destructive/20")}><MapPin className={cn(iconSize, "text-destructive")} /></div>, title: 'Lokasi Error', desc: locationError || 'Pastikan GPS aktif and berikan izin akses.' };
+            case 'info_disabled': return { icon: <div className={cn(iconWrapper, "border-amber-500/20")}><Lock className={cn(iconSize, "text-amber-500")} /></div>, title: 'Sistem Dinonaktifkan', desc: 'Admin telah menonaktifkan sistem absensi sementara.' };
+            case 'info_holiday': return { icon: <div className={cn(iconWrapper, "border-blue-500/20")}><CalendarOff className={cn(iconSize, "text-blue-500")} /></div>, title: 'Hari Libur', desc: 'Sistem absensi tidak aktif hari ini.' };
+            case 'info_checked_out': return { icon: <div className={cn(iconWrapper, "border-green-500/20")}><CheckCircle className={cn(iconSize, "text-green-500")} /></div>, title: 'Absensi Selesai', desc: 'Anda telah menyelesaikan absensi untuk hari ini.' };
+            case 'info_no_camera': return { icon: <div className={cn(iconWrapper, "border-destructive/20")}><CameraOff className={cn(iconSize, "text-destructive")} /></div>, title: 'Kamera Error', desc: 'Izinkan akses kamera di pengaturan browser.' };
+            case 'info_leave': return { icon: <div className={cn(iconWrapper, "border-blue-500/20")}><FileText className={cn(iconSize, "text-blue-500")} /></div>, title: `${leaveType} Disetujui`, desc: `Anda memiliki izin/sakit sah yang berlaku hari ini.` };
+            default: return { icon: <div className={cn(iconWrapper, "border-destructive/20")}><X className={cn(iconSize, "text-destructive")} /></div>, title: 'Gagal', desc: 'Terjadi kesalahan sistem. Silakan coba lagi.' };
         }
     }, [status, locationError, leaveType]);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-10">
             <div className={cn(
                 "w-full max-w-[340px] text-center p-12 rounded-[2.5rem] shadow-2xl relative",
                 "bg-[#0a0a0b] border border-white/5 transition-all duration-700 animate-in fade-in zoom-in-95"
             )} onClick={(e) => e.stopPropagation()}>
                 <div className="flex flex-col items-center">
                     <div className="mb-2">{feedback.icon}</div>
-                    <div className="space-y-3 mb-10">
+                    <div className="space-y-4 mb-12">
                         <h3 className="text-3xl font-black tracking-tight text-white leading-tight">{feedback.title}</h3>
-                        <p className="text-zinc-500 text-sm font-bold leading-relaxed px-2">{feedback.desc}</p>
+                        <p className="text-zinc-500 text-sm font-bold leading-relaxed px-4">{feedback.desc}</p>
                     </div>
                     
                     {(status.startsWith('success')) && (
@@ -319,7 +319,7 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData, leave
                     )}
                     
                     <Button 
-                        className="w-full font-black rounded-2xl h-16 text-sm shadow-xl active:scale-95 transition-all bg-primary hover:bg-primary/90 text-white border-none tracking-widest" 
+                        className="w-full font-black rounded-2xl h-16 text-sm shadow-xl active:scale-95 transition-all bg-primary hover:bg-primary/90 text-white border-none tracking-[0.2em] uppercase" 
                         onClick={onClose}
                     >
                         TUTUP
@@ -329,4 +329,3 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData, leave
         </div>
     );
 };
-
