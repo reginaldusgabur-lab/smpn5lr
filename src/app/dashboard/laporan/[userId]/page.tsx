@@ -401,15 +401,23 @@ export default function UserReportDetailPage() {
                                                                         {item.status === 'Alpa' ? 'Alpa' : 'Hadir'} <MoreVertical className="h-3 w-3 ml-1" />
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl border-none p-2">
-                                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleSetHadir(item.date)}>Jadikan Hadir</DropdownMenuItem>
-                                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleSetLate(item.date)}>Set Terlambat</DropdownMenuItem>
-                                                                    <DropdownMenuSeparator className='my-1 opacity-50' />
-                                                                    <DropdownMenuItem className="text-xs font-bold rounded-lg" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Sakit', 'Sakit')}>Sakit</DropdownMenuItem>
-                                                                    <DropdownMenuItem className="text-xs font-bold rounded-lg" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Izin Pribadi', 'Izin Pribadi')}>Izin Pribadi</DropdownMenuItem>
-                                                                    <DropdownMenuItem className="text-xs font-bold rounded-lg" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Dinas Pagi', 'Dinas Pagi')}>Dinas Pagi</DropdownMenuItem>
-                                                                    <DropdownMenuItem className="text-xs font-bold rounded-lg" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Dinas Siang', 'Dinas Siang')}>Dinas Siang</DropdownMenuItem>
-                                                                    <DropdownMenuItem className="text-xs font-bold rounded-lg" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Pulang Cepat', 'Pulang Cepat')}>Pulang Cepat</DropdownMenuItem>
+                                                                <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border-none p-2">
+                                                                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground px-3 py-2 opacity-50">Koreksi Hadir</DropdownMenuLabel>
+                                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleSetHadir(item.date)}>
+                                                                        {item.description.includes('Tanpa masuk') ? 'Lengkapi Masuk' : (item.description.includes('Tanpa pulang') ? 'Lengkapi Pulang' : 'Jadikan Hadir')}
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleSetLate(item.date)}>
+                                                                        Set Terlambat
+                                                                    </DropdownMenuItem>
+                                                                    
+                                                                    <DropdownMenuSeparator className='my-1.5 opacity-50' />
+                                                                    
+                                                                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground px-3 py-2 opacity-50">Ubah Status</DropdownMenuLabel>
+                                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Sakit', 'Sakit')}>Sakit (0.9)</DropdownMenuItem>
+                                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Izin Pribadi', 'Izin Pribadi')}>Izin (0.7)</DropdownMenuItem>
+                                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Dinas Pagi', 'Dinas Pagi')}>Dinas Pagi (1.0)</DropdownMenuItem>
+                                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Dinas Siang', 'Dinas Siang')}>Dinas Siang (1.0)</DropdownMenuItem>
+                                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Pulang Cepat', 'Pulang Cepat')}>Pulang Cepat (0.95)</DropdownMenuItem>
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
                                                         ) : (
