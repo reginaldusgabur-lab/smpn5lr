@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -17,10 +16,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+} from "@/select";
+import { Input } from "@/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/table";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/card';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useToast } from '@/hooks/use-toast';
@@ -140,7 +139,6 @@ export default function SchoolReportPage() {
                 let izinCount = 0;
                 let sakitCount = 0;
                 const processedDates = new Set<string>();
-                const leaveDatesSet = new Set<string>();
 
                 uAtt.forEach(att => {
                     const attDateStr = att.date || (att.checkInTime ? format(att.checkInTime.toDate(), 'yyyy-MM-dd') : null);
@@ -191,7 +189,6 @@ export default function SchoolReportPage() {
                             }
                             points += p;
                             processedDates.add(dayStr);
-                            leaveDatesSet.add(dayStr);
                         }
                     });
                 });
