@@ -120,21 +120,21 @@ export default function LoginPage() {
     <div className="flex flex-col min-h-screen items-center justify-center p-4 bg-background text-foreground">
       <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
         <Card className="w-full max-w-xl bg-card border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden transition-all duration-300">
-          <CardHeader className="text-center space-y-2 pt-10 pb-4">
-            <div className="flex justify-center mb-4">
-              <div className="relative w-32 h-32 transition-all duration-500 hover:scale-105">
+          <CardHeader className="text-center space-y-2 pt-6 pb-4">
+            <div className="flex justify-center mb-2">
+              <div className="relative w-24 h-24 transition-all duration-500 hover:scale-105">
                 <Image
                   src={appLogo?.imageUrl || "/logo-3d-v2.png"}
                   alt="Logo E-SPENLI"
                   fill
-                  sizes="128px"
+                  sizes="96px"
                   className="object-contain"
                   priority
                 />
               </div>
             </div>
             <CardTitle className="text-4xl font-bold tracking-tight text-primary">E-SPENLI</CardTitle>
-            <CardDescription className="font-bold text-muted-foreground/80 text-xs tracking-tight px-2">
+            <CardDescription className="font-bold text-muted-foreground/80 text-xs tracking-tight px-2 uppercase">
               Aplikasi absensi digital
             </CardDescription>
           </CardHeader>
@@ -146,7 +146,7 @@ export default function LoginPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem className="space-y-1.5">
-                      <Label className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1">Alamat email</Label>
+                      <Label className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1 uppercase">Alamat email</Label>
                       <FormControl>
                         <Input 
                           placeholder="nama@email.com" 
@@ -160,9 +160,9 @@ export default function LoginPage() {
                 />
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between mb-1">
-                    <Label htmlFor="password" className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1">Kata sandi</Label>
+                    <Label htmlFor="password" className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1 uppercase">Kata sandi</Label>
                     <DialogTrigger asChild>
-                      <button type="button" className="text-[10px] font-bold text-primary hover:opacity-70 transition-opacity tracking-widest">
+                      <button type="button" className="text-[10px] font-bold text-primary hover:opacity-70 transition-opacity tracking-widest uppercase">
                         Lupa sandi?
                       </button>
                     </DialogTrigger>
@@ -199,7 +199,7 @@ export default function LoginPage() {
                 </div>
                 <Button 
                   type="submit" 
-                  className="w-full h-14 text-sm font-bold rounded-xl shadow-none transition-all active:scale-[0.97] bg-primary hover:bg-primary/90 mt-4 tracking-widest" 
+                  className="w-full h-14 text-sm font-bold rounded-xl shadow-none transition-all active:scale-[0.97] bg-primary hover:bg-primary/90 mt-4 tracking-widest uppercase" 
                   disabled={isLoginLoading}
                 >
                   {isLoginLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Masuk sekarang"}
@@ -207,12 +207,11 @@ export default function LoginPage() {
               </form>
             </Form>
           </CardContent>
-          <div className="bg-muted/20 py-4 border-t border-muted-foreground/5" />
         </Card>
 
         <DialogContent className="rounded-xl border-none p-10 shadow-none max-w-xl">
           <DialogHeader>
-            <DialogTitle className="font-bold text-2xl tracking-tighter text-primary">Atur ulang sandi</DialogTitle>
+            <DialogTitle className="font-bold text-2xl tracking-tighter text-primary uppercase">Atur ulang sandi</DialogTitle>
             <DialogDescription className="font-bold text-xs text-muted-foreground mt-2">
               Masukkan email terdaftar Anda untuk menerima tautan pemulihan.
             </DialogDescription>
@@ -225,7 +224,7 @@ export default function LoginPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <Label htmlFor="reset-email" className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1">Email terdaftar</Label>
+                      <Label htmlFor="reset-email" className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1 uppercase">Email terdaftar</Label>
                       <FormControl>
                         <Input 
                           id="reset-email" 
@@ -243,7 +242,7 @@ export default function LoginPage() {
                 <Button 
                   type="submit" 
                   disabled={isResetLoading} 
-                  className="w-full h-12 rounded-xl font-bold tracking-widest shadow-none"
+                  className="w-full h-12 rounded-xl font-bold tracking-widest shadow-none uppercase"
                 >
                   {isResetLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Kirim link pemulihan"}
                 </Button>
