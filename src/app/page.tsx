@@ -134,8 +134,8 @@ export default function LoginPage() {
               </div>
             </div>
             <CardTitle className="text-4xl font-bold tracking-tight text-primary">E-SPENLI</CardTitle>
-            <CardDescription className="font-normal text-muted-foreground/80 text-[10px] sm:text-xs tracking-tight px-2 whitespace-nowrap">
-              Electronic System of SMP Negeri 5 Langke Rembong
+            <CardDescription className="font-bold text-muted-foreground/80 text-xs tracking-tight px-2 uppercase">
+              Sistem Elektronik Terintegrasi
             </CardDescription>
           </CardHeader>
           <CardContent className="px-10 pb-10">
@@ -254,10 +254,10 @@ export default function LoginPage() {
       </Dialog>
       <footer className="mt-10 text-center flex flex-col items-center gap-1">
         <p className="text-[10px] font-bold text-muted-foreground/50 tracking-[0.2em] uppercase">
-          SMP NEGERI 5 LANGKE REMBONG
+          APLIKASI ABSENSI DIGITAL
         </p>
         <p className="text-[9px] font-medium text-muted-foreground/30 tracking-widest">
-          All Rights Reserved.
+          Hak Cipta Dilindungi Undang-Undang.
         </p>
       </footer>
     </div>
