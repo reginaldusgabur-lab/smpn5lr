@@ -64,7 +64,6 @@ export default function AbsenPage() {
   const { data: todaysAttendance, isLoading: isAttendanceLoading } = useCollection(user, todaysAttendanceQuery);
   const todaysRecord = useMemo(() => todaysAttendance?.[0], [todaysAttendance]);
 
-  // Check today's active approved leave
   const todayLeaveQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(

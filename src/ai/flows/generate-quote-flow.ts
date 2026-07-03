@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Alur kerja untuk menghasilkan kutipan motivasi dan humor harian menggunakan GenAI.
