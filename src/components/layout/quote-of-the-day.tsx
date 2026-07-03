@@ -1,9 +1,7 @@
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Loader2, Sparkles, Newspaper } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Loader2, Sparkles } from 'lucide-react';
 
 interface QuoteOfTheDayProps {
   category: string | null | undefined;
@@ -44,8 +42,8 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
       } catch (e: any) {
         setError(true);
         setQuote({
-          quote: attendanceType === 'in' ? "Awali hari dengan semangat dan senyuman, karena energi positif Anda adalah penggerak sekolah kita." : "Kerja kerasmu hari ini luar biasa. Sekarang waktunya istirahat dan berkumpul dengan keluarga.",
-          author: "Tim E-SPENLI"
+          quote: attendanceType === 'in' ? "Awali hari dengan semangat dan senyuman, karena energi positif Anda adalah penggerak utama kemajuan sekolah kita hari ini." : "Terima kasih atas dedikasi dan kerja keras Anda hari ini. Selamat beristirahat dengan tenang bersama keluarga tercinta.",
+          author: "Sistem E-SPENLI"
         });
       } finally {
         setIsLoading(false);
@@ -55,27 +53,27 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
   }, [category, attendanceType]);
 
   return (
-    <div className="mt-4 pt-6 border-t border-white/5">
-      <div className="flex items-center justify-center text-[10px] font-bold mb-4 text-white/40 uppercase tracking-[0.2em]">
+    <div className="mt-2 pt-4 border-t border-white/5">
+      <div className="flex items-center justify-center text-[10px] font-bold mb-3 text-white/40 uppercase tracking-[0.2em]">
         <Sparkles className="h-3 w-3 mr-2" />
         Kutipan Hari Ini
       </div>
       
-      <div className="text-center min-h-[60px] flex items-center justify-center">
+      <div className="text-center min-h-[60px] flex items-center justify-center px-2">
         {isLoading ? (
           <div className="flex items-center gap-2 text-white/20">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="text-[10px] font-bold uppercase tracking-widest">Inspirasi...</span>
           </div>
-        ) : error ? (
-           <p className="text-white/20 text-xs italic animate-in fade-in">Tetap semangat hari ini!</p>
+        ) : error && !quote ? (
+           <p className="text-white/20 text-[11px] italic font-bold">Tetap semangat hari ini!</p>
         ) : (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-1000 ease-out w-full">
-            <blockquote className="font-bold text-sm text-white/90 leading-relaxed italic">
+            <blockquote className="font-bold text-[13px] text-white/90 leading-relaxed italic">
               "{quote?.quote}"
             </blockquote>
-            <cite className="block text-right mt-3 text-[10px] font-bold text-white/40 not-italic">
-              - {quote?.author.includes('Spenli') ? quote.author : `Sistem E-Spenli`}
+            <cite className="block text-right mt-2 text-[9px] font-bold text-white/30 not-italic">
+              - {quote?.author || 'Tim E-SPENLI'}
             </cite>
           </div>
         )}

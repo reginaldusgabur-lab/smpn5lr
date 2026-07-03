@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -291,8 +290,8 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData, leave
     }, [status, isError, isSuccess, isInfo]);
 
     const feedback = useMemo(() => {
-        const iconSize = "h-12 w-12";
-        const iconWrapper = cn("p-6 rounded-full border-[0.5px] mb-8 transition-colors duration-500", theme.circle);
+        const iconSize = "h-10 w-10";
+        const iconWrapper = cn("p-4 rounded-full border-[0.5px] mb-4 transition-colors duration-500", theme.circle);
         
         switch (status) {
             case 'processing': return { icon: <div className={iconWrapper}><Loader2 className={cn(iconSize, "animate-spin text-primary")} /></div>, title: 'Memproses...', desc: 'Sedang memvalidasi absensi Anda.' };
@@ -316,16 +315,16 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData, leave
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-xl px-10 safe-area-inset">
             <div className={cn(
-                "w-full max-w-[340px] max-h-[90vh] overflow-y-auto text-center p-10 rounded-xl shadow-2xl relative",
+                "w-full max-w-[340px] max-h-[90vh] overflow-y-auto text-center p-8 rounded-xl shadow-2xl relative",
                 "bg-[#1c1c24]/95 border transition-all duration-700 animate-in fade-in zoom-in-95",
                 theme.border
             )} onClick={(e) => e.stopPropagation()}>
                 
                 <div className="flex flex-col items-center">
                     <div className="mb-2">{feedback.icon}</div>
-                    <div className="space-y-3 mb-10">
-                        <h3 className="text-2xl font-bold tracking-tight text-white leading-tight">{feedback.title}</h3>
-                        <p className="text-zinc-400 text-sm font-medium leading-relaxed px-2">{feedback.desc}</p>
+                    <div className="space-y-2 mb-6">
+                        <h3 className="text-xl font-bold tracking-tighter text-white leading-none whitespace-nowrap">{feedback.title}</h3>
+                        <p className="text-zinc-400 text-[11px] font-bold leading-relaxed px-4">{feedback.desc}</p>
                     </div>
                     
                     {isSuccess && (
@@ -335,7 +334,7 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData, leave
                     )}
                     
                     <Button 
-                        className="w-full font-bold rounded-xl h-14 text-xs shadow-xl active:scale-95 transition-all bg-[#2563eb] hover:bg-[#1d4ed8] text-white border-none tracking-widest uppercase mt-4" 
+                        className="w-full font-bold rounded-xl h-12 text-xs shadow-xl active:scale-95 transition-all bg-[#2563eb] hover:bg-[#1d4ed8] text-white border-none tracking-widest uppercase mt-4" 
                         onClick={onClose}
                     >
                         TUTUP
