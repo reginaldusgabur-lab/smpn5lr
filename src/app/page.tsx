@@ -119,7 +119,7 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col min-h-screen items-center justify-center p-4 bg-background text-foreground">
       <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-        <Card className="w-full max-w-md bg-card border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden">
+        <Card className="w-full max-w-lg bg-card border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden transition-all duration-300">
           <CardHeader className="text-center space-y-2 pt-10 pb-4">
             <div className="flex justify-center mb-4">
               <div className="relative w-32 h-32 transition-all duration-500 hover:scale-105">
@@ -151,7 +151,7 @@ export default function LoginPage() {
                         <Input 
                           placeholder="nama@email.com" 
                           {...field} 
-                          className="h-12 rounded-xl bg-muted/30 border-muted-foreground/5 focus:bg-background transition-all font-bold shadow-none"
+                          className="h-12 rounded-xl bg-muted/30 border-muted-foreground/5 focus:bg-background transition-all font-normal shadow-none"
                         />
                       </FormControl>
                       <FormMessage className="text-[10px] font-bold" />
@@ -178,7 +178,7 @@ export default function LoginPage() {
                               type={showLoginPass ? 'text' : 'password'} 
                               placeholder="Masukkan kata sandi" 
                               {...field} 
-                              className="h-12 rounded-xl bg-muted/30 border-muted-foreground/5 focus:bg-background transition-all font-bold shadow-none"
+                              className="h-12 rounded-xl bg-muted/30 border-muted-foreground/5 focus:bg-background transition-all font-normal shadow-none"
                             />
                           </FormControl>
                           <Button
@@ -231,7 +231,7 @@ export default function LoginPage() {
                           id="reset-email" 
                           placeholder="email@anda.com" 
                           {...field} 
-                          className="h-12 rounded-xl bg-muted/30 border-muted-foreground/5 focus:bg-background shadow-none font-bold"
+                          className="h-12 rounded-xl bg-muted/30 border-muted-foreground/5 focus:bg-background shadow-none font-normal"
                         />
                       </FormControl>
                       <FormMessage className="text-[10px] font-bold" />
