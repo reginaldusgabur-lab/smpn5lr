@@ -249,10 +249,10 @@ export default function AbsenPage() {
         <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
             {isScannerReady && (
                 <div className={cn(
-                    "absolute left-0 right-0 h-[2px] transition-all duration-700 animate-scan-line z-20 pointer-events-none",
+                    "absolute left-0 right-0 h-16 transition-all duration-700 animate-scan-line z-20 pointer-events-none",
                     status === 'idle' 
-                        ? "bg-primary shadow-[0_0_20px_rgba(63,81,181,0.8)]" 
-                        : "bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.8)]"
+                        ? "bg-gradient-to-b from-transparent via-primary/40 to-transparent" 
+                        : "bg-gradient-to-b from-transparent via-green-500/40 to-transparent"
                 )} />
             )}
 
