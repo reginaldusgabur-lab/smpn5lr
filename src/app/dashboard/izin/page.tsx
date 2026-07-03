@@ -77,14 +77,20 @@ export default function IzinPage() {
         return () => clearInterval(timerId);
     }, []);
 
+    // Stabilize reference dates to prevent infinite re-renders
+    const { today, tomorrow, currentMonthId, nextMonthId } = useMemo(() => {
+        const t = startOfDay(currentTime);
+        const tom = addDays(t, 1);
+        return {
+            today: t,
+            tomorrow: tom,
+            currentMonthId: format(t, 'yyyy-MM'),
+            nextMonthId: format(tom, 'yyyy-MM')
+        };
+    }, [currentTime]);
+
     const schoolConfigRef = useMemoFirebase(() => user ? doc(firestore, 'schoolConfig', 'default') : null, [firestore, user]);
     const { data: schoolConfig, isLoading: isSchoolConfigLoading } = useDoc(user, schoolConfigRef);
-
-    // Fetch Monthly Config to check for specific holidays
-    const today = new Date();
-    const tomorrow = addDays(today, 1);
-    const currentMonthId = format(today, 'yyyy-MM');
-    const nextMonthId = format(tomorrow, 'yyyy-MM');
 
     const monthlyConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'monthlyConfigs', currentMonthId) : null, [firestore, currentMonthId]);
     const { data: monthlyConfig, isLoading: isMonthlyLoading } = useDoc(user, monthlyConfigRef);
@@ -97,26 +103,18 @@ export default function IzinPage() {
 
     const isDateHoliday = (date: Date) => {
         if (!schoolConfig) return false;
-        
-        // 1. Check if global system is disabled
         if (schoolConfig.isAttendanceActive === false) return true;
-
-        // 2. Check recurring off days (Sunday/Saturday etc)
         const offDays = schoolConfig.offDays ?? [0, 6];
         if (offDays.includes(date.getDay())) return true;
-        
-        // 3. Check specific holidays from monthly config
         const dateStr = format(date, 'yyyy-MM-dd');
         const monthId = format(date, 'yyyy-MM');
         const relevantConfig = monthId === currentMonthId ? monthlyConfig : nextMonthlyConfig;
-        
         if (relevantConfig?.holidays?.includes(dateStr)) return true;
-
         return false;
     };
 
-    const isTodayHoliday = useMemo(() => isDateHoliday(today), [schoolConfig, monthlyConfig, today]);
-    const isTomorrowHoliday = useMemo(() => isDateHoliday(tomorrow), [schoolConfig, nextMonthlyConfig, tomorrow]);
+    const isTodayHoliday = useMemo(() => isDateHoliday(today), [schoolConfig, monthlyConfig, today, currentMonthId]);
+    const isTomorrowHoliday = useMemo(() => isDateHoliday(tomorrow), [schoolConfig, nextMonthlyConfig, tomorrow, currentMonthId, nextMonthId]);
 
     const selectedDateValue = form.watch('leaveDate');
     const targetDate = useMemo(() => {
@@ -126,7 +124,6 @@ export default function IzinPage() {
     const targetDateStart = useMemo(() => startOfDay(targetDate), [targetDate]);
     const targetDateEnd = useMemo(() => endOfDay(targetDate), [targetDate]);
 
-    // Firestore Queries
     const attendanceQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
         return query(
@@ -158,22 +155,22 @@ export default function IzinPage() {
     }, [currentTime, schoolConfig]);
     
     const availableLeaveTypes = useMemo(() => {
-        const isToday = selectedDateValue === 'today';
+        const isTodaySelected = selectedDateValue === 'today';
         return [
             {
                 value: 'Pulang Cepat',
                 label: 'Izin Pulang Cepat',
-                disabled: !isToday || !hasCheckedIn || hasCheckedOut || !!currentDayLeave
+                disabled: !isTodaySelected || !hasCheckedIn || hasCheckedOut || !!currentDayLeave
             },
             {
                 value: 'Sakit',
                 label: 'Sakit',
-                disabled: hasCheckedIn || (isToday && isPastCheckoutTime) || !!currentDayLeave
+                disabled: hasCheckedIn || (isTodaySelected && isPastCheckoutTime) || !!currentDayLeave
             },
             {
                 value: 'Izin',
                 label: 'Izin Pribadi',
-                disabled: hasCheckedIn || (isToday && isPastCheckoutTime) || !!currentDayLeave
+                disabled: hasCheckedIn || (isTodaySelected && isPastCheckoutTime) || !!currentDayLeave
             },
             {
                 value: 'Dinas',
