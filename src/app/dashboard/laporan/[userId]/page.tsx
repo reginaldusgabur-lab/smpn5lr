@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, getDoc, writeBatch, collection, serverTimestamp, Timestamp, query, where, getDocs } from 'firebase/firestore';
-import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isBefore, isSameMonth, startOfMonth, endOfMonth } from 'date-fns';
+import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isBefore, isSameMonth, startOfMonth, endOfMonth, setHours, setMinutes } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -169,12 +169,17 @@ export default function UserReportDetailPage() {
         if (!currentUser || !firestore || !schoolConfigData || isMutating) return;
         setIsMutating(true);
         try {
+            const now = new Date();
             const targetDate = parseISO(item.date);
             const inEnd = schoolConfigData.checkInEndTime || '08:00';
             const [endH, endM] = inEnd.split(':').map(Number);
             const baseLateTime = new Date(targetDate);
             baseLateTime.setHours(endH, endM, 0);
             const realInTime = addMinutes(baseLateTime, Math.floor(Math.random() * 15) + 1);
+
+            const [outH, outM] = (schoolConfigData.checkOutStartTime || '14:00').split(':').map(Number);
+            const checkOutThreshold = setMinutes(setHours(startOfDay(targetDate), outH), outM);
+            const shouldFillCheckOut = isBefore(startOfDay(targetDate), startOfDay(now)) || now >= checkOutThreshold;
 
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
             const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
@@ -189,6 +194,10 @@ export default function UserReportDetailPage() {
 
             if (item.checkOutTime) {
                 data.checkOutTime = Timestamp.fromDate(parseISO(item.checkOutTime));
+            } else if (shouldFillCheckOut) {
+                const outStart = schoolConfigData.checkOutStartTime || '14:00';
+                const outEnd = schoolConfigData.checkOutEndTime || '16:00';
+                data.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, outStart, outEnd));
             }
 
             if (!snap.empty) await writeBatch(firestore).update(snap.docs[0].ref, data).commit();
@@ -208,6 +217,7 @@ export default function UserReportDetailPage() {
         if (!currentUser || !firestore || !schoolConfigData || isMutating) return;
         setIsMutating(true);
         try {
+            const now = new Date();
             const targetDate = parseISO(item.date);
             const batch = writeBatch(firestore);
             
@@ -215,6 +225,10 @@ export default function UserReportDetailPage() {
             const inEnd = schoolConfigData.checkInEndTime || '07:30';
             const outStart = schoolConfigData.checkOutStartTime || '14:00';
             const outEnd = schoolConfigData.checkOutEndTime || '16:00';
+
+            const [outH_threshold, outM_threshold] = outStart.split(':').map(Number);
+            const checkOutThreshold = setMinutes(setHours(startOfDay(targetDate), outH_threshold), outM_threshold);
+            const shouldFillCheckOut = isBefore(startOfDay(targetDate), startOfDay(now)) || now >= checkOutThreshold;
 
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
             const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
@@ -228,15 +242,19 @@ export default function UserReportDetailPage() {
                 updatedAt: serverTimestamp()
             };
 
-            if (item.checkInTime) {
-                dataToSave.checkInTime = Timestamp.fromDate(parseISO(item.checkInTime));
-                dataToSave.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, outStart, outEnd));
-            } else if (item.checkOutTime) {
-                dataToSave.checkInTime = Timestamp.fromDate(getRandomTime(targetDate, inStart, inEnd));
+            const checkInTime = item.checkInTime ? parseISO(item.checkInTime) : getRandomTime(targetDate, inStart, inEnd);
+            dataToSave.checkInTime = Timestamp.fromDate(checkInTime);
+
+            if (item.checkOutTime) {
                 dataToSave.checkOutTime = Timestamp.fromDate(parseISO(item.checkOutTime));
+            } else if (shouldFillCheckOut) {
+                let checkOutTime = getRandomTime(targetDate, outStart, outEnd);
+                if (checkOutTime.getTime() <= checkInTime.getTime()) {
+                    checkOutTime = addMinutes(checkInTime, 240);
+                }
+                dataToSave.checkOutTime = Timestamp.fromDate(checkOutTime);
             } else {
-                dataToSave.checkInTime = Timestamp.fromDate(getRandomTime(targetDate, inStart, inEnd));
-                dataToSave.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, outStart, outEnd));
+                dataToSave.checkOutTime = null;
             }
 
             if (!snap.empty) await batch.update(snap.docs[0].ref, dataToSave).commit();

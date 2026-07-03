@@ -19,7 +19,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { format, parseISO, isValid, startOfDay, endOfDay, addMinutes, isBefore } from 'date-fns';
+import { format, parseISO, isValid, startOfDay, endOfDay, addMinutes, isBefore, setHours, setMinutes } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { MoreVertical, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { invalidateCache } from '@/lib/cache';
@@ -123,6 +123,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
         const { checkInStartTime, checkInEndTime, checkOutStartTime, checkOutEndTime } = schoolConfig;
         setIsSaving(true);
         try {
+            const now = new Date();
             const batch = writeBatch(firestore);
             const recordDate = parseISO(day.date);
             const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', day.id);
@@ -131,16 +132,20 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
             let checkOutTime: Date | null = null;
             let reasonForUpdate: string;
 
+            const [outH_threshold, outM_threshold] = (checkOutStartTime || '14:00').split(':').map(Number);
+            const checkOutThreshold = setMinutes(setHours(startOfDay(recordDate), outH_threshold), outM_threshold);
+            const shouldFillCheckOut = isBefore(startOfDay(recordDate), startOfDay(now)) || now >= checkOutThreshold;
+
             if (type === 'hadir') {
                 checkInTime = getRandomTime(recordDate, checkInStartTime || '07:00', checkInEndTime || '07:30');
-                checkOutTime = getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00');
+                checkOutTime = shouldFillCheckOut ? getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00') : null;
                 reasonForUpdate = 'Kehadiran penuh';
             } else if (type === 'terlambat') {
                 const [endH, endM] = (checkInEndTime || '08:00').split(':').map(Number);
                 const baseLateTime = new Date(recordDate);
                 baseLateTime.setHours(endH, endM, 0);
                 checkInTime = addMinutes(baseLateTime, Math.floor(Math.random() * 15) + 1);
-                checkOutTime = getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00');
+                checkOutTime = shouldFillCheckOut ? getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00') : null;
                 reasonForUpdate = 'Terlambat';
             } else if (type === 'dinas-pagi') {
                 checkInTime = null;
@@ -180,6 +185,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
 
         setIsSaving(true);
         try {
+            const now = new Date();
             const batch = writeBatch(firestore);
             const daysToUpdate = problematicDays.filter(day => selectedDays[day.id]);
             for (const day of daysToUpdate) {
@@ -187,19 +193,29 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 const recordDate = parseISO(day.date);
                 
                 const checkInTime = day.checkInTime ? parseISO(day.checkInTime) : getRandomTime(recordDate, schoolConfig.checkInStartTime || '07:00', schoolConfig.checkInEndTime || '08:00');
-                let checkOutTime = getRandomTime(recordDate, schoolConfig.checkOutStartTime || '14:00', schoolConfig.checkOutEndTime || '16:00');
                 
-                if (checkOutTime.getTime() <= checkInTime.getTime()) {
-                    checkOutTime = addMinutes(checkInTime, 60);
-                }
-                
-                batch.set(recordRef, { 
-                    checkOutTime: Timestamp.fromDate(checkOutTime), 
+                const [outH_threshold, outM_threshold] = (schoolConfig.checkOutStartTime || '14:00').split(':').map(Number);
+                const checkOutThreshold = setMinutes(setHours(startOfDay(recordDate), outH_threshold), outM_threshold);
+                const shouldFillCheckOut = isBefore(startOfDay(recordDate), startOfDay(now)) || now >= checkOutThreshold;
+
+                let dataToUpdate: any = { 
                     updatedBy: currentUser.uid, 
                     updatedAt: Timestamp.now(), 
                     reasonForUpdate: 'Kehadiran penuh', 
                     manualEntry: true 
-                }, { merge: true });
+                };
+
+                if (!day.checkInTime) dataToUpdate.checkInTime = Timestamp.fromDate(checkInTime);
+
+                if (shouldFillCheckOut) {
+                    let checkOutTime = getRandomTime(recordDate, schoolConfig.checkOutStartTime || '14:00', schoolConfig.checkOutEndTime || '16:00');
+                    if (checkOutTime.getTime() <= checkInTime.getTime()) {
+                        checkOutTime = addMinutes(checkInTime, 60);
+                    }
+                    dataToUpdate.checkOutTime = Timestamp.fromDate(checkOutTime);
+                }
+
+                batch.set(recordRef, dataToUpdate, { merge: true });
             }
             await batch.commit();
             invalidateCache(); // Clear cache
