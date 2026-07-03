@@ -88,15 +88,10 @@ export default {
             height: '0',
           },
         },
-        'scan-line': {
-          '0%': { top: '0' },
-          '100%': { top: 'calc(100% - 5rem)' },
-        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'scan-line': 'scan-line 8s linear infinite alternate',
       },
     },
   },

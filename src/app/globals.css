@@ -67,10 +67,16 @@
 }
 
 @keyframes scan-line {
-  0% { top: 0; }
-  100% { top: 100%; }
+  0% { 
+    top: 0%; 
+    transform: translateY(0); 
+  }
+  100% { 
+    top: 100%; 
+    transform: translateY(-100%); 
+  }
 }
 
 .animate-scan-line {
-  animation: scan-line 4s linear infinite;
+  animation: scan-line 3.5s ease-in-out infinite alternate;
 }
