@@ -256,8 +256,8 @@ export default function LoginPage() {
         <p className="text-[10px] font-bold text-muted-foreground/50 tracking-[0.2em] uppercase">
           SMP NEGERI 5 LANGKE REMBONG
         </p>
-        <p className="text-[9px] font-medium text-muted-foreground/30 tracking-widest">
-          All Rights Reserved.
+        <p className="text-[9px] font-bold text-muted-foreground/40 tracking-widest uppercase">
+          ©2026 | All Rights Reserved.
         </p>
       </footer>
     </div>
