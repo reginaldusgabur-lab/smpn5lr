@@ -322,7 +322,7 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData, leave
                 <div className="flex flex-col items-center">
                     <div className="mb-2">{feedback.icon}</div>
                     <div className="space-y-3 mb-10">
-                        <h3 className="text-2xl font-black tracking-tight text-white leading-tight">{feedback.title}</h3>
+                        <h3 className="text-2xl font-bold tracking-tight text-white leading-tight">{feedback.title}</h3>
                         <p className="text-zinc-400 text-sm font-medium leading-relaxed px-2">{feedback.desc}</p>
                     </div>
                     
@@ -333,7 +333,7 @@ const StatusFeedbackOverlay = ({ status, locationError, onClose, userData, leave
                     )}
                     
                     <Button 
-                        className="w-full font-black rounded-xl h-14 text-xs shadow-xl active:scale-95 transition-all bg-[#2563eb] hover:bg-[#1d4ed8] text-white border-none tracking-widest uppercase mt-4" 
+                        className="w-full font-bold rounded-xl h-14 text-xs shadow-xl active:scale-95 transition-all bg-[#2563eb] hover:bg-[#1d4ed8] text-white border-none tracking-widest uppercase mt-4" 
                         onClick={onClose}
                     >
                         TUTUP

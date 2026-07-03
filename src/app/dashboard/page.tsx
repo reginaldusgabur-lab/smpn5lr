@@ -30,8 +30,8 @@ const CustomTooltip = ({ active, payload }: any) => {
     const data = payload[0].payload;
     return (
       <div className="bg-card border border-border shadow-2xl rounded-xl p-4 text-center min-w-[120px] animate-in fade-in zoom-in-95 duration-200">
-        <p className="font-bold text-foreground text-base tracking-tight leading-none mb-1.5">{data.name}</p>
-        <p className="text-muted-foreground text-xs font-bold tracking-wide">
+        <p className="font-semibold text-foreground text-base tracking-tight leading-none mb-1.5">{data.name}</p>
+        <p className="text-muted-foreground text-xs font-medium tracking-wide">
           {data.Jumlah} hari
         </p>
       </div>
@@ -55,7 +55,7 @@ const LiveClockUI = () => {
             <h2 className="text-4xl font-bold tracking-tight tabular-nums text-foreground leading-none">
                 {format(time, 'HH:mm:ss')}
             </h2>
-            <p className="text-[10px] font-bold text-muted-foreground mt-2 uppercase tracking-wider opacity-60">
+            <p className="text-[10px] font-medium text-muted-foreground mt-2 uppercase tracking-wider opacity-60">
                 {format(time, 'eeee, d MMMM yyyy', { locale: id })}
             </p>
         </div>
@@ -168,7 +168,7 @@ export default function DashboardPage() {
     const isCheckedOut = !!record?.checkOutTime;
     const isManualFinished = record?.manualEntry && (record?.reasonForUpdate === 'Pulang cepat' || record?.reasonForUpdate === 'Dinas siang');
 
-    const disabledStyle = "w-full bg-primary/5 text-primary/40 border border-primary/10 font-bold rounded-xl h-12 flex items-center justify-center text-sm transition-all cursor-default select-none shadow-none";
+    const disabledStyle = "w-full bg-primary/5 text-primary/40 border border-primary/10 font-semibold rounded-xl h-12 flex items-center justify-center text-sm transition-all cursor-default select-none shadow-none";
 
     if (windowStatus === 'LOADING' || isAttendanceLoading || isLeaveLoading) {
         return <div className={disabledStyle}><Clock className="mr-2 h-4 w-4 animate-spin" /> Memuat data...</div>;
@@ -176,7 +176,7 @@ export default function DashboardPage() {
 
     if (currentActiveLeave) {
         return (
-            <div className="w-full bg-blue-500/10 text-blue-600 border border-blue-500/20 font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none">
+            <div className="w-full bg-blue-500/10 text-blue-600 border border-blue-500/20 font-semibold rounded-xl h-12 flex items-center justify-center text-sm shadow-none">
                 <Sparkles className="mr-2 w-4 h-4" /> 
                 {currentActiveLeave.type} Disetujui
             </div>
@@ -184,17 +184,17 @@ export default function DashboardPage() {
     }
 
     if (isCheckedOut || isManualFinished) {
-        return <div className="w-full bg-green-500/5 text-green-600 border border-green-500/20 font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><Sparkles className="mr-2 w-4 h-4" /> Absensi selesai</div>;
+        return <div className="w-full bg-green-500/5 text-green-600 border border-green-500/20 font-semibold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><Sparkles className="mr-2 w-4 h-4" /> Absensi selesai</div>;
     }
 
     if (windowStatus === 'DISABLED' || stats.isManualDisabled) {
-        return <div className="w-full bg-muted text-muted-foreground border border-border font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><Lock className="mr-2 h-4 w-4" /> Sistem sedang dinonaktifkan</div>;
+        return <div className="w-full bg-muted text-muted-foreground border border-border font-semibold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><Lock className="mr-2 h-4 w-4" /> Sistem sedang dinonaktifkan</div>;
     }
 
     if (!isCheckedIn && (windowStatus === 'SESSION_INACTIVE' || stats.isHoliday)) {
         const label = stats.isCalendarHoliday ? 'Hari libur (Kalender)' : 'Hari libur rutin';
         return (
-            <div className="w-full bg-muted text-muted-foreground border border-border font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none">
+            <div className="w-full bg-muted text-muted-foreground border border-border font-semibold rounded-xl h-12 flex items-center justify-center text-sm shadow-none">
                 <Lock className="mr-2 h-4 w-4" /> {label}
             </div>
         );
@@ -202,7 +202,7 @@ export default function DashboardPage() {
 
     if (windowStatus === 'CHECK_OUT_OPEN') {
         return (
-            <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all bg-blue-600 hover:bg-blue-700 text-white">
+            <Button asChild size="lg" className="w-full font-semibold rounded-xl h-12 shadow-none active:scale-95 transition-all bg-blue-600 hover:bg-blue-700 text-white">
                 <Link href="/dashboard/absen">Absen pulang sekarang</Link>
             </Button>
         );
@@ -210,8 +210,8 @@ export default function DashboardPage() {
 
     if (!isCheckedIn) {
         if (windowStatus === 'BEFORE_IN') return <div className={disabledStyle}><Clock className="mr-2 h-4 w-4" /> Belum waktu jam masuk</div>;
-        if (windowStatus === 'CHECK_IN_OPEN') return <Button asChild size="lg" className="w-full font-bold rounded-xl h-12 shadow-none active:scale-95 transition-all"><Link href="/dashboard/absen">Absen masuk sekarang</Link></Button>;
-        if (windowStatus === 'AFTER_IN') return <div className="w-full bg-destructive/5 text-destructive/60 border border-destructive/10 font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><AlertCircle className="mr-2 h-4 w-4" /> Batas jam masuk berakhir</div>;
+        if (windowStatus === 'CHECK_IN_OPEN') return <Button asChild size="lg" className="w-full font-semibold rounded-xl h-12 shadow-none active:scale-95 transition-all"><Link href="/dashboard/absen">Absen masuk sekarang</Link></Button>;
+        if (windowStatus === 'AFTER_IN') return <div className="w-full bg-destructive/5 text-destructive/60 border border-destructive/10 font-semibold rounded-xl h-12 flex items-center justify-center text-sm shadow-none"><AlertCircle className="mr-2 h-4 w-4" /> Batas jam masuk berakhir</div>;
     }
 
     if (isCheckedIn && !isCheckedOut) {
@@ -220,7 +220,7 @@ export default function DashboardPage() {
 
     if (windowStatus === 'CLOSED') {
         return (
-            <div className="w-full bg-destructive/5 text-destructive/60 border border-destructive/10 font-bold rounded-xl h-12 flex items-center justify-center text-sm shadow-none">
+            <div className="w-full bg-destructive/5 text-destructive/60 border border-destructive/10 font-semibold rounded-xl h-12 flex items-center justify-center text-sm shadow-none">
                 <AlertCircle className="mr-2 h-4 w-4" /> Waktu absensi hari ini berakhir
             </div>
         );
@@ -238,8 +238,8 @@ export default function DashboardPage() {
     <div className="w-full space-y-6 pb-10 flex flex-col items-stretch">
         <div className="w-full px-0 space-y-1">
             <p className="text-sm font-medium text-muted-foreground">Selamat datang</p>
-            <h1 className="text-3xl font-black tracking-tighter text-foreground mt-0.5 leading-tight">{user?.name || 'Pengguna'}</h1>
-            <p className="text-sm font-medium text-muted-foreground mt-1">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground mt-0.5 leading-tight">{user?.name || 'Pengguna'}</h1>
+            <p className="text-sm font-normal text-muted-foreground mt-1">
                 {user?.role === 'admin' ? 'Pantau aktivitas kehadiran hari ini.' : 'Lakukan absensi dan lihat riwayat kehadiran Anda.'}
             </p>
         </div>
@@ -248,7 +248,7 @@ export default function DashboardPage() {
             <div className="w-full space-y-6 flex flex-col items-stretch">
                 <Card className="w-full border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden bg-card">
                     <CardHeader className="p-6 text-center border-b border-muted-foreground/5">
-                        <CardTitle className="text-xl font-black tracking-tight text-primary">Kehadiran hari ini</CardTitle>
+                        <CardTitle className="text-xl font-bold tracking-tight text-primary">Kehadiran hari ini</CardTitle>
                     </CardHeader>
                     <CardContent className="p-6 space-y-4 pt-4 text-center">
                         <LiveClockUI />
@@ -256,7 +256,7 @@ export default function DashboardPage() {
                             <div className="bg-muted/30 rounded-xl p-3 text-center border border-border/40 flex flex-col items-center justify-center">
                                 <div className="flex items-center justify-center gap-2 mb-1.5">
                                     <LogIn className="w-3.5 h-3.5 text-primary" />
-                                    <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Masuk</p>
+                                    <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">Masuk</p>
                                 </div>
                                 <p className="text-xl font-bold tabular-nums text-foreground">
                                     {isAttendanceLoading ? '...' : (todaysAttendance?.[0]?.checkInTime ? format(todaysAttendance[0].checkInTime.toDate(), 'HH:mm') : '--:--')}
@@ -265,7 +265,7 @@ export default function DashboardPage() {
                             <div className="bg-muted/30 rounded-xl p-3 text-center border border-border/40 flex flex-col items-center justify-center">
                                 <div className="flex items-center justify-center gap-2 mb-1.5">
                                     <LogOut className="w-3.5 h-3.5 text-primary" />
-                                    <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Pulang</p>
+                                    <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">Pulang</p>
                                 </div>
                                 <p className="text-xl font-bold tabular-nums text-foreground">
                                     {isAttendanceLoading ? '...' : (todaysAttendance?.[0]?.checkOutTime ? format(todaysAttendance[0].checkOutTime.toDate(), 'HH:mm') : '--:--')}
@@ -274,7 +274,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex flex-col items-stretch gap-3">
                             {renderAttendanceButton()}
-                            <Button variant="link" size="sm" asChild className="h-auto p-0 text-xs font-bold text-muted-foreground hover:text-primary transition-colors"><Link href="/dashboard/laporan">Lihat riwayat lengkap</Link></Button>
+                            <Button variant="link" size="sm" asChild className="h-auto p-0 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors"><Link href="/dashboard/laporan">Lihat riwayat lengkap</Link></Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -289,7 +289,7 @@ export default function DashboardPage() {
                                         Riwayat Bulan {format(summaryMonth, 'MMMM', { locale: id })}
                                     </h2>
                                 </div>
-                                <p className="text-sm font-medium text-muted-foreground">
+                                <p className="text-sm font-normal text-muted-foreground">
                                     Persentase kehadiran: {isPersonalSummaryLoading ? '...' : `${personalSummary.percentage}%`}
                                 </p>
                             </div>
@@ -327,7 +327,7 @@ export default function DashboardPage() {
                                             dataKey="name" 
                                             axisLine={{ stroke: 'currentColor', opacity: 0.2 }}
                                             tickLine={false} 
-                                            tick={{ fontSize: 11, fontBold: true, fill: 'currentColor', opacity: 0.6 }} 
+                                            tick={{ fontSize: 11, fontBold: false, fill: 'currentColor', opacity: 0.6 }} 
                                         />
                                         <YAxis 
                                             axisLine={{ stroke: 'currentColor', opacity: 0.2 }}
@@ -363,7 +363,7 @@ export default function DashboardPage() {
                     {/* Hadir Card */}
                     <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden">
                         <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
-                            <CardTitle className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Hadir</CardTitle>
+                            <CardTitle className="text-[10px] font-semibold text-green-600 uppercase tracking-wider">Hadir</CardTitle>
                             <div className="p-1.5 bg-green-50 rounded-lg">
                                 <UserCheck className="h-3.5 w-3.5 text-green-600" />
                             </div>
@@ -378,7 +378,7 @@ export default function DashboardPage() {
                     {/* Izin / Sakit Card */}
                     <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden">
                         <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
-                            <CardTitle className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Izin / Sakit</CardTitle>
+                            <CardTitle className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider">Izin / Sakit</CardTitle>
                             <div className="p-1.5 bg-blue-50 rounded-lg">
                                 <BookUser className="h-3.5 w-3.5 text-blue-600" />
                             </div>
@@ -394,7 +394,7 @@ export default function DashboardPage() {
                     <Link href="/dashboard/izin-kepala-sekolah" className="block">
                         <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-xl hover:bg-muted/30 transition-all group overflow-hidden">
                             <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
-                                <CardTitle className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Menunggu</CardTitle>
+                                <CardTitle className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">Menunggu</CardTitle>
                                 <div className="p-1.5 bg-amber-50 rounded-lg group-hover:scale-110 transition-transform">
                                     <MailWarning className="h-3.5 w-3.5 text-amber-600" />
                                 </div>
@@ -410,7 +410,7 @@ export default function DashboardPage() {
                     {/* Alpa Card */}
                     <Card className="bg-card border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden">
                         <CardHeader className="p-3 pb-0 flex flex-row items-center justify-between space-y-0">
-                            <CardTitle className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Alpa</CardTitle>
+                            <CardTitle className="text-[10px] font-semibold text-red-600 uppercase tracking-wider">Alpa</CardTitle>
                             <div className="p-1.5 bg-red-50 rounded-lg">
                                 <UserX className="h-3.5 w-3.5 text-red-600" />
                             </div>
