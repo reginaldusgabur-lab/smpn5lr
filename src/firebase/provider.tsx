@@ -108,10 +108,10 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     };
   }, [firebaseApp, firestore, auth, userAuthState]);
 
-  // Prevent initial blank screen by rendering the dots indicator immediately
+  // Use absolute positioning instead of fixed to avoid scroll restoration warnings in console
   if (userAuthState.isUserLoading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background z-[9999]">
+      <div className="absolute inset-0 flex items-center justify-center bg-background z-[9999] h-full w-full">
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
           <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse [animation-delay:200ms]" />

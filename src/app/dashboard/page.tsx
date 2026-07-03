@@ -236,21 +236,21 @@ export default function DashboardPage() {
 
   return (
     <div className="w-full space-y-6 pb-10 flex flex-col items-stretch">
-        <div className="w-full px-0">
-            <p className="text-base text-muted-foreground font-bold">Selamat datang</p>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground mt-0.5 leading-tight">{user?.name || 'Pengguna'}</h1>
-            <p className="text-sm text-muted-foreground mt-1 font-bold">
+        <div className="w-full px-0 space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">Selamat datang</p>
+            <h1 className="text-3xl font-black tracking-tighter text-foreground mt-0.5 leading-tight">{user?.name || 'Pengguna'}</h1>
+            <p className="text-sm font-medium text-muted-foreground mt-1">
                 {user?.role === 'admin' ? 'Pantau aktivitas kehadiran hari ini.' : 'Lakukan absensi dan lihat riwayat kehadiran Anda.'}
             </p>
         </div>
 
         {isStaff && (
             <div className="w-full space-y-6 flex flex-col items-stretch">
-                <Card className="w-full border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden bg-card text-center">
-                    <CardHeader className="p-6 text-primary border-b border-muted-foreground/5">
-                        <CardTitle className="text-xl font-bold tracking-tight">Kehadiran hari ini</CardTitle>
+                <Card className="w-full border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden bg-card">
+                    <CardHeader className="p-6 text-center border-b border-muted-foreground/5">
+                        <CardTitle className="text-xl font-black tracking-tight text-primary">Kehadiran hari ini</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6 space-y-4 pt-4">
+                    <CardContent className="p-6 space-y-4 pt-4 text-center">
                         <LiveClockUI />
                         <div className="grid grid-cols-2 gap-4 w-full">
                             <div className="bg-muted/30 rounded-xl p-3 text-center border border-border/40 flex flex-col items-center justify-center">
