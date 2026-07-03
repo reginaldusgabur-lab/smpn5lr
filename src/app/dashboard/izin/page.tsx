@@ -16,14 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/form';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useUser, useFirestore, FirestorePermissionError, errorEmitter, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { addDoc, collection, serverTimestamp, query, where, Timestamp, doc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Clock, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
+import { Loader2, Clock, CheckCircle2, AlertCircle, Trash2, CalendarOff } from 'lucide-react';
 import { startOfDay, endOfDay, addDays, setHours, setMinutes, format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useMemo } from 'react';
@@ -79,15 +79,53 @@ export default function IzinPage() {
     const schoolConfigRef = useMemoFirebase(() => user ? doc(firestore, 'schoolConfig', 'default') : null, [firestore, user]);
     const { data: schoolConfig, isLoading: isSchoolConfigLoading } = useDoc(user, schoolConfigRef);
 
+    // Fetch Monthly Config to check for specific holidays
+    const today = new Date();
+    const tomorrow = addDays(today, 1);
+    const currentMonthId = format(today, 'yyyy-MM');
+    const nextMonthId = format(tomorrow, 'yyyy-MM');
+
+    const monthlyConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'monthlyConfigs', currentMonthId) : null, [firestore, currentMonthId]);
+    const { data: monthlyConfig, isLoading: isMonthlyLoading } = useDoc(user, monthlyConfigRef);
+
+    const nextMonthlyConfigRef = useMemoFirebase(() => 
+        (firestore && currentMonthId !== nextMonthId) ? doc(firestore, 'monthlyConfigs', nextMonthId) : null, 
+        [firestore, currentMonthId, nextMonthId]
+    );
+    const { data: nextMonthlyConfig, isLoading: isNextMonthlyLoading } = useDoc(user, nextMonthlyConfigRef);
+
+    const isDateHoliday = (date: Date) => {
+        if (!schoolConfig) return false;
+        
+        // 1. Check if global system is disabled
+        if (schoolConfig.isAttendanceActive === false) return true;
+
+        // 2. Check recurring off days (Sunday/Saturday etc)
+        const offDays = schoolConfig.offDays ?? [0, 6];
+        if (offDays.includes(date.getDay())) return true;
+        
+        // 3. Check specific holidays from monthly config
+        const dateStr = format(date, 'yyyy-MM-dd');
+        const monthId = format(date, 'yyyy-MM');
+        const relevantConfig = monthId === currentMonthId ? monthlyConfig : nextMonthlyConfig;
+        
+        if (relevantConfig?.holidays?.includes(dateStr)) return true;
+
+        return false;
+    };
+
+    const isTodayHoliday = useMemo(() => isDateHoliday(today), [schoolConfig, monthlyConfig, today]);
+    const isTomorrowHoliday = useMemo(() => isDateHoliday(tomorrow), [schoolConfig, nextMonthlyConfig, tomorrow]);
+
     const selectedDateValue = form.watch('leaveDate');
     const targetDate = useMemo(() => {
-        const now = new Date();
-        return selectedDateValue === 'tomorrow' ? addDays(now, 1) : now;
-    }, [selectedDateValue]);
+        return selectedDateValue === 'tomorrow' ? tomorrow : today;
+    }, [selectedDateValue, today, tomorrow]);
 
     const targetDateStart = useMemo(() => startOfDay(targetDate), [targetDate]);
     const targetDateEnd = useMemo(() => endOfDay(targetDate), [targetDate]);
 
+    // Firestore Queries
     const attendanceQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
         return query(
@@ -181,12 +219,6 @@ export default function IzinPage() {
                 toast({ variant: 'destructive', title: 'Gagal', description: 'Anda harus absen masuk terlebih dahulu.' });
                 return;
             }
-        } else if (values.type === 'Dinas') {
-             toast({ 
-                title: "Pengajuan Dinas", 
-                description: "Silahkan hubungi atasan untuk pengajuan perjalanan dinas karena fitur tersebut sekarang diinput langsung oleh admin." 
-            });
-            return;
         } else {
             if (hasCheckedIn) {
                 toast({ variant: 'destructive', title: 'Gagal', description: `Anda sudah melakukan absensi hari ini.` });
@@ -222,11 +254,11 @@ export default function IzinPage() {
             .finally(() => setIsSubmitting(false));
     }
 
-    const isChecking = isAttendanceLoading || isSchoolConfigLoading || isLeavesLoading;
+    const isChecking = isAttendanceLoading || isSchoolConfigLoading || isLeavesLoading || isMonthlyLoading || isNextMonthlyLoading;
 
     return (
         <PageWrapper>
-            <Card className="w-full overflow-hidden border shadow-none rounded-xl">
+            <Card className="w-full overflow-hidden border border-muted-foreground/10 shadow-none rounded-xl bg-card">
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)}>
                         <CardHeader className="p-4 sm:p-6 text-primary border-b border-muted-foreground/10">
@@ -250,26 +282,26 @@ export default function IzinPage() {
                                                             {isCancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                                         </Button>
                                                     </AlertDialogTrigger>
-                                                    <AlertDialogContent className="rounded-2xl">
+                                                    <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
                                                         <AlertDialogHeader>
                                                             <AlertDialogTitle className="font-bold">Batalkan pengajuan?</AlertDialogTitle>
                                                             <AlertDialogDescription className="text-sm font-medium">
-                                                                Apakah Anda yakin ingin membatalkan pengajuan <strong>{currentDayLeave.type}</strong> ini? Data yang sudah dihapus tidak dapat dikembalikan.
+                                                                Apakah Anda yakin ingin membatalkan pengajuan <strong>{currentDayLeave.type}</strong> ini?
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel className="rounded-xl font-bold">Kembali</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={handleCancelLeave} className="bg-destructive hover:bg-destructive/90 rounded-xl font-bold">Ya, Batalkan</AlertDialogAction>
+                                                            <AlertDialogAction onClick={handleCancelLeave} className="bg-destructive hover:bg-destructive/90 rounded-xl font-bold text-white border-none">Ya, Batalkan</AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>
                                                 </AlertDialog>
                                             </div>
                                         ) : currentDayLeave.status === 'approved' ? (
-                                            <Badge variant="default" className="bg-green-500 text-white font-bold px-3">
+                                            <Badge variant="default" className="bg-green-500 text-white font-bold px-3 border-none">
                                                 <CheckCircle2 className="w-3 h-3 mr-1.5" /> Disetujui
                                             </Badge>
                                         ) : (
-                                            <Badge variant="destructive" className="font-bold px-3">Ditolak</Badge>
+                                            <Badge variant="destructive" className="font-bold px-3 border-none">Ditolak</Badge>
                                         )}
                                     </div>
                                 )}
@@ -281,9 +313,9 @@ export default function IzinPage() {
                                     <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                                     <div>
                                         <p className="text-xs font-bold text-primary">Informasi Pengajuan</p>
-                                        <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">
+                                        <p className="text-[11px] text-muted-foreground font-bold leading-relaxed">
                                             Anda telah mengajukan <strong>{currentDayLeave.type}</strong> untuk tanggal ini. 
-                                            {currentDayLeave.status === 'pending' ? ' Anda dapat membatalkan pengajuan ini sebelum diproses oleh Kepala Sekolah.' : ' Pengajuan Anda sudah diproses.'}
+                                            {currentDayLeave.status === 'pending' ? ' Anda dapat membatalkan pengajuan ini sebelum diproses.' : ' Pengajuan Anda sudah selesai diproses.'}
                                         </p>
                                     </div>
                                 </div>
@@ -295,16 +327,20 @@ export default function IzinPage() {
                                     name="leaveDate"
                                     render={({ field }) => (
                                         <FormItem className="space-y-1.5">
-                                            <FormLabel className="text-xs font-bold ml-1">Pilih Tanggal</FormLabel>
+                                            <FormLabel className="text-xs font-bold ml-1 uppercase tracking-wider text-muted-foreground">Pilih Tanggal</FormLabel>
                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                 <FormControl>
-                                                    <SelectTrigger className="h-11 rounded-xl bg-muted/30 border-muted-foreground/10 shadow-none">
+                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-muted-foreground/10 shadow-none font-bold">
                                                         <SelectValue placeholder="Pilih tanggal" />
                                                     </SelectTrigger>
                                                 </FormControl>
-                                                <SelectContent className="rounded-xl border-none shadow-none">
-                                                    <SelectItem value="today" className="rounded-lg">Hari Ini</SelectItem>
-                                                    <SelectItem value="tomorrow" className="rounded-lg">Besok</SelectItem>
+                                                <SelectContent className="rounded-xl border-none shadow-2xl">
+                                                    <SelectItem value="today" disabled={isTodayHoliday} className="rounded-lg font-bold">
+                                                        Hari Ini {isTodayHoliday && '(Libur)'}
+                                                    </SelectItem>
+                                                    <SelectItem value="tomorrow" disabled={isTomorrowHoliday} className="rounded-lg font-bold">
+                                                        Besok {isTomorrowHoliday && '(Libur)'}
+                                                    </SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage className="text-[10px] font-bold" />
@@ -316,29 +352,16 @@ export default function IzinPage() {
                                     name="type"
                                     render={({ field }) => (
                                         <FormItem className="space-y-1.5">
-                                            <FormLabel className="text-xs font-bold ml-1">Jenis Pengajuan</FormLabel>
-                                            <Select 
-                                                onValueChange={(val) => {
-                                                    if (val === 'Dinas') {
-                                                        toast({ 
-                                                            title: "Pengajuan Dinas", 
-                                                            description: "Silahkan hubungi atasan untuk pengajuan perjalanan dinas karena fitur tersebut sekarang diinput langsung oleh admin." 
-                                                        });
-                                                        return;
-                                                    }
-                                                    field.onChange(val);
-                                                }} 
-                                                value={field.value} 
-                                                disabled={!!currentDayLeave}
-                                            >
+                                            <FormLabel className="text-xs font-bold ml-1 uppercase tracking-wider text-muted-foreground">Jenis Pengajuan</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value} disabled={!!currentDayLeave || (selectedDateValue === 'today' && isTodayHoliday) || (selectedDateValue === 'tomorrow' && isTomorrowHoliday)}>
                                                 <FormControl>
-                                                    <SelectTrigger className="h-11 rounded-xl bg-muted/30 border-muted-foreground/10 shadow-none">
+                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/30 border-muted-foreground/10 shadow-none font-bold">
                                                         <SelectValue placeholder="Pilih jenis" />
                                                     </SelectTrigger>
                                                 </FormControl>
-                                                <SelectContent className="rounded-xl border-none shadow-none">
+                                                <SelectContent className="rounded-xl border-none shadow-2xl">
                                                     {availableLeaveTypes.map(type => (
-                                                        <SelectItem key={type.value} value={type.value} disabled={type.disabled} className="rounded-lg">
+                                                        <SelectItem key={type.value} value={type.value} disabled={type.disabled} className="rounded-lg font-bold">
                                                             {type.label}
                                                         </SelectItem>
                                                     ))}
@@ -354,13 +377,13 @@ export default function IzinPage() {
                                 name="reason"
                                 render={({ field }) => (
                                     <FormItem className="space-y-1.5">
-                                        <FormLabel className="text-xs font-bold ml-1">Alasan</FormLabel>
+                                        <FormLabel className="text-xs font-bold ml-1 uppercase tracking-wider text-muted-foreground">Alasan</FormLabel>
                                         <FormControl>
                                             <Textarea 
                                                 placeholder="Contoh: Demam, Kegiatan Keluarga..." 
-                                                disabled={!!currentDayLeave}
+                                                disabled={!!currentDayLeave || (selectedDateValue === 'today' && isTodayHoliday) || (selectedDateValue === 'tomorrow' && isTomorrowHoliday)}
                                                 {...field} 
-                                                className="min-h-[120px] rounded-xl bg-muted/30 border-muted-foreground/10 focus:bg-background transition-all" 
+                                                className="min-h-[120px] rounded-xl bg-muted/30 border-muted-foreground/10 focus:bg-background transition-all font-bold" 
                                             />
                                         </FormControl>
                                         <FormMessage className="text-[10px] font-bold" />
@@ -371,20 +394,18 @@ export default function IzinPage() {
                         <CardFooter className="border-t p-6 bg-muted/5">
                             <Button 
                                 type="submit" 
-                                disabled={isSubmitting || isChecking || !!currentDayLeave} 
+                                disabled={isSubmitting || isChecking || !!currentDayLeave || (selectedDateValue === 'today' && isTodayHoliday) || (selectedDateValue === 'tomorrow' && isTomorrowHoliday)} 
                                 className={cn(
-                                    "w-full sm:w-auto h-11 rounded-xl font-bold tracking-normal shadow-none active:scale-95 transition-all",
-                                    currentDayLeave?.status === 'pending' ? "bg-amber-500 hover:bg-amber-600" : "bg-primary"
+                                    "w-full sm:w-auto h-12 rounded-xl font-black tracking-widest shadow-none active:scale-95 transition-all bg-primary uppercase",
+                                    currentDayLeave?.status === 'pending' && "bg-amber-500 hover:bg-amber-600"
                                 )}
                             >
                                {isSubmitting || isChecking ? (
-                                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memproses...</>
-                               ) : currentDayLeave?.status === 'pending' ? (
-                                   <><Clock className="mr-2 h-4 w-4" /> Menunggu Persetujuan</>
-                               ) : currentDayLeave?.status === 'approved' ? (
-                                   <><CheckCircle2 className="mr-2 h-4 w-4" /> Sudah Disetujui</>
+                                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> PROSES...</>
+                               ) : currentDayLeave ? (
+                                   "DATA SUDAH ADA"
                                ) : (
-                                   "Kirim Pengajuan"
+                                   "KIRIM PENGAJUAN"
                                )}
                             </Button>
                         </CardFooter>
@@ -394,3 +415,4 @@ export default function IzinPage() {
         </PageWrapper>
     );
 }
+
