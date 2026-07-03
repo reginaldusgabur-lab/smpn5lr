@@ -134,8 +134,8 @@ export default function LoginPage() {
               </div>
             </div>
             <CardTitle className="text-4xl font-bold tracking-tight text-primary">E-SPENLI</CardTitle>
-            <CardDescription className="font-bold text-muted-foreground/80 text-xs tracking-tight px-2 uppercase">
-              APLIKASI ABSENSI DIGITAL
+            <CardDescription className="font-bold text-muted-foreground/80 text-xs tracking-tight px-2">
+              Aplikasi absensi digital
             </CardDescription>
           </CardHeader>
           <CardContent className="px-10 pb-10">
@@ -146,7 +146,7 @@ export default function LoginPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem className="space-y-1.5">
-                      <Label className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1 uppercase">Alamat email</Label>
+                      <Label className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1">Alamat email</Label>
                       <FormControl>
                         <Input 
                           placeholder="nama@email.com" 
@@ -160,9 +160,9 @@ export default function LoginPage() {
                 />
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between mb-1">
-                    <Label htmlFor="password" className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1 uppercase">Kata sandi</Label>
+                    <Label htmlFor="password" className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1">Kata sandi</Label>
                     <DialogTrigger asChild>
-                      <button type="button" className="text-[10px] font-bold text-primary hover:opacity-70 transition-opacity tracking-widest uppercase">
+                      <button type="button" className="text-[10px] font-bold text-primary hover:opacity-70 transition-opacity tracking-widest">
                         Lupa sandi?
                       </button>
                     </DialogTrigger>
@@ -202,7 +202,7 @@ export default function LoginPage() {
                   className="w-full h-14 text-sm font-bold rounded-xl shadow-none transition-all active:scale-[0.97] bg-primary hover:bg-primary/90 mt-4 tracking-widest" 
                   disabled={isLoginLoading}
                 >
-                  {isLoginLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "MASUK SEKARANG"}
+                  {isLoginLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Masuk sekarang"}
                 </Button>
               </form>
             </Form>
@@ -225,7 +225,7 @@ export default function LoginPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <Label htmlFor="reset-email" className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1 uppercase">Email terdaftar</Label>
+                      <Label htmlFor="reset-email" className="text-[10px] font-bold tracking-widest text-muted-foreground ml-1">Email terdaftar</Label>
                       <FormControl>
                         <Input 
                           id="reset-email" 
@@ -256,7 +256,7 @@ export default function LoginPage() {
         <p className="text-[10px] font-bold text-muted-foreground/50 tracking-[0.2em] uppercase">
           SMP NEGERI 5 LANGKE REMBONG
         </p>
-        <p className="text-[9px] font-bold text-muted-foreground/40 tracking-widest uppercase">
+        <p className="text-[9px] font-bold text-muted-foreground/40 tracking-widest">
           ©2026 | All Rights Reserved.
         </p>
       </footer>
