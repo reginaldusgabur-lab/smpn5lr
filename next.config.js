@@ -2,13 +2,13 @@
 const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
   cacheOnFrontEndNav: true,
-  aggressiveFrontEndNavCaching: true,
-  reloadOnOnline: true, 
+  aggressiveFrontEndNavCaching: false, // Dinonaktifkan untuk stabilitas di Android lama
+  reloadOnOnline: false, // Mencegah refresh otomatis yang memicu kedipan saat sinyal naik-turun
   swcMinify: true,
   disable: process.env.NODE_ENV === "development",
   workboxOptions: {
     disableDevLogs: true,
-    skipWaiting: true, // Pastikan update langsung aktif
+    skipWaiting: false, // Jangan paksa update saat aplikasi sedang digunakan (mencegah loop refresh)
     clientsClaim: true,
     runtimeCaching: [
       {

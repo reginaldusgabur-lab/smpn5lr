@@ -1,3 +1,4 @@
+
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -19,6 +20,10 @@ export const metadata: Metadata = {
   icons: {
     icon: '/logo-3d-v2.png',
     apple: '/logo-3d-v2.png',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-capable': 'yes',
   }
 };
 

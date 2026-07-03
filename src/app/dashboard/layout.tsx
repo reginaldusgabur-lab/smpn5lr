@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useUser, useFirestore } from '@/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -20,6 +20,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const isMobile = useMediaQuery('(max-width: 640px)');
+  const redirectChecked = useRef(false);
 
   // Onboarding state
   const [runTour, setRunTour] = useState(false);
@@ -29,9 +30,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   useEffect(() => {
-    // Hanya redirect jika pemuatan selesai dan user memang tidak ada
-    if (!isUserLoading && !user) {
-      router.replace('/');
+    // Cegah loop redirect dengan pengecekan isUserLoading yang lebih stabil
+    if (!isUserLoading) {
+      if (!user && !redirectChecked.current) {
+        redirectChecked.current = true;
+        router.replace('/');
+      }
     }
   }, [user, isUserLoading, router]);
 
@@ -47,7 +51,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const userDoc = await getDoc(userDocRef);
 
       if (userDoc.exists() && !userDoc.data().onboardingSelesai) {
-        // Pengguna baru, mulai proses orientasi
         sessionStorage.setItem('onboardingInProgress', 'true');
         setRunTour(true);
       }
@@ -74,17 +77,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return null;
   }
 
-  // Jika kita yakin tidak ada user, tampilkan loader sebentar sebelum redirect (biasanya cepat)
-  if (!isUserLoading && !user) {
+  // Jika sedang memuat status user atau redirect sedang diproses, tampilkan loader yang stabil
+  // Loader diletakkan secara absolut untuk menutupi layar tanpa memicu event scroll balik
+  if (isUserLoading || (!user && !redirectChecked.current)) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
+      <div className="absolute inset-0 flex h-screen w-full items-center justify-center bg-background z-[9999]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
 
-  // RENDER SHELL LANGSUNG: Sidebar dan Header tetap muncul meskipun data detail (isUserLoading) masih diproses.
-  // Ini memberikan efek "Luxury" karena aplikasi terasa instan.
+  // Pastikan shell hanya muncul jika user sudah benar-benar ada
+  if (!user) return null;
+
   return (
     <CacheProvider>
       <SidebarProvider>
