@@ -238,7 +238,7 @@ export default function DashboardPage() {
     <div className="w-full space-y-6 pb-10 flex flex-col items-stretch">
         <div className="w-full px-0 space-y-1">
             <p className="text-sm font-medium text-muted-foreground">Selamat datang</p>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground mt-0.5 leading-tight">{user?.name || 'Pengguna'}</h1>
+            <h1 className="text-xl font-bold tracking-tight text-foreground mt-0.5 leading-tight">{user?.name || 'Pengguna'}</h1>
             <p className="text-sm font-normal text-muted-foreground mt-1">
                 {user?.role === 'admin' ? 'Pantau aktivitas kehadiran hari ini.' : 'Lakukan absensi dan lihat riwayat kehadiran Anda.'}
             </p>
