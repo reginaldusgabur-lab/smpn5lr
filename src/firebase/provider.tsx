@@ -108,8 +108,19 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     };
   }, [firebaseApp, firestore, auth, userAuthState]);
 
-  // IMPORTANT: Do NOT return null during loading to prevent hydration crash on Android PWA.
-  // Instead, render the context provider and let children handle the loading UI.
+  // Prevent initial blank screen by rendering the dots indicator immediately
+  if (userAuthState.isUserLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background z-[9999]">
+        <div className="flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+          <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse [animation-delay:200ms]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse [animation-delay:400ms]" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <FirebaseContext.Provider value={contextValue}>
       <FirebaseErrorListener />
