@@ -140,7 +140,6 @@ export default function UserReportDetailPage() {
                     dataToSave.checkInTime = null;
                     dataToSave.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, outStart, outEnd));
                 } else {
-                    // For Dinas Siang / Pulang Cepat, preserve existing in-time if present
                     if (existingItem?.checkInTime) {
                         dataToSave.checkInTime = Timestamp.fromDate(parseISO(existingItem.checkInTime));
                     } else {
@@ -149,7 +148,8 @@ export default function UserReportDetailPage() {
                         const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                         dataToSave.checkInTime = Timestamp.fromDate(new Date(baseLimit.getTime() - randomMs));
                     }
-                    dataToSave.checkOutTime = null;
+                    // Force set a random early check-out for "Pulang Cepat" or "Dinas Siang" to close the record
+                    dataToSave.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, "11:00", "13:00"));
                 }
 
                 if (!snap.empty) batch.update(snap.docs[0].ref, dataToSave);
@@ -190,6 +190,8 @@ export default function UserReportDetailPage() {
 
             const [outH_threshold, outM_threshold] = (schoolConfigData.checkOutStartTime || '14:00').split(':').map(Number);
             const checkOutThreshold = setMinutes(setHours(startOfDay(targetDate), outH_threshold), outM_threshold);
+            
+            // For admin correction, if we set late, we usually want to complete the record if it's a past date
             const shouldFillCheckOut = isBefore(startOfDay(targetDate), startOfDay(now)) || now >= checkOutThreshold;
 
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
@@ -241,7 +243,10 @@ export default function UserReportDetailPage() {
 
             const [outH_threshold, outM_threshold] = outStart.split(':').map(Number);
             const checkOutThreshold = setMinutes(setHours(startOfDay(targetDate), outH_threshold), outM_threshold);
-            const shouldFillCheckOut = isBefore(startOfDay(targetDate), startOfDay(now)) || now >= checkOutThreshold;
+            
+            // CRITICAL FIX: If item.checkInTime exists, we are "completing" the record. Always fill checkout.
+            const isCompletingOut = !!item.checkInTime;
+            const shouldFillCheckOut = isBefore(startOfDay(targetDate), startOfDay(now)) || now >= checkOutThreshold || isCompletingOut;
 
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
             const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
@@ -262,9 +267,7 @@ export default function UserReportDetailPage() {
                 dataToSave.checkInTime = Timestamp.fromDate(new Date(baseOnTimeLimit.getTime() - randomMs));
             }
 
-            if (item.checkOutTime) {
-                dataToSave.checkOutTime = Timestamp.fromDate(parseISO(item.checkOutTime));
-            } else if (shouldFillCheckOut) {
+            if (shouldFillCheckOut) {
                 let checkOutTime = getRandomTime(targetDate, outStart, outEnd);
                 const cIn = dataToSave.checkInTime.toDate();
                 if (checkOutTime.getTime() <= cIn.getTime()) {

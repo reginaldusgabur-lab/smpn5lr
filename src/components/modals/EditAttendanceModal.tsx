@@ -144,12 +144,13 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                     checkInTime = new Date(baseLimit.getTime() - randomMs);
                 }
-                checkOutTime = shouldFillCheckOut ? getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00') : null;
+                // ALWAYS fill checkOut for admin correction if manually finalizing
+                checkOutTime = getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00');
                 reasonForUpdate = 'Kehadiran penuh';
             } else if (type === 'terlambat') {
                 const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                 checkInTime = new Date(baseLimit.getTime() + randomMs);
-                checkOutTime = shouldFillCheckOut ? getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00') : null;
+                checkOutTime = getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00');
                 reasonForUpdate = 'Terlambat';
             } else if (type === 'dinas-pagi') {
                 checkInTime = null;
@@ -162,7 +163,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                     checkInTime = new Date(baseLimit.getTime() - randomMs);
                 }
-                checkOutTime = null;
+                checkOutTime = getRandomTime(recordDate, "11:00", "13:00");
                 reasonForUpdate = 'Dinas siang';
             } else { // pulang-cepat
                 if (day.checkInTime) {
@@ -171,7 +172,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                     checkInTime = new Date(baseLimit.getTime() - randomMs);
                 }
-                checkOutTime = null;
+                checkOutTime = getRandomTime(recordDate, "11:00", "13:00");
                 reasonForUpdate = 'Pulang cepat';
             }
 
@@ -209,10 +210,6 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 const [endH, endM] = (schoolConfig.checkInEndTime || '07:30').split(':').map(Number);
                 const baseLimit = setMinutes(setHours(startOfDay(recordDate), endH), endM);
 
-                const [outH_threshold, outM_threshold] = (schoolConfig.checkOutStartTime || '14:00').split(':').map(Number);
-                const checkOutThreshold = setMinutes(setHours(startOfDay(recordDate), outH_threshold), outM_threshold);
-                const shouldFillCheckOut = isBefore(startOfDay(recordDate), startOfDay(now)) || now >= checkOutThreshold;
-
                 let dataToUpdate: any = { 
                     updatedBy: currentUser.uid, 
                     updatedAt: Timestamp.now(), 
@@ -227,14 +224,13 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     dataToUpdate.checkInTime = Timestamp.fromDate(parseISO(day.checkInTime));
                 }
 
-                if (shouldFillCheckOut) {
-                    let checkOutTime = getRandomTime(recordDate, schoolConfig.checkOutStartTime || '14:00', schoolConfig.checkOutEndTime || '16:00');
-                    const cIn = dataToUpdate.checkInTime.toDate();
-                    if (checkOutTime.getTime() <= cIn.getTime()) {
-                        checkOutTime = addMinutes(cIn, 60);
-                    }
-                    dataToUpdate.checkOutTime = Timestamp.fromDate(checkOutTime);
+                // For bulk "Correction", we always fill checkout time if we are correcting a "Belum absen pulang"
+                let checkOutTime = getRandomTime(recordDate, schoolConfig.checkOutStartTime || '14:00', schoolConfig.checkOutEndTime || '16:00');
+                const cIn = dataToUpdate.checkInTime.toDate();
+                if (checkOutTime.getTime() <= cIn.getTime()) {
+                    checkOutTime = addMinutes(cIn, 60);
                 }
+                dataToUpdate.checkOutTime = Timestamp.fromDate(checkOutTime);
 
                 batch.set(recordRef, dataToUpdate, { merge: true });
             }
