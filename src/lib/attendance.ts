@@ -1,3 +1,4 @@
+
 'use client';
 
 import { doc, getDoc, collection, getDocs, query, where, collectionGroup } from 'firebase/firestore';
@@ -195,7 +196,6 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                     point = 0.95;
                 } else if (att.checkInTime && att.checkOutTime) {
                     let isLate = false;
-                    const checkInDate = att.checkInTime.toDate();
                     if (schoolConfig?.useTimeValidation && schoolConfig?.checkInEndTime) {
                         const [h, m] = schoolConfig.checkInEndTime.split(':').map(Number);
                         const deadline = setMinutes(setHours(startOfDay(att.checkInTime), h), m);
@@ -328,8 +328,11 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
 
                 const terminalDescriptions = ['dinas pagi', 'dinas siang', 'pulang cepat'];
                 if (isManual && terminalDescriptions.includes(description.toLowerCase())) {
-                    // Update status to match description for Dinas Siang and Pulang Cepat
-                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime, status: description, description, manualEntry: true };
+                    // Force checkOutTime to null for Dinas Siang and Pulang Cepat in the UI
+                    const isCheckOutHiddenStatus = ['dinas siang', 'pulang cepat'].includes(description.toLowerCase());
+                    const displayCheckOutTime = isCheckOutHiddenStatus ? null : checkOutTime;
+                    
+                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: displayCheckOutTime, status: description, description, manualEntry: true };
                 }
 
                 if (!checkOutTime) {
