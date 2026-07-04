@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
@@ -170,7 +169,7 @@ export default function UserReportDetailPage() {
                 data.checkInTime = Timestamp.fromDate(new Date(limitIn.getTime() - Math.floor(Math.random() * 5 * 60 * 1000)));
             }
 
-            // PATEN LOGIKA: 5 Menit SETELAH jam mulai pulang
+            // PATEN: Waktu acak 5 menit SETELAH jam mulai pulang
             const realOut = new Date(limitOut.getTime() + Math.floor(Math.random() * 5 * 60 * 1000));
             data.checkOutTime = Timestamp.fromDate(realOut);
 
@@ -202,7 +201,9 @@ export default function UserReportDetailPage() {
             const [outH, outM] = outStart.split(':').map(Number);
             const limitOut = setMinutes(setHours(startOfDay(targetDate), outH), outM);
 
+            // PATEN: Waktu acak 5 menit SETELAH jam selesai masuk
             const realIn = new Date(limitIn.getTime() + Math.floor(Math.random() * 5 * 60 * 1000));
+            // PATEN: Waktu acak 5 menit SETELAH jam mulai pulang
             const realOut = new Date(limitOut.getTime() + Math.floor(Math.random() * 5 * 60 * 1000));
 
             const data = {
@@ -279,6 +280,10 @@ export default function UserReportDetailPage() {
         doc.save(`Laporan_Individu_${userData.name.replace(/\s+/g, '_')}_${format(currentMonth, 'MMMM_yyyy', { locale: id })}.pdf`);
     };
 
+    const isAdmin = currentUser?.role === 'admin';
+    const canGoPrev = currentMonth > new Date(2026, 0, 1);
+    const canGoNext = !isSameMonth(currentMonth, new Date());
+
     return (
         <div className="flex-1 pt-2 pb-24 md:p-8">
             <div className="max-w-7xl mx-auto space-y-4">
@@ -294,12 +299,12 @@ export default function UserReportDetailPage() {
                         <div className="p-4 space-y-4">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
                                 <div className="flex items-center bg-muted/40 rounded-2xl border border-muted-foreground/5 p-1">
-                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={() => changeMonth(-1)} disabled={isLoading || !canGoPrev}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={() => setCurrentMonth(prev => subMonths(prev, 1))} disabled={isLoading || !canGoPrev}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
                                     <div className="flex items-center gap-3 px-4">
                                         {stats && <span className="text-sm font-bold text-primary border-r border-muted-foreground/20 pr-3">{stats.persentase}</span>}
                                         <span className="font-bold text-xl text-primary capitalize whitespace-nowrap min-w-[120px] text-center">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={() => changeMonth(1)} disabled={isLoading || !canGoNext}><ChevronRight className="h-5 w-5 text-primary" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isLoading || !canGoNext}><ChevronRight className="h-5 w-5 text-primary" /></Button>
                                 </div>
                             </div>
                             <div className="flex justify-center sm:justify-end">
@@ -389,4 +394,16 @@ export default function UserReportDetailPage() {
             </div>
         </div>
     );
+}
+
+function subMonths(date: Date, amount: number) {
+    const d = new Date(date);
+    d.setMonth(d.getMonth() - amount);
+    return d;
+}
+
+function addMonths(date: Date, amount: number) {
+    const d = new Date(date);
+    d.setMonth(d.getMonth() + amount);
+    return d;
 }

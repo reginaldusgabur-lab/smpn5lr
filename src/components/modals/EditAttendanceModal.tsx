@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -130,10 +129,13 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
 
             if (type === 'hadir') {
                 data.checkInTime = day.checkInTime ? Timestamp.fromDate(parseISO(day.checkInTime)) : Timestamp.fromDate(new Date(limitIn.getTime() - Math.floor(Math.random() * 5 * 60 * 1000)));
+                // PATEN: Waktu acak 5 menit SETELAH jam mulai pulang
                 data.checkOutTime = Timestamp.fromDate(new Date(limitOutStart.getTime() + Math.floor(Math.random() * 5 * 60 * 1000)));
                 data.reasonForUpdate = 'Kehadiran penuh';
             } else if (type === 'terlambat') {
+                // PATEN: Waktu acak 5 menit SETELAH jam selesai masuk
                 data.checkInTime = Timestamp.fromDate(new Date(limitIn.getTime() + Math.floor(Math.random() * 5 * 60 * 1000)));
+                // PATEN: Waktu acak 5 menit SETELAH jam mulai pulang
                 data.checkOutTime = Timestamp.fromDate(new Date(limitOutStart.getTime() + Math.floor(Math.random() * 5 * 60 * 1000)));
                 data.reasonForUpdate = 'Terlambat';
             } else if (type === 'dinas-pagi') {
@@ -165,6 +167,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
             
             for (const day of problematicDays.filter(d => selectedDays[d.id])) {
                 const limitOutStart = setMinutes(setHours(startOfDay(parseISO(day.date)), hO), mO);
+                // PATEN: Waktu acak 5 menit SETELAH jam mulai pulang
                 const realOut = new Date(limitOutStart.getTime() + Math.floor(Math.random() * 5 * 60 * 1000));
                 
                 batch.set(doc(firestore, 'users', user.uid, 'attendanceRecords', day.id), { 
