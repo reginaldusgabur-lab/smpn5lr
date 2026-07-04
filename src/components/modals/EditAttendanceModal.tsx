@@ -66,6 +66,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 if (isMounted.current) setSchoolConfig(config);
                 const reportData = await fetchUserMonthlyReportData(firestore, user.uid, month, config);
                 
+                // Menangkap data yang bermasalah (Alpa atau Belum Pulang)
                 const problems = reportData.filter(d => (d.status === 'Alpa') || (d.description === 'Belum absen pulang'));
                 if (isMounted.current) {
                     setProblematicDays(problems);
@@ -180,6 +181,13 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
         finally { setIsSaving(false); }
     };
 
+    const getAdminBadgeClass = (status: string) => {
+        if (status === 'Alpa') return 'bg-red-50 text-red-700 border-red-200';
+        if (status === 'Sakit') return 'bg-orange-50 text-orange-700 border-orange-200';
+        if (status === 'Izin' || status.includes('Izin')) return 'bg-blue-50 text-blue-700 border-blue-200';
+        return 'bg-orange-50 text-orange-700 border-orange-200';
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-md rounded-xl border-none shadow-none p-0 overflow-hidden">
@@ -201,18 +209,20 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                                         <label className="text-sm font-bold grow">{format(parseISO(day.date), 'eeee, d MMM yyyy', { locale: id })}</label>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Badge variant={day.status === 'Alpa' ? 'destructive' : 'secondary'} className="cursor-pointer font-bold text-[10px] px-3 py-1 rounded-lg uppercase">{day.status === 'Alpa' ? 'Alpa' : 'Belum Pulang'} <MoreVertical className="h-3 w-3 ml-1" /></Badge>
+                                                <Badge variant="outline" className={cn("cursor-pointer font-bold text-[10px] px-3 py-1 rounded-lg uppercase", getAdminBadgeClass(day.status))}>
+                                                    {day.status} <MoreVertical className="h-3 w-3 ml-1" />
+                                                </Badge>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border-none p-2">
-                                                <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest opacity-50 px-3">{hasIn ? 'Koreksi Pulang' : 'Koreksi Hadir'}</DropdownMenuLabel>
+                                                <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest opacity-50 px-3 py-2">Koreksi Kehadiran</DropdownMenuLabel>
                                                 <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToAttendance(day, 'hadir')}>{hasIn ? 'Lengkapi absen pulang' : 'Jadikan Hadir'}</DropdownMenuItem>
                                                 {!hasIn && <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToAttendance(day, 'terlambat')}>Set Terlambat</DropdownMenuItem>}
-                                                <DropdownMenuSeparator className='my-1 opacity-50' />
-                                                <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest opacity-50 px-3">Ubah Status</DropdownMenuLabel>
+                                                <DropdownMenuSeparator className='my-1.5 opacity-50' />
+                                                <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest opacity-50 px-3 py-2">Ubah Status</DropdownMenuLabel>
                                                 {!hasIn && (
                                                     <>
-                                                        <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToLeave(day, 'Sakit')}>Set Sakit</DropdownMenuItem>
-                                                        <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToLeave(day, 'Izin')}>Set Izin</DropdownMenuItem>
+                                                        <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToLeave(day, 'Sakit')}>Jadikan Sakit</DropdownMenuItem>
+                                                        <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToLeave(day, 'Izin')}>Jadikan Izin</DropdownMenuItem>
                                                         <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToAttendance(day, 'dinas-pagi')}>Dinas Pagi</DropdownMenuItem>
                                                     </>
                                                 )}

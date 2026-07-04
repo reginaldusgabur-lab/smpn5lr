@@ -282,6 +282,14 @@ export default function UserReportDetailPage() {
     const canGoPrev = currentMonth > new Date(2026, 0, 1);
     const canGoNext = !isSameMonth(currentMonth, new Date());
 
+    const getAdminBadgeClass = (status: string) => {
+        if (status === 'Alpa') return 'bg-red-50 text-red-700 border-red-200';
+        if (status === 'Sakit') return 'bg-orange-50 text-orange-700 border-orange-200';
+        if (status === 'Izin' || status.includes('Izin')) return 'bg-blue-50 text-blue-700 border-blue-200';
+        if (status.includes('Dinas')) return 'bg-purple-50 text-purple-700 border-purple-200';
+        return 'bg-orange-50 text-orange-700 border-orange-200'; // Default for Hadir but incomplete
+    };
+
     return (
         <div className="flex-1 pt-2 pb-24 md:p-8">
             <div className="max-w-7xl mx-auto space-y-4">
@@ -349,23 +357,23 @@ export default function UserReportDetailPage() {
                                                     <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkInTime, 'HH:mm:ss')}</TableCell>
                                                     <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkOutTime, 'HH:mm:ss')}</TableCell>
                                                     <TableCell className="text-center">
-                                                        {isAdmin && (isAlpa || !hasOut) ? (
+                                                        {isAdmin && (isAlpa || !hasOut || item.status === 'Sakit' || item.status.includes('Izin')) ? (
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger asChild>
-                                                                    <Button variant="outline" size="sm" className={cn("font-bold text-[9px] h-7 rounded-lg shadow-none", isAlpa ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200')}>
-                                                                        {isAlpa ? 'Alpa' : 'Hadir'} <MoreVertical className="h-3 w-3 ml-1" />
+                                                                    <Button variant="outline" size="sm" className={cn("font-bold text-[9px] h-7 rounded-lg shadow-none flex items-center justify-center gap-1", getAdminBadgeClass(item.status))}>
+                                                                        {item.status} <MoreVertical className="h-3 w-3" />
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border-none p-2">
-                                                                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2 opacity-50">{hasIn ? 'Koreksi Pulang' : 'Koreksi Hadir'}</DropdownMenuLabel>
+                                                                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest opacity-50 px-3 py-2">Koreksi Hadir</DropdownMenuLabel>
                                                                     <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetHadir(item)}>{hasIn ? 'Lengkapi absen pulang' : 'Jadikan Hadir'}</DropdownMenuItem>
                                                                     {!hasIn && <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetLate(item)}>Set Terlambat</DropdownMenuItem>}
                                                                     <DropdownMenuSeparator className='my-1.5 opacity-50' />
-                                                                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2 opacity-50">Ubah Status</DropdownMenuLabel>
+                                                                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest opacity-50 px-3 py-2">Ubah Status</DropdownMenuLabel>
                                                                     {!hasIn && (
                                                                         <>
-                                                                            <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleStatusChange(item.date, 'Sakit', 'Sakit')}>Sakit</DropdownMenuItem>
-                                                                            <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleStatusChange(item.date, 'Izin Pribadi', 'Izin Pribadi')}>Izin</DropdownMenuItem>
+                                                                            <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleStatusChange(item.date, 'Sakit', 'Sakit')}>Jadikan Sakit</DropdownMenuItem>
+                                                                            <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleStatusChange(item.date, 'Izin Pribadi', 'Izin Pribadi')}>Jadikan Izin</DropdownMenuItem>
                                                                             <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleStatusChange(item.date, 'Dinas Pagi', 'Dinas Pagi')}>Dinas Pagi</DropdownMenuItem>
                                                                         </>
                                                                     )}
@@ -374,7 +382,11 @@ export default function UserReportDetailPage() {
                                                                 </DropdownMenuContent>
                                                             </DropdownMenu>
                                                         ) : (
-                                                            <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold", item.status === 'Hadir' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700')}>
+                                                            <span className={cn("inline-flex items-center px-3 py-0.5 rounded-full text-[9px] font-bold", 
+                                                                item.status === 'Hadir' ? 'bg-green-100 text-green-700' : 
+                                                                item.status === 'Sakit' ? 'bg-orange-100 text-orange-700' : 
+                                                                'bg-blue-100 text-blue-700'
+                                                            )}>
                                                                 {item.status}
                                                             </span>
                                                         )}
@@ -383,7 +395,7 @@ export default function UserReportDetailPage() {
                                                 </TableRow>
                                             );
                                         })
-                                    ) : <TableRow><TableCell colSpan={6} className="h-48 text-center text-muted-foreground font-bold">Tidak ada data untuk periode ini.</TableCell></TableRow>}
+                                    ) : <TableRow><TableCell colSpan={6} className="h-48 text-center text-muted-foreground font-bold uppercase text-xs tracking-widest">Tidak ada data.</TableCell></TableRow>}
                                 </TableBody>
                             </Table>
                         </div>
@@ -393,4 +405,3 @@ export default function UserReportDetailPage() {
         </div>
     );
 }
-
