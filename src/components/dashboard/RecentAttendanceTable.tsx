@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -111,8 +110,7 @@ const RecentAttendanceTable = () => {
                 name: userData.name || '-',
                 nip: userData.nip || '-',
                 rawCheckInTime: checkInDate || checkOutDate, 
-                checkInTime: checkInDate ? format(checkInDate, 'HH:mm:ss') : '-',
-                // Force empty check-out display for Dinas Siang and Pulang Cepat
+                checkInTime: checkInTime ? format(checkInDate, 'HH:mm:ss') : '-',
                 checkOutTime: (isDinasSiang || isPulangCepat) ? '-' : (checkOutDate ? format(checkOutDate, 'HH:mm:ss') : '-'),
                 status: statusLabel,
                 keterangan: reason || (checkOutDate ? 'Absensi selesai' : 'Sedang bertugas'),
@@ -124,7 +122,7 @@ const RecentAttendanceTable = () => {
         const sortedActivities = activitiesData.sort((a, b) => {
             const timeA = a.rawCheckInTime?.getTime() || 0;
             const timeB = b.rawCheckInTime?.getTime() || 0;
-            return timeA - timeB;
+            return timeB - timeA;
         });
 
         const finalActivities = sortedActivities.map((activity, index) => ({

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { doc, getDoc, collection, getDocs, query, where, collectionGroup } from 'firebase/firestore';
@@ -328,7 +327,6 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
 
                 const terminalDescriptions = ['dinas pagi', 'dinas siang', 'pulang cepat'];
                 if (isManual && terminalDescriptions.includes(description.toLowerCase())) {
-                    // Force checkOutTime to null for Dinas Siang and Pulang Cepat in the UI
                     const isCheckOutHiddenStatus = ['dinas siang', 'pulang cepat'].includes(description.toLowerCase());
                     const displayCheckOutTime = isCheckOutHiddenStatus ? null : checkOutTime;
                     

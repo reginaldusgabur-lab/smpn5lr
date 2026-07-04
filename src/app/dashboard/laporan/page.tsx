@@ -211,12 +211,12 @@ export default function LaporanPage() {
                     <Table className="min-w-[720px]">
                         <TableHeader className="bg-muted/30">
                             <TableRow className="border-none">
-                                <TableHead className="w-[50px] text-center font-bold text-[10px] uppercase tracking-widest">No</TableHead>
-                                <TableHead className="w-[180px] font-bold text-[10px] uppercase tracking-widest">Tanggal</TableHead>
-                                <TableHead className="w-[100px] text-center font-bold text-[10px] uppercase tracking-widest">Masuk</TableHead>
-                                <TableHead className="w-[100px] text-center font-bold text-[10px] uppercase tracking-widest">Pulang</TableHead>
-                                <TableHead className="w-[140px] text-center font-bold text-[10px] uppercase tracking-widest">Status</TableHead>
-                                <TableHead className="font-bold text-[10px] uppercase tracking-widest">Keterangan</TableHead>
+                                <TableHead className="w-[50px] text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">No</TableHead>
+                                <TableHead className="w-[180px] font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Tanggal</TableHead>
+                                <TableHead className="w-[100px] text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Masuk</TableHead>
+                                <TableHead className="w-[100px] text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Pulang</TableHead>
+                                <TableHead className="w-[140px] text-center font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Status</TableHead>
+                                <TableHead className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Keterangan</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
@@ -140,7 +139,7 @@ export default function UserReportDetailPage() {
                 if (newStatus === 'Dinas Pagi') {
                     dataToSave.checkInTime = null;
                     dataToSave.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, outStart, outEnd));
-                } else if (newStatus === 'Dinas Siang') {
+                } else {
                     if (existingItem?.checkInTime) {
                         dataToSave.checkInTime = Timestamp.fromDate(parseISO(existingItem.checkInTime));
                     } else {
@@ -150,16 +149,6 @@ export default function UserReportDetailPage() {
                         dataToSave.checkInTime = Timestamp.fromDate(new Date(baseLimit.getTime() - randomMs));
                     }
                     dataToSave.checkOutTime = null; 
-                } else { // Pulang Cepat
-                    if (existingItem?.checkInTime) {
-                        dataToSave.checkInTime = Timestamp.fromDate(parseISO(existingItem.checkInTime));
-                    } else {
-                        const [h, m] = inEnd.split(':').map(Number);
-                        const baseLimit = setMinutes(setHours(startOfDay(targetDate), h), m);
-                        const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
-                        dataToSave.checkInTime = Timestamp.fromDate(new Date(baseLimit.getTime() - randomMs));
-                    }
-                    dataToSave.checkOutTime = null; // Set to NULL for Pulang Cepat as requested
                 }
 
                 if (!snap.empty) batch.update(snap.docs[0].ref, dataToSave);
@@ -522,4 +511,3 @@ export default function UserReportDetailPage() {
         </div>
     );
 }
-

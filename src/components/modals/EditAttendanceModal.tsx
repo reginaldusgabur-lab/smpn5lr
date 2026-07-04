@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -158,7 +157,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                     checkInTime = new Date(baseLimit.getTime() - randomMs);
                 }
-                checkOutTime = null; // Always NULL
+                checkOutTime = null; 
                 reasonForUpdate = 'Dinas siang';
             } else { // pulang-cepat
                 if (day.checkInTime) {
@@ -167,7 +166,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                     checkInTime = new Date(baseLimit.getTime() - randomMs);
                 }
-                checkOutTime = null; // Always NULL as per request
+                checkOutTime = null; 
                 reasonForUpdate = 'Pulang cepat';
             }
 

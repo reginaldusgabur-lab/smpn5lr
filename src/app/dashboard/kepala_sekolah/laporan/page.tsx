@@ -73,11 +73,22 @@ function useStaffAttendanceSummary(currentMonth: Date) {
             const monthEnd = endOfMonth(currentMonth);
 
             const attendanceQuery = query(collectionGroup(firestore, 'attendanceRecords'), where('checkInTime', '>=', monthStart), where('checkInTime', '<=', monthEnd));
+            
+            const attendanceFallbackQuery = query(
+                collectionGroup(firestore, 'attendanceRecords'),
+                where('date', '>=', format(monthStart, 'yyyy-MM-dd')),
+                where('date', '<=', format(monthEnd, 'yyyy-MM-dd'))
+            );
+
             const leaveQuery = query(collectionGroup(firestore, 'leaveRequests'), where('status', '==', 'approved'));
             
-            const [attendanceSnapshot, leaveSnapshot] = await Promise.all([ getDocs(attendanceQuery), getDocs(leaveQuery) ]);
+            const [attendanceSnapshot, attendanceFallbackSnapshot, leaveSnapshot] = await Promise.all([ 
+                getDocs(attendanceQuery), 
+                getDocs(attendanceFallbackQuery),
+                getDocs(leaveQuery) 
+            ]);
 
-            const allAttendance = attendanceSnapshot.docs.map(d => ({...d.data(), id: d.id, checkInTime: d.data().checkInTime?.toDate() || null }));
+            const allAttendance = [...attendanceSnapshot.docs, ...attendanceFallbackSnapshot.docs].map(d => ({...d.data(), id: d.id, checkInTime: d.data().checkInTime?.toDate() || null }));
             const allLeave = leaveSnapshot.docs.map(d => ({ ...d.data(), id: d.id, startDate: d.data().startDate.toDate(), endDate: d.data().endDate.toDate() }));
 
             const offDays: number[] = schoolConfig?.offDays ?? [0, 6];
@@ -95,7 +106,7 @@ function useStaffAttendanceSummary(currentMonth: Date) {
                 let sakitCount = 0;
                 const processedDates = new Set<string>();
 
-                // Process attendance
+                // Process attendance records for this user
                 allAttendance.filter(att => att.userId === u.id).forEach((att: any) => {
                     const attDateStr = att.date || (att.checkInTime ? format(att.checkInTime, 'yyyy-MM-dd') : null);
                     if (attDateStr && workingDaysSet.has(attDateStr) && !processedDates.has(attDateStr)) {
@@ -106,7 +117,7 @@ function useStaffAttendanceSummary(currentMonth: Date) {
                             point = 1.0;
                             hadirCount++;
                         } else if (desc.includes('pulang cepat')) {
-                            point = 0.95; // Pulang cepat = 0.95
+                            point = 0.95;
                             hadirCount++;
                         } else if (att.checkInTime && att.checkOutTime) {
                             let isLate = false;
@@ -126,7 +137,7 @@ function useStaffAttendanceSummary(currentMonth: Date) {
                     }
                 });
 
-                // Process leaves
+                // Process leave records for this user
                 allLeave.filter(l => l.userId === u.id).forEach(leave => {
                     eachDayOfInterval({ start: leave.startDate, end: leave.endDate }).forEach(day => {
                         const dayStr = format(day, 'yyyy-MM-dd');
@@ -142,7 +153,7 @@ function useStaffAttendanceSummary(currentMonth: Date) {
                                 point = 1.0;
                                 hadirCount++;
                             } else if (leave.type === 'Pulang Cepat') {
-                                point = 0.95; // Pulang cepat from leave record = 0.95
+                                point = 0.95;
                                 hadirCount++;
                             }
                             totalPoints += point;
@@ -271,7 +282,7 @@ function StaffReportView() {
   const canGoPrev = currentMonth > minDate;
 
   return (
-    <div className="flex-1 pt-4 pb-24 md:p-8">
+    <div className="flex-1 pt-2 pb-24 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="px-4 md:px-0">
           <h1 className="text-3xl font-normal tracking-tight">Laporan Staf</h1>
