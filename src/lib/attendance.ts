@@ -1,3 +1,4 @@
+
 'use client';
 
 import { doc, getDoc, collection, getDocs, query, where, collectionGroup } from 'firebase/firestore';
@@ -20,7 +21,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v21_${todayStr}`;
+    const cacheKey = `daily_stats_v30_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -54,9 +55,6 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
                 isManualDisabled: isManualOff 
             };
         }
-
-        const startOfToday = startOfDay(today);
-        const endOfToday = endOfDay(today);
 
         const usersQuery = query(
             collection(firestore, 'users'), 
@@ -130,7 +128,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v21_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v30_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -189,18 +187,10 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                 let point = 0;
                 const desc = (att.reasonForUpdate || '').toLowerCase();
                 
-                if (desc.includes('dinas')) {
+                if (desc.includes('dinas') || desc.includes('pulang cepat')) {
                     point = 1.0;
-                } else if (desc.includes('pulang cepat')) {
-                    point = 0.95;
                 } else if (att.checkInTime && att.checkOutTime) {
-                    let isLate = false;
-                    if (schoolConfig?.useTimeValidation && schoolConfig?.checkInEndTime) {
-                        const [h, m] = schoolConfig.checkInEndTime.split(':').map(Number);
-                        const deadline = setMinutes(setHours(startOfDay(att.checkInTime.toDate()), h), m);
-                        if (att.checkInTime.toDate() > deadline) isLate = true;
-                    }
-                    point = isLate ? 0.95 : 1.0;
+                    point = 1.0;
                 } else if (att.checkInTime || att.checkOutTime) {
                     point = 0.5;
                 }
@@ -215,15 +205,9 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                 const dayStr = format(day, 'yyyy-MM-dd');
                 if (workingDaysSet.has(dayStr) && !processedDates.has(dayStr)) {
                     let point = 0;
-                    if (leave.type === 'Sakit') {
-                        point = 0.9;
-                    } else if (leave.type === 'Izin' || leave.type === 'Izin Pribadi') {
-                        point = 0.7;
-                    } else if (leave.type === 'Dinas' || leave.type === 'Dinas Pagi' || leave.type === 'Dinas Siang') {
-                        point = 1.0;
-                    } else if (leave.type === 'Pulang Cepat') {
-                        point = 0.95;
-                    }
+                    if (leave.type === 'Sakit') point = 0.9;
+                    else if (leave.type === 'Izin' || leave.type === 'Izin Pribadi') point = 0.7;
+                    else if (leave.type.includes('Dinas') || leave.type === 'Pulang Cepat') point = 1.0;
                     totalPoints += point;
                     processedDates.add(dayStr);
                 }
@@ -292,9 +276,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
         const attendanceMap = new Map();
         attendanceHistory.forEach((rec: any) => {
             const dateStr = rec.date || (rec.checkInTime ? format(rec.checkInTime.toDate(), 'yyyy-MM-dd') : null);
-            if (dateStr) {
-                attendanceMap.set(dateStr, rec);
-            }
+            if (dateStr) attendanceMap.set(dateStr, rec);
         });
 
         const leaveMap = new Map<string, any>();
@@ -325,18 +307,17 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                 let description = attendanceRecord.reasonForUpdate || 'Kehadiran penuh';
                 description = cleanDesc(description) || 'Kehadiran penuh';
 
-                const terminalDescriptions = ['dinas pagi', 'dinas siang', 'pulang cepat'];
-                if (isManual && terminalDescriptions.includes(description.toLowerCase())) {
-                    const isCheckOutHiddenStatus = ['dinas pagi', 'dinas siang', 'pulang cepat'].includes(description.toLowerCase());
-                    const displayCheckOutTime = isCheckOutHiddenStatus ? null : checkOutTime;
-                    
-                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: displayCheckOutTime, status: description, description, manualEntry: true };
+                const specialStatuses = ['dinas pagi', 'dinas siang', 'pulang cepat'];
+                if (isManual && specialStatuses.includes(description.toLowerCase())) {
+                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: description, description, manualEntry: true };
                 }
 
-                if (!checkOutTime) {
-                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: 'Hadir', description: 'Belum absen pulang', manualEntry: isManual };
-                }
-                return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime, status: 'Hadir', description, manualEntry: isManual };
+                return { 
+                    id: attendanceRecord.id, date: day, checkInTime, checkOutTime, 
+                    status: 'Hadir', 
+                    description: !checkOutTime ? 'Belum absen pulang' : description, 
+                    manualEntry: isManual 
+                };
             }
 
             if (leaveRecord && leaveRecord.type !== 'Pulang Cepat') {
@@ -356,7 +337,6 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
             checkOutTime: item.checkOutTime ? item.checkOutTime.toISOString() : null,
         }));
     } catch (e) {
-        console.error("Error fetching report data:", e);
         return [];
     }
 }

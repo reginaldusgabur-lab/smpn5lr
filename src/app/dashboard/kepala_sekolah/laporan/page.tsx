@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -41,7 +42,6 @@ function useStaffAttendanceSummary(currentMonth: Date) {
     const [summary, setSummary] = useState<{ [key: string]: any[] }>({});
     const [isLoading, setIsLoading] = useState(true);
 
-    // FILTER: Only fetch ACTIVE users
     const usersQuery = useMemoFirebase(() => 
         query(
             collection(firestore, 'users'), 
@@ -61,109 +61,67 @@ function useStaffAttendanceSummary(currentMonth: Date) {
     useEffect(() => {
         const fetchAllData = async () => {
             if (!firestore || !user || !users || !schoolConfig || monthlyConfig === undefined) {
-                if (!isUsersLoading && !isConfigLoading && !isMonthlyConfigLoading) {
-                    setIsLoading(false);
-                }
+                if (!isUsersLoading && !isConfigLoading && !isMonthlyConfigLoading) setIsLoading(false);
                 return;
             }
             
             setIsLoading(true);
+            const start = startOfMonth(currentMonth);
+            const end = endOfMonth(currentMonth);
 
-            const monthStart = startOfMonth(currentMonth);
-            const monthEnd = endOfMonth(currentMonth);
-
-            const attendanceQuery = query(collectionGroup(firestore, 'attendanceRecords'), where('checkInTime', '>=', monthStart), where('checkInTime', '<=', monthEnd));
+            const qAtt = query(collectionGroup(firestore, 'attendanceRecords'), where('checkInTime', '>=', start), where('checkInTime', '<=', end));
+            const qAttFB = query(collectionGroup(firestore, 'attendanceRecords'), where('date', '>=', format(start, 'yyyy-MM-dd')), where('date', '<=', format(end, 'yyyy-MM-dd')));
+            const qLeave = query(collectionGroup(firestore, 'leaveRequests'), where('status', '==', 'approved'));
             
-            const attendanceFallbackQuery = query(
-                collectionGroup(firestore, 'attendanceRecords'),
-                where('date', '>=', format(monthStart, 'yyyy-MM-dd')),
-                where('date', '<=', format(monthEnd, 'yyyy-MM-dd'))
-            );
+            const [snapAtt, snapAttFB, snapLeave] = await Promise.all([ getDocs(qAtt), getDocs(qAttFB), getDocs(qLeave) ]);
 
-            const leaveQuery = query(collectionGroup(firestore, 'leaveRequests'), where('status', '==', 'approved'));
-            
-            const [attendanceSnapshot, attendanceFallbackSnapshot, leaveSnapshot] = await Promise.all([ 
-                getDocs(attendanceQuery), 
-                getDocs(attendanceFallbackQuery),
-                getDocs(leaveQuery) 
-            ]);
-
-            const allAttendance = [...attendanceSnapshot.docs, ...attendanceFallbackSnapshot.docs].map(d => ({...d.data(), id: d.id, checkInTime: d.data().checkInTime?.toDate() || null }));
-            const allLeave = leaveSnapshot.docs.map(d => ({ ...d.data(), id: d.id, startDate: d.data().startDate.toDate(), endDate: d.data().endDate.toDate() }));
+            const allAttendance = [...snapAtt.docs, ...snapAttFB.docs].map(d => ({...d.data(), id: d.id }));
+            const allLeave = snapLeave.docs.map(d => ({ ...d.data(), id: d.id, startDate: d.data().startDate.toDate(), endDate: d.data().endDate.toDate() }));
 
             const offDays: number[] = schoolConfig?.offDays ?? [0, 6];
             const holidays: string[] = monthlyConfig?.holidays ?? [];
-
-            const workingDaysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd }).filter(day => !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd')));
-            const workingDaysSet = new Set(workingDaysInMonth.map(d => format(d, 'yyyy-MM-dd')));
-            
-            const totalWorkingDaysInMonth = workingDaysInMonth.length || 1;
+            const workingDays = eachDayOfInterval({ start, end }).filter(day => !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd')));
+            const workingDaysSet = new Set(workingDays.map(d => format(d, 'yyyy-MM-dd')));
 
             const userSummary = users.map((u: any) => {
-                let totalPoints = 0;
+                let points = 0;
                 let hadirCount = 0;
                 let izinCount = 0;
                 let sakitCount = 0;
                 const processedDates = new Set<string>();
 
-                // Process attendance records for this user
                 allAttendance.filter(att => att.userId === u.id).forEach((att: any) => {
-                    const attDateStr = att.date || (att.checkInTime ? format(att.checkInTime, 'yyyy-MM-dd') : null);
-                    if (attDateStr && workingDaysSet.has(attDateStr) && !processedDates.has(attDateStr)) {
-                        let point = 0;
+                    const dStr = att.date || (att.checkInTime ? format(att.checkInTime.toDate(), 'yyyy-MM-dd') : null);
+                    if (dStr && workingDaysSet.has(dStr) && !processedDates.has(dStr)) {
+                        let p = 0;
                         const desc = (att.reasonForUpdate || '').toLowerCase();
-                        
-                        if (desc.includes('dinas')) {
-                            point = 1.0;
-                            hadirCount++;
-                        } else if (desc.includes('pulang cepat')) {
-                            point = 0.95;
-                            hadirCount++;
-                        } else if (att.checkInTime && att.checkOutTime) {
+                        if (desc.includes('dinas') || desc.includes('pulang cepat')) p = 1.0;
+                        else if (att.checkInTime && att.checkOutTime) {
                             let isLate = false;
                             if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
-                                const [h, m] = schoolConfig.checkInEndTime.split(':').map(Number);
-                                const deadline = setMinutes(setHours(startOfDay(att.checkInTime), h), m);
-                                if (att.checkInTime > deadline) isLate = true;
+                                const deadline = setMinutes(setHours(startOfDay(att.checkInTime.toDate()), parseInt(schoolConfig.checkInEndTime.split(':')[0])), parseInt(schoolConfig.checkInEndTime.split(':')[1]));
+                                if (att.checkInTime.toDate() > deadline) isLate = true;
                             }
-                            point = isLate ? 0.95 : 1.0;
-                            hadirCount++;
-                        } else if (att.checkInTime || att.checkOutTime) {
-                            point = 0.5;
-                            hadirCount++;
-                        }
-                        totalPoints += point;
-                        processedDates.add(attDateStr);
+                            p = isLate ? 0.95 : 1.0;
+                        } else p = 0.5;
+                        points += p; hadirCount++; processedDates.add(dStr);
                     }
                 });
 
-                // Process leave records for this user
                 allLeave.filter(l => l.userId === u.id).forEach(leave => {
                     eachDayOfInterval({ start: leave.startDate, end: leave.endDate }).forEach(day => {
-                        const dayStr = format(day, 'yyyy-MM-dd');
-                        if (workingDaysSet.has(dayStr) && !processedDates.has(dayStr)) {
-                            let point = 0;
-                            if (leave.type === 'Sakit') {
-                                point = 0.9;
-                                sakitCount++;
-                            } else if (leave.type === 'Izin' || leave.type === 'Izin Pribadi') {
-                                point = 0.7;
-                                izinCount++;
-                            } else if (leave.type === 'Dinas' || leave.type === 'Dinas Pagi' || leave.type === 'Dinas Siang') {
-                                point = 1.0;
-                                hadirCount++;
-                            } else if (leave.type === 'Pulang Cepat') {
-                                point = 0.95;
-                                hadirCount++;
-                            }
-                            totalPoints += point;
-                            processedDates.add(dayStr);
+                        const dStr = format(day, 'yyyy-MM-dd');
+                        if (workingDaysSet.has(dStr) && !processedDates.has(dStr)) {
+                            let p = 0;
+                            if (leave.type === 'Sakit') { p = 0.9; sakitCount++; }
+                            else if (leave.type === 'Izin' || leave.type === 'Izin Pribadi') { p = 0.7; izinCount++; }
+                            else { p = 1.0; hadirCount++; }
+                            points += p; processedDates.add(dStr);
                         }
                     });
                 });
 
-                const presentasi = Math.min((totalPoints / totalWorkingDaysInMonth) * 100, 100).toFixed(1) + '%';
-
+                const presentasi = Math.min((points / (workingDays.length || 1)) * 100, 100).toFixed(1) + '%';
                 return { ...u, hadir: hadirCount, izin: izinCount, sakit: sakitCount, alpa: 0, terlambat: 0, presentasi };
             });
 
@@ -173,16 +131,14 @@ function useStaffAttendanceSummary(currentMonth: Date) {
                 return acc;
             }, {});
             
-            if(groupedByRole.guru) groupedByRole.guru.sort((a:any,b:any) => (a.sequenceNumber || 999) - (b.sequenceNumber || 999));
-            if(groupedByRole.pegawai) groupedByRole.pegawai.sort((a:any,b:any) => (a.sequenceNumber || 999) - (b.sequenceNumber || 999));
-            if(groupedByRole.kepala_sekolah) groupedByRole.kepala_sekolah.sort((a:any,b:any) => (a.sequenceNumber || 999) - (b.sequenceNumber || 999));
+            ['guru', 'pegawai', 'kepala_sekolah'].forEach(role => {
+                if(groupedByRole[role]) groupedByRole[role].sort((a:any, b:any) => (a.sequenceNumber || 999) - (b.sequenceNumber || 999));
+            });
 
             setSummary(groupedByRole);
             setIsLoading(false);
         };
-
         fetchAllData();
-
     }, [firestore, user, users, schoolConfig, monthlyConfig, currentMonth, isUsersLoading, isConfigLoading, isMonthlyConfigLoading]);
 
     return { summary, isLoading, schoolConfig };
@@ -190,23 +146,7 @@ function useStaffAttendanceSummary(currentMonth: Date) {
 
 const StaffReportTable = ({ data, isLoading, currentMonth }: { data: any[], isLoading: boolean, currentMonth: Date }) => {
     const router = useRouter();
-    const cols = 11; 
-
-    const handleViewDetails = (userId: string) => {
-        const monthStr = format(currentMonth, 'yyyy-MM');
-        router.push(`/dashboard/laporan/${userId}?month=${monthStr}`);
-    };
-    
-    if (isLoading) {
-        return (
-             <div className="rounded-md border">
-                <Table>
-                    <TableHeader><TableRow>{[...Array(cols)].map((_, i) => <TableHead key={i}><Skeleton className="h-5 w-full" /></TableHead>)}</TableRow></TableHeader>
-                    <TableBody>{[...Array(10)].map((_, i) => (<TableRow key={i}>{[...Array(cols)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}</TableRow>))}</TableBody>
-                </Table>
-            </div>
-        );
-    }
+    if (isLoading) return <div className="rounded-md border"><Table><TableHeader><TableRow>{[...Array(11)].map((_, i) => <TableHead key={i}><Skeleton className="h-5 w-full" /></TableHead>)}</TableRow></TableHeader><TableBody>{[...Array(10)].map((_, i) => (<TableRow key={i}>{[...Array(11)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}</TableRow>))}</TableBody></Table></div>;
 
     return (
         <div className="rounded-md border">
@@ -238,19 +178,13 @@ const StaffReportTable = ({ data, isLoading, currentMonth }: { data: any[], isLo
                                 <TableCell className="text-center font-bold">{user.presentasi}</TableCell>
                                 <TableCell className="text-right">
                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => handleViewDetails(user.id)}>Lihat Detail</DropdownMenuItem>
-                                        </DropdownMenuContent>
+                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end"><DropdownMenuItem onClick={() => router.push(`/dashboard/laporan/${user.id}?month=${format(currentMonth, 'yyyy-MM')}`)}>Lihat Detail</DropdownMenuItem></DropdownMenuContent>
                                     </DropdownMenu>
                                 </TableCell>
                             </TableRow>
                         ))
-                    ) : (
-                        <TableRow><TableCell colSpan={cols} className="h-24 text-center">Tidak ada data untuk ditampilkan.</TableCell></TableRow>
-                    )}
+                    ) : <TableRow><TableCell colSpan={11} className="h-24 text-center">Tidak ada data.</TableCell></TableRow>}
                 </TableBody>
             </Table>
         </div>
@@ -263,54 +197,22 @@ function StaffReportView() {
   const [searchQuery, setSearchQuery] = useState('');
   const { summary, isLoading, schoolConfig } = useStaffAttendanceSummary(currentMonth);
 
-  const filteredData = useMemo(() => {
-    const dataForTab = summary[activeTab] || [];
-    if (!searchQuery) return dataForTab;
-    return dataForTab.filter((user: any) => user.name.toLowerCase().includes(searchQuery.toLowerCase()));
-  }, [summary, activeTab, searchQuery]);
-
-  const handleExportExcel = () => {
-    exportToExcel(summary, currentMonth, activeTab);
-  };
-
-  const handleExportPdf = () => {
-    exportToPdf(summary, currentMonth, activeTab, schoolConfig);
-  };
-  
-  const noData = !summary[activeTab] || summary[activeTab].length === 0;
   const minDate = new Date(2026, 0, 1);
-  const canGoPrev = currentMonth > minDate;
+  const filteredData = useMemo(() => (summary[activeTab] || []).filter((u: any) => u.name.toLowerCase().includes(searchQuery.toLowerCase())), [summary, activeTab, searchQuery]);
 
   return (
     <div className="flex-1 pt-2 pb-24 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="px-4 md:px-0">
-          <h1 className="text-3xl font-normal tracking-tight">Laporan Staf</h1>
-          <p className="text-muted-foreground mt-1">Rekapitulasi data kehadiran bulanan untuk Guru dan Pegawai.</p>
-        </div>
-
+        <div className="px-4 md:px-0"><h1 className="text-3xl font-normal tracking-tight">Laporan Staf</h1></div>
         <Card className="w-full">
           <CardHeader>
              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                <div>
-                    <CardTitle className="font-normal">Rekapitulasi Kehadiran</CardTitle>
-                    <CardDescription>Pilih kategori staf dan bulan untuk melihat laporan.</CardDescription>
-                </div>
+                <div><CardTitle className="font-normal">Rekapitulasi Kehadiran</CardTitle><CardDescription>Pilih kategori staf dan bulan untuk melihat laporan.</CardDescription></div>
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                         <Button variant="outline" className="w-full sm:w-auto font-normal">
-                            <Download className="mr-2 h-4 w-4" />
-                            Unduh Laporan
-                            <ChevronDown className="ml-2 h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="outline" className="w-full sm:w-auto font-normal"><Download className="mr-2 h-4 w-4" />Unduh Laporan<ChevronDown className="ml-2 h-4 w-4" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={handleExportExcel} disabled={isLoading || noData}>
-                            Unduh Excel
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleExportPdf} disabled={isLoading || noData || !schoolConfig}>
-                            Unduh PDF
-                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => exportToExcel(summary, currentMonth, activeTab)} disabled={isLoading}>Unduh Excel</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => exportToPdf(summary, currentMonth, activeTab, schoolConfig)} disabled={isLoading || !schoolConfig}>Unduh PDF</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -318,29 +220,12 @@ function StaffReportView() {
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-                    <TabsList className="overflow-x-auto whitespace-nowrap">
-                        <TabsTrigger value="guru">Data Guru</TabsTrigger>
-                        <TabsTrigger value="pegawai">Data Pegawai</TabsTrigger>
-                        <TabsTrigger value="kepala_sekolah">Kepala Sekolah</TabsTrigger>
-                    </TabsList>
+                    <TabsList className="overflow-x-auto whitespace-nowrap"><TabsTrigger value="guru">Data Guru</TabsTrigger><TabsTrigger value="pegawai">Data Pegawai</TabsTrigger><TabsTrigger value="kepala_sekolah">Kepala Sekolah</TabsTrigger></TabsList>
                     <div className="flex w-full items-center gap-2 md:w-auto">
-                        <Button 
-                            variant="outline" 
-                            size="icon" 
-                            onClick={() => setCurrentMonth(prev => {
-                                const n = subMonths(prev, 1);
-                                return n < minDate ? prev : n;
-                            })} 
-                            disabled={isLoading || !canGoPrev}
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
+                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(prev => subMonths(prev, 1))} disabled={currentMonth <= minDate}><ChevronLeft className="h-4 w-4" /></Button>
                         <span className="font-semibold text-center w-32 capitalize">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
-                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} disabled={isSameMonth(currentMonth, new Date())}><ChevronRight className="h-4 w-4" /></Button>
-                        <div className="relative w-full md:w-auto">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Cari nama..." className="pl-8 w-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                        </div>
+                        <Button variant="outline" size="icon" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isSameMonth(currentMonth, new Date())}><ChevronRight className="h-4 w-4" /></Button>
+                        <div className="relative w-full md:w-auto"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Cari nama..." className="pl-8 w-full" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
                     </div>
                 </div>
                 <TabsContent value="guru"><StaffReportTable data={filteredData} isLoading={isLoading} currentMonth={currentMonth} /></TabsContent>
@@ -358,26 +243,15 @@ export default function HeadmasterStaffReportPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
-
-    const userDocRef = useMemoFirebase(() => {
-        if (!user) return null;
-        return doc(firestore, 'users', user.uid);
-    }, [firestore, user]);
-    const { data: userData, isLoading: isUserDataLoading } = useDoc(user, userDocRef);
-
-    const isLoadingPage = isUserLoading || isUserDataLoading;
-    const isHeadmaster = !isLoadingPage && userData?.role === 'kepala_sekolah';
+    const { data: userData, isLoading: isUserDataLoading } = useDoc(user, useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]));
 
     useEffect(() => {
-        if (!isLoadingPage) {
-            if (!user) { router.replace('/'); }
-            else if (!isHeadmaster) { router.replace('/dashboard'); }
+        if (!isUserLoading && !isUserDataLoading) {
+            if (!user) router.replace('/');
+            else if (userData?.role !== 'kepala_sekolah') router.replace('/dashboard');
         }
-    }, [isLoadingPage, isHeadmaster, user, router]);
+    }, [isUserLoading, isUserDataLoading, user, userData, router]);
 
-    if (isLoadingPage || !isHeadmaster) {
-        return <div className="flex items-center justify-center h-48"><Loader2 className="h-8 w-8 animate-spin" /></div>;
-    }
-    
+    if (isUserLoading || isUserDataLoading || userData?.role !== 'kepala_sekolah') return <div className="flex items-center justify-center h-48"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     return <StaffReportView />;
 }

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
@@ -29,32 +30,10 @@ import { cn } from '@/lib/utils';
 const safeFormat = (dateInput: any, formatString: string): string => {
     if (!dateInput) return '-';
     let date: Date;
-    if (typeof dateInput === 'string') {
-        date = parseISO(dateInput);
-    } else if (dateInput.toDate) {
-        date = dateInput.toDate();
-    } else {
-        date = new Date(dateInput);
-    }
+    if (typeof dateInput === 'string') date = parseISO(dateInput);
+    else if (dateInput.toDate) date = dateInput.toDate();
+    else date = new Date(dateInput);
     return isValid(date) ? format(date, formatString, { locale: id }) : '-';
-};
-
-const getRandomTime = (baseDate: Date, startTimeStr: string, endTimeStr: string): Date => {
-    const [startH, startM] = startTimeStr.split(':').map(Number);
-    const [endH, endM] = endTimeStr.split(':').map(Number);
-    const startDate = new Date(baseDate.getTime());
-    startDate.setHours(startH, startM, 0, 0);
-    const endDate = new Date(baseDate.getTime());
-    endDate.setHours(endH, endM, 0, 0);
-    
-    if (endDate.getTime() <= startDate.getTime()) {
-        endDate.setDate(endDate.getDate() + 1);
-    }
-    
-    const randomTimestamp = startDate.getTime() + Math.random() * (endDate.getTime() - startDate.getTime());
-    const res = new Date(randomTimestamp);
-    res.setSeconds(Math.floor(Math.random() * 60));
-    return res;
 };
 
 export default function UserReportDetailPage() {
@@ -108,47 +87,40 @@ export default function UserReportDetailPage() {
         return () => { isMounted.current = false; };
     }, [fetchData]);
 
-    const changeMonth = (amount: number) => {
-        setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + amount, 1));
-    };
-
     const handleStatusChange = async (dateStr: string, newStatus: string, reason: string) => {
         if (!currentUser || !firestore || isMutating || !schoolConfigData) return;
         setIsMutating(true);
         try {
             const targetDate = parseISO(dateStr);
             const batch = writeBatch(firestore);
+            const todayStr = format(targetDate, 'yyyy-MM-dd');
             
-            if (newStatus === 'Dinas Pagi' || newStatus === 'Dinas Siang' || newStatus === 'Pulang Cepat') {
+            if (['Dinas Pagi', 'Dinas Siang', 'Pulang Cepat'].includes(newStatus)) {
                 const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
-                const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
+                const q = query(attendanceRef, where('date', '==', todayStr));
                 const snap = await getDocs(q);
                 
-                const outStart = schoolConfigData.checkOutStartTime || '14:00';
-                const outEnd = schoolConfigData.checkOutEndTime || '16:00';
                 const inEnd = schoolConfigData.checkInEndTime || '07:30';
+                const [h, m] = inEnd.split(':').map(Number);
+                const limitIn = setMinutes(setHours(startOfDay(targetDate), h), m);
                 
                 let dataToSave: any = {
-                    userId, date: format(targetDate, 'yyyy-MM-dd'),
+                    userId, date: todayStr,
                     manualEntry: true, reasonForUpdate: reason,
-                    updatedBy: currentUser.uid, updatedAt: serverTimestamp()
+                    updatedBy: currentUser.uid, updatedAt: serverTimestamp(),
+                    checkOutTime: null 
                 };
 
                 const existingItem = monthlyReportData.find(d => d.date === dateStr);
 
                 if (newStatus === 'Dinas Pagi') {
                     dataToSave.checkInTime = null;
-                    dataToSave.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, outStart, outEnd));
                 } else {
                     if (existingItem?.checkInTime) {
                         dataToSave.checkInTime = Timestamp.fromDate(parseISO(existingItem.checkInTime));
                     } else {
-                        const [h, m] = inEnd.split(':').map(Number);
-                        const baseLimit = setMinutes(setHours(startOfDay(targetDate), h), m);
-                        const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
-                        dataToSave.checkInTime = Timestamp.fromDate(new Date(baseLimit.getTime() - randomMs));
+                        dataToSave.checkInTime = Timestamp.fromDate(new Date(limitIn.getTime() - Math.floor(Math.random() * 5 * 60 * 1000)));
                     }
-                    dataToSave.checkOutTime = null; 
                 }
 
                 if (!snap.empty) batch.update(snap.docs[0].ref, dataToSave);
@@ -156,10 +128,10 @@ export default function UserReportDetailPage() {
             } else {
                 const leaveRef = collection(firestore, 'users', userId, 'leaveRequests');
                 batch.set(doc(leaveRef), {
-                    userId, type: newStatus === 'Izin Pribadi' ? 'Izin' : newStatus, status: 'approved',
-                    reason: reason, startDate: Timestamp.fromDate(startOfDay(targetDate)),
+                    userId, type: newStatus.includes('Izin') ? 'Izin' : newStatus, status: 'approved',
+                    reason, startDate: Timestamp.fromDate(startOfDay(targetDate)),
                     endDate: Timestamp.fromDate(endOfDay(targetDate)), createdAt: serverTimestamp(),
-                    approvedBy: currentUser.uid, approvedAt: serverTimestamp(), createdBy: currentUser.uid,
+                    approvedBy: currentUser.uid, approvedAt: serverTimestamp()
                 });
             }
 
@@ -167,135 +139,98 @@ export default function UserReportDetailPage() {
             invalidateCache();
             toast({ title: 'Berhasil', description: `Status diperbarui menjadi ${reason}.` });
             fetchData();
-        } catch (err) {
-            toast({ variant: 'destructive', title: 'Gagal', description: 'Terjadi kesalahan sistem.' });
-        } finally {
-            setIsMutating(false);
-        }
-    };
-
-    const handleSetLate = async (item: MonthlyReportData) => {
-        if (!currentUser || !firestore || !schoolConfigData || isMutating) return;
-        setIsMutating(true);
-        try {
-            const now = new Date();
-            const targetDate = parseISO(item.date);
-            const inEnd = schoolConfigData.checkInEndTime || '08:00';
-            const [endH, endM] = inEnd.split(':').map(Number);
-            
-            const baseLateTime = setMinutes(setHours(startOfDay(targetDate), endH), endM);
-            const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
-            const realInTime = new Date(baseLateTime.getTime() + randomMs);
-
-            const [outH_threshold, outM_threshold] = (schoolConfigData.checkOutStartTime || '14:00').split(':').map(Number);
-            const checkOutThreshold = setMinutes(setHours(startOfDay(targetDate), outH_threshold), outM_threshold);
-            
-            const shouldFillCheckOut = isBefore(startOfDay(targetDate), startOfDay(now)) || now >= checkOutThreshold;
-
-            const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
-            const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
-            const snap = await getDocs(q);
-
-            const data: any = {
-                userId, date: format(targetDate, 'yyyy-MM-dd'),
-                checkInTime: Timestamp.fromDate(realInTime),
-                manualEntry: true, reasonForUpdate: 'Terlambat',
-                updatedBy: currentUser.uid, updatedAt: serverTimestamp()
-            };
-
-            if (item.checkOutTime) {
-                data.checkOutTime = Timestamp.fromDate(parseISO(item.checkOutTime));
-            } else if (shouldFillCheckOut) {
-                const outStart = schoolConfigData.checkOutStartTime || '14:00';
-                const outEnd = schoolConfigData.checkOutEndTime || '16:00';
-                data.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, outStart, outEnd));
-            }
-
-            if (!snap.empty) await writeBatch(firestore).update(snap.docs[0].ref, data).commit();
-            else await writeBatch(firestore).set(doc(attendanceRef), data).commit();
-
-            invalidateCache();
-            toast({ title: 'Berhasil', description: 'Ditandai sebagai terlambat.' });
-            fetchData();
-        } catch (err) {
-            toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal memperbarui data.' });
-        } finally {
-            setIsMutating(false);
-        }
+        } catch (err) { toast({ variant: 'destructive', title: 'Gagal', description: 'Terjadi kesalahan sistem.' }); }
+        finally { setIsMutating(false); }
     };
 
     const handleSetHadir = async (item: MonthlyReportData) => {
         if (!currentUser || !firestore || !schoolConfigData || isMutating) return;
         setIsMutating(true);
         try {
-            const now = new Date();
             const targetDate = parseISO(item.date);
             const batch = writeBatch(firestore);
             
             const inEnd = schoolConfigData.checkInEndTime || '07:30';
             const outStart = schoolConfigData.checkOutStartTime || '14:00';
-            const outEnd = schoolConfigData.checkOutEndTime || '16:00';
 
-            const [endH, endM] = inEnd.split(':').map(Number);
-            const baseOnTimeLimit = setMinutes(setHours(startOfDay(targetDate), endH), endM);
+            const [inH, inM] = inEnd.split(':').map(Number);
+            const limitIn = setMinutes(setHours(startOfDay(targetDate), inH), inM);
+            const [outH, outM] = outStart.split(':').map(Number);
+            const limitOut = setMinutes(setHours(startOfDay(targetDate), outH), outM);
 
-            const [outH_threshold, outM_threshold] = outStart.split(':').map(Number);
-            const checkOutThreshold = setMinutes(setHours(startOfDay(targetDate), outH_threshold), outM_threshold);
-            
-            const isCompletingOut = !!item.checkInTime;
-            const shouldFillCheckOut = isBefore(startOfDay(targetDate), startOfDay(now)) || now >= checkOutThreshold || isCompletingOut;
+            const data: any = {
+                userId, date: format(targetDate, 'yyyy-MM-dd'),
+                manualEntry: true, reasonForUpdate: 'Kehadiran penuh',
+                updatedBy: currentUser.uid, updatedAt: serverTimestamp()
+            };
+
+            if (item.checkInTime) {
+                data.checkInTime = Timestamp.fromDate(parseISO(item.checkInTime));
+            } else {
+                data.checkInTime = Timestamp.fromDate(new Date(limitIn.getTime() - Math.floor(Math.random() * 5 * 60 * 1000)));
+            }
+
+            // PATEN LOGIKA: 5 Menit SETELAH jam mulai pulang
+            const realOut = new Date(limitOut.getTime() + Math.floor(Math.random() * 5 * 60 * 1000));
+            data.checkOutTime = Timestamp.fromDate(realOut);
 
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
             const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
             const snap = await getDocs(q);
 
-            const dataToSave: any = {
-                userId: userId, date: format(targetDate, 'yyyy-MM-dd'),
-                manualEntry: true,
-                reasonForUpdate: 'Kehadiran penuh',
-                updatedBy: currentUser.uid,
-                updatedAt: serverTimestamp()
-            };
+            if (!snap.empty) batch.update(snap.docs[0].ref, data);
+            else batch.set(doc(attendanceRef), data);
 
-            if (item.checkInTime) {
-                dataToSave.checkInTime = Timestamp.fromDate(parseISO(item.checkInTime));
-            } else {
-                const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
-                dataToSave.checkInTime = Timestamp.fromDate(new Date(baseOnTimeLimit.getTime() - randomMs));
-            }
-
-            if (shouldFillCheckOut) {
-                let checkOutTime = getRandomTime(targetDate, outStart, outEnd);
-                const cIn = dataToSave.checkInTime.toDate();
-                if (checkOutTime.getTime() <= cIn.getTime()) {
-                    checkOutTime = addMinutes(cIn, 240);
-                }
-                dataToSave.checkOutTime = Timestamp.fromDate(checkOutTime);
-            } else {
-                dataToSave.checkOutTime = null;
-            }
-
-            if (!snap.empty) await batch.update(snap.docs[0].ref, dataToSave).commit();
-            else await batch.set(doc(attendanceRef), dataToSave).commit();
-
+            await batch.commit();
             invalidateCache();
             toast({ title: 'Berhasil', description: 'Kehadiran berhasil dilengkapi.' });
             fetchData();
-        } catch (err) {
-            toast({ variant: 'destructive', title: 'Gagal', description: 'Terjadi kesalahan.' });
-        } finally {
-            setIsMutating(false);
-        }
+        } catch (err) { toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal memperbarui data.' }); }
+        finally { setIsMutating(false); }
+    };
+
+    const handleSetLate = async (item: MonthlyReportData) => {
+        if (!currentUser || !firestore || !schoolConfigData || isMutating) return;
+        setIsMutating(true);
+        try {
+            const targetDate = parseISO(item.date);
+            const inEnd = schoolConfigData.checkInEndTime || '07:30';
+            const outStart = schoolConfigData.checkOutStartTime || '14:00';
+            
+            const [inH, inM] = inEnd.split(':').map(Number);
+            const limitIn = setMinutes(setHours(startOfDay(targetDate), inH), inM);
+            const [outH, outM] = outStart.split(':').map(Number);
+            const limitOut = setMinutes(setHours(startOfDay(targetDate), outH), outM);
+
+            const realIn = new Date(limitIn.getTime() + Math.floor(Math.random() * 5 * 60 * 1000));
+            const realOut = new Date(limitOut.getTime() + Math.floor(Math.random() * 5 * 60 * 1000));
+
+            const data = {
+                userId, date: format(targetDate, 'yyyy-MM-dd'),
+                checkInTime: Timestamp.fromDate(realIn),
+                checkOutTime: Timestamp.fromDate(realOut),
+                manualEntry: true, reasonForUpdate: 'Terlambat',
+                updatedBy: currentUser.uid, updatedAt: serverTimestamp()
+            };
+
+            const q = query(collection(firestore, 'users', userId, 'attendanceRecords'), where('date', '==', format(targetDate, 'yyyy-MM-dd')));
+            const snap = await getDocs(q);
+            if (!snap.empty) await writeBatch(firestore).update(snap.docs[0].ref, data).commit();
+            else await writeBatch(firestore).set(doc(collection(firestore, 'users', userId, 'attendanceRecords')), data).commit();
+
+            invalidateCache();
+            toast({ title: 'Berhasil', description: 'Ditandai sebagai terlambat.' });
+            fetchData();
+        } catch (err) { toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal memperbarui data.' }); }
+        finally { setIsMutating(false); }
     };
 
     const handleDownloadPdf = () => {
         if (!userData || monthlyReportData.length === 0) return;
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
         const centerX = pageWidth / 2;
         const margin = 14;
-        const monthName = format(currentMonth, 'MMMM yyyy', { locale: id });
         const config = schoolConfigData || ({} as any);
 
         doc.setFont('times', 'bold').setFontSize(14);
@@ -311,25 +246,20 @@ export default function UserReportDetailPage() {
 
         doc.setFont('times', 'bold').setFontSize(14);
         let currentY = 58;
-        doc.text(`LAPORAN KEHADIRAN INDIVIDU BULAN ${monthName.toUpperCase()}`, centerX, currentY, { align: 'center' });
+        doc.text(`LAPORAN KEHADIRAN INDIVIDU BULAN ${format(currentMonth, 'MMMM yyyy', { locale: id }).toUpperCase()}`, centerX, currentY, { align: 'center' });
         currentY += 15;
 
         doc.setFontSize(10).setFont('times', 'normal');
-        doc.text(`Nama`, margin, currentY);
-        doc.text(`: ${userData.name}`, margin + 40, currentY);
-        currentY += 6;
-        doc.text(`NIP`, margin, currentY);
-        doc.text(`: ${userData.nip || '-'}`, margin + 40, currentY);
-        currentY += 6;
-        doc.text(`Jabatan / Status`, margin, currentY);
+        doc.text(`Nama : ${userData.name}`, margin, currentY); currentY += 6;
+        doc.text(`NIP : ${userData.nip || '-'}`, margin, currentY); currentY += 6;
         
         const displayRole = (userData.role || 'user').replace('_', ' ').split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-        doc.text(`: ${displayRole} / ${userData.position || '-'}`, margin + 40, currentY);
+        doc.text(`Jabatan/Status : ${displayRole} / ${userData.position || '-'}`, margin, currentY);
         currentY += 10;
 
         const tableRows = monthlyReportData.map((item, index) => [
             index + 1,
-            safeFormat(item.date, 'eeee, dd MMMM yyyy'),
+            safeFormat(item.date, 'eeee, dd MMM yyyy'),
             safeFormat(item.checkInTime, 'HH:mm:ss'),
             safeFormat(item.checkOutTime, 'HH:mm:ss'),
             item.status,
@@ -341,49 +271,21 @@ export default function UserReportDetailPage() {
             head: [['No', 'Tanggal', 'Masuk', 'Pulang', 'Status', 'Keterangan']],
             body: tableRows,
             theme: 'grid',
-            styles: { font: 'times', fontSize: 9, cellPadding: 3, valign: 'middle', lineWidth: 0.1, lineColor: [150, 150, 150] },
-            headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center', fontStyle: 'bold', lineWidth: 0 },
-            columnStyles: {
-                0: { halign: 'center', cellWidth: 10 },
-                1: { halign: 'left', cellWidth: 45 },
-                2: { halign: 'center', cellWidth: 22 },
-                3: { halign: 'center', cellWidth: 22 },
-                4: { halign: 'center', cellWidth: 25 },
-            }
+            styles: { font: 'times', fontSize: 9, cellPadding: 3, valign: 'middle' },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center', fontStyle: 'bold' },
+            columnStyles: { 0: { halign: 'center', cellWidth: 10 }, 2: { halign: 'center', cellWidth: 22 }, 3: { halign: 'center', cellWidth: 22 }, 4: { halign: 'center', cellWidth: 25 } }
         });
 
-        let signY = (doc as any).lastAutoTable.finalY + 15;
-        if (signY > pageHeight - 65) { doc.addPage(); signY = 20; }
-
-        const signatureX = pageWidth - 80;
-        doc.setFontSize(10).setFont('times', 'normal');
-        doc.text(`${config.reportCity || 'Mando'}, ${format(new Date(), 'd MMMM yyyy', { locale: id })}`, signatureX, signY);
-        doc.text('Mengetahui,', signatureX, signY + 6);
-        doc.text('Kepala Sekolah', signatureX, signY + 12);
-        doc.setFont('times', 'bold');
-        doc.text(config.headmasterName || 'Lodovikus Jangkar, S.Pd.Gr', signatureX, signY + 38);
-        doc.setFont('times', 'normal');
-        doc.text(`NIP. ${config.headmasterNip || '198507272011011020'}`, signatureX, signY + 44);
-
-        doc.save(`Laporan_Individu_${userData.name.replace(/\s+/g, '_')}_${monthName.replace(' ', '_')}.pdf`);
+        doc.save(`Laporan_Individu_${userData.name.replace(/\s+/g, '_')}_${format(currentMonth, 'MMMM_yyyy', { locale: id })}.pdf`);
     };
-
-    const isAdmin = currentUser?.role === 'admin';
-    const canGoNext = !isSameMonth(currentMonth, new Date());
-    const canGoPrev = currentMonth > new Date(2026, 0, 1);
 
     return (
         <div className="flex-1 pt-2 pb-24 md:p-8">
             <div className="max-w-7xl mx-auto space-y-4">
                 <div className="px-4 md:px-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2 shadow-none" onClick={() => router.back()}>
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
                         <h1 className="text-2xl font-normal tracking-tight">Detail Laporan Kehadiran</h1>
-                    </div>
-                    <div className="h-6 flex items-center">
-                        {!userData ? <Skeleton className="h-4 w-64 ml-8 sm:ml-0" /> : <p className="text-muted-foreground ml-8 sm:ml-0 font-bold text-xs">Laporan harian untuk {userData.name}.</p>}
                     </div>
                 </div>
 
@@ -391,119 +293,96 @@ export default function UserReportDetailPage() {
                     <CardContent className="p-0">
                         <div className="p-4 space-y-4">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
-                                <div className="flex items-center bg-muted/40 rounded-2xl border border-muted-foreground/5 p-1 shrink-0">
-                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-background/50 shadow-none" onClick={() => changeMonth(-1)} disabled={isLoading || !canGoPrev}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
+                                <div className="flex items-center bg-muted/40 rounded-2xl border border-muted-foreground/5 p-1">
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={() => changeMonth(-1)} disabled={isLoading || !canGoPrev}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
                                     <div className="flex items-center gap-3 px-4">
-                                        {stats && (
-                                            <div className="flex items-center gap-1.5 pr-3 border-r border-muted-foreground/20">
-                                                <TrendingUp className="h-4 w-4 text-primary" />
-                                                <span className="text-sm font-bold text-primary">{stats.persentase}</span>
-                                            </div>
-                                        )}
-                                        <span className="font-bold text-xl text-primary tracking-tight text-center capitalize whitespace-nowrap min-w-[120px]">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
+                                        {stats && <span className="text-sm font-bold text-primary border-r border-muted-foreground/20 pr-3">{stats.persentase}</span>}
+                                        <span className="font-bold text-xl text-primary capitalize whitespace-nowrap min-w-[120px] text-center">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-background/50 shadow-none" onClick={() => changeMonth(1)} disabled={isLoading || !canGoNext}><ChevronRight className="h-5 w-5 text-primary" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={() => changeMonth(1)} disabled={isLoading || !canGoNext}><ChevronRight className="h-5 w-5 text-primary" /></Button>
                                 </div>
                             </div>
                             <div className="flex justify-center sm:justify-end">
-                                <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-normal bg-primary hover:bg-primary/90 shadow-none h-11 rounded-xl text-xs uppercase tracking-wider">
+                                <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-normal bg-primary hover:bg-primary/90 h-11 rounded-xl text-xs uppercase tracking-wider">
                                     {isLoading || isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}UNDUH PDF
                                 </Button>
                             </div>
                         </div>
 
-                        <div className="border-t border-muted-foreground/10">
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader className="bg-muted/30">
-                                        <TableRow className="border-none">
-                                            <TableHead className="w-[60px] text-center font-bold text-xs uppercase tracking-widest">No</TableHead>
-                                            <TableHead className="w-[200px] font-bold text-xs uppercase tracking-widest">Tanggal</TableHead>
-                                            <TableHead className="text-center font-bold text-xs uppercase tracking-widest">Masuk</TableHead>
-                                            <TableHead className="text-center font-bold text-xs uppercase tracking-widest">Pulang</TableHead>
-                                            <TableHead className="text-center font-bold text-xs uppercase tracking-widest">Status</TableHead>
-                                            <TableHead className="font-bold text-xs uppercase tracking-widest">Keterangan</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {isLoading ? (
-                                            [...Array(8)].map((_, i) => (
-                                                <TableRow key={i} className="border-muted-foreground/5">
-                                                    <TableCell><Skeleton className="h-4 w-4 mx-auto" /></TableCell>
-                                                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                                                    <TableCell><Skeleton className="h-4 w-16 mx-auto" /></TableCell>
-                                                    <TableCell><Skeleton className="h-4 w-16 mx-auto" /></TableCell>
-                                                    <TableCell><Skeleton className="h-5 w-20 mx-auto rounded-full" /></TableCell>
-                                                    <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                        <div className="border-t border-muted-foreground/10 overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-muted/30">
+                                    <TableRow className="border-none">
+                                        <TableHead className="w-[60px] text-center font-bold text-[10px] uppercase tracking-widest">No</TableHead>
+                                        <TableHead className="w-[200px] font-bold text-[10px] uppercase tracking-widest">Tanggal</TableHead>
+                                        <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest">Masuk</TableHead>
+                                        <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest">Pulang</TableHead>
+                                        <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest">Status</TableHead>
+                                        <TableHead className="font-bold text-[10px] uppercase tracking-widest">Keterangan</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {isLoading ? (
+                                        [...Array(8)].map((_, i) => (
+                                            <TableRow key={i} className="border-muted-foreground/5">
+                                                <TableCell><Skeleton className="h-4 w-4 mx-auto" /></TableCell>
+                                                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                                                <TableCell><Skeleton className="h-4 w-16 mx-auto" /></TableCell>
+                                                <TableCell><Skeleton className="h-4 w-16 mx-auto" /></TableCell>
+                                                <TableCell><Skeleton className="h-5 w-20 mx-auto rounded-full" /></TableCell>
+                                                <TableCell><Skeleton className="h-4 w-full" /></TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : monthlyReportData.length > 0 ? (
+                                        monthlyReportData.map((item, index) => {
+                                            const isAlpa = item.status === 'Alpa';
+                                            const hasIn = !!item.checkInTime;
+                                            const hasOut = !!item.checkOutTime;
+
+                                            return (
+                                                <TableRow key={item.id} className={cn("border-muted-foreground/5 hover:bg-muted/20 transition-colors", isAlpa && "bg-destructive/5")}>
+                                                    <TableCell className='text-center font-bold text-muted-foreground text-sm'>{index + 1}</TableCell>
+                                                    <TableCell className="whitespace-nowrap font-bold text-sm">{safeFormat(item.date, 'eeee, dd MMM yyyy')}</TableCell>
+                                                    <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkInTime, 'HH:mm:ss')}</TableCell>
+                                                    <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkOutTime, 'HH:mm:ss')}</TableCell>
+                                                    <TableCell className="text-center">
+                                                        {isAdmin && (isAlpa || !hasOut) ? (
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button variant="outline" size="sm" className={cn("font-bold text-[9px] h-7 rounded-lg shadow-none", isAlpa ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200')}>
+                                                                        {isAlpa ? 'Alpa' : 'Hadir'} <MoreVertical className="h-3 w-3 ml-1" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border-none p-2">
+                                                                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2 opacity-50">{hasIn ? 'Koreksi Pulang' : 'Koreksi Hadir'}</DropdownMenuLabel>
+                                                                    <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetHadir(item)}>{hasIn ? 'Lengkapi absen pulang' : 'Jadikan Hadir'}</DropdownMenuItem>
+                                                                    {!hasIn && <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetLate(item)}>Set Terlambat</DropdownMenuItem>}
+                                                                    <DropdownMenuSeparator className='my-1.5 opacity-50' />
+                                                                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2 opacity-50">Ubah Status</DropdownMenuLabel>
+                                                                    {!hasIn && (
+                                                                        <>
+                                                                            <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleStatusChange(item.date, 'Sakit', 'Sakit')}>Sakit</DropdownMenuItem>
+                                                                            <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleStatusChange(item.date, 'Izin Pribadi', 'Izin Pribadi')}>Izin</DropdownMenuItem>
+                                                                            <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleStatusChange(item.date, 'Dinas Pagi', 'Dinas Pagi')}>Dinas Pagi</DropdownMenuItem>
+                                                                        </>
+                                                                    )}
+                                                                    <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleStatusChange(item.date, 'Dinas Siang', 'Dinas Siang')}>Dinas Siang</DropdownMenuItem>
+                                                                    <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleStatusChange(item.date, 'Pulang Cepat', 'Pulang Cepat')}>Pulang Cepat</DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        ) : (
+                                                            <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold", item.status === 'Hadir' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700')}>
+                                                                {item.status}
+                                                            </span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-[11px] text-muted-foreground font-bold italic">{item.description || '-'}</TableCell>
                                                 </TableRow>
-                                            ))
-                                        ) : error ? (
-                                            <TableRow><TableCell colSpan={6} className="h-48 text-center text-destructive font-bold"><p>{error}</p></TableCell></TableRow>
-                                        ) : monthlyReportData.length > 0 ? (
-                                            monthlyReportData.map((item, index) => {
-                                                const hasIn = !!item.checkInTime;
-                                                const hasOut = !!item.checkOutTime;
-                                                const isAlpa = item.status === 'Alpa';
-
-                                                return (
-                                                    <TableRow key={item.id} className={cn("border-muted-foreground/5 hover:bg-muted/20 transition-colors", item.status === 'Alpa' && "bg-destructive/5")}>
-                                                        <TableCell className='text-center font-bold text-muted-foreground text-sm'>{index + 1}</TableCell>
-                                                        <TableCell className="whitespace-nowrap font-bold text-sm">{safeFormat(item.date, 'eeee, dd MMM yyyy')}</TableCell>
-                                                        <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkInTime, 'HH:mm:ss')}</TableCell>
-                                                        <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkOutTime, 'HH:mm:ss')}</TableCell>
-                                                        <TableCell className="text-center">
-                                                            {isAdmin && (isAlpa || (!hasOut && !['Dinas Siang', 'Pulang cepat', 'Dinas pagi'].includes(item.status))) ? (
-                                                                <DropdownMenu>
-                                                                    <DropdownMenuTrigger asChild>
-                                                                        <Button variant="outline" size="sm" className={cn("font-bold text-[9px] h-7 rounded-lg shadow-none", isAlpa ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200')}>
-                                                                            {isAlpa ? 'Alpa' : item.status} <MoreVertical className="h-3 w-3 ml-1" />
-                                                                        </Button>
-                                                                    </DropdownMenuTrigger>
-                                                                    <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border-none p-2">
-                                                                        <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground px-3 py-2 opacity-50">
-                                                                            {hasIn ? 'Koreksi Pulang' : 'Koreksi Hadir'}
-                                                                        </DropdownMenuLabel>
-                                                                        
-                                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleSetHadir(item)}>
-                                                                            {hasIn ? 'Lengkapi absen pulang' : 'Jadikan Hadir'}
-                                                                        </DropdownMenuItem>
-
-                                                                        {!hasIn && (
-                                                                            <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleSetLate(item)}>
-                                                                                Set Terlambat
-                                                                            </DropdownMenuItem>
-                                                                        )}
-                                                                        
-                                                                        <DropdownMenuSeparator className='my-1.5 opacity-50' />
-                                                                        
-                                                                        <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground px-3 py-2 opacity-50">Ubah Status</DropdownMenuLabel>
-                                                                        
-                                                                        {!hasIn && (
-                                                                            <>
-                                                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Sakit', 'Sakit')}>Sakit</DropdownMenuItem>
-                                                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Izin Pribadi', 'Izin Pribadi')}>Izin</DropdownMenuItem>
-                                                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Dinas Pagi', 'Dinas Pagi')}>Dinas Pagi</DropdownMenuItem>
-                                                                            </>
-                                                                        )}
-                                                                        
-                                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Dinas Siang', 'Dinas Siang')}>Dinas Siang</DropdownMenuItem>
-                                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Pulang Cepat', 'Pulang Cepat')}>Pulang Cepat</DropdownMenuItem>
-                                                                    </DropdownMenuContent>
-                                                                </DropdownMenu>
-                                                            ) : (
-                                                                <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold", item.status === 'Hadir' ? 'bg-green-100 text-green-700' : item.status === 'Alpa' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700')}>
-                                                                    {item.status}
-                                                                </span>
-                                                            )}
-                                                        </TableCell>
-                                                        <TableCell className="text-[11px] text-muted-foreground font-bold italic">{item.description || '-'}</TableCell>
-                                                    </TableRow>
-                                                );
-                                            })
-                                        ) : <TableRow><TableCell colSpan={6} className="h-48 text-center text-muted-foreground font-bold">Tidak ada data untuk periode ini.</TableCell></TableRow>}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                                            );
+                                        })
+                                    ) : <TableRow><TableCell colSpan={6} className="h-48 text-center text-muted-foreground font-bold">Tidak ada data untuk periode ini.</TableCell></TableRow>}
+                                </TableBody>
+                            </Table>
                         </div>
                     </CardContent>
                 </Card>

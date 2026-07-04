@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -47,38 +48,29 @@ const RecentAttendanceTable = () => {
       setError(null);
       try {
         const today = new Date();
-        const startOfToday = startOfDay(today);
-        const endOfToday = endOfDay(today);
+        const todayStr = format(today, 'yyyy-MM-dd');
 
         const schoolConfigSnap = await getDoc(doc(firestore, 'schoolConfig', 'default'));
         const schoolConfig = schoolConfigSnap.data();
-        
-        const monthlyConfigId = format(today, 'yyyy-MM');
-        const monthlyConfigSnap = await getDoc(doc(firestore, 'monthlyConfigs', monthlyConfigId));
+        const monthlyConfigSnap = await getDoc(doc(firestore, 'monthlyConfigs', format(today, 'yyyy-MM')));
         const monthlyConfig = monthlyConfigSnap.data();
 
         const isHolidayToday = (() => {
             if (!schoolConfig) return false;
             if (schoolConfig.isAttendanceActive === false) return true;
-            const todayStr = format(today, 'yyyy-MM-dd');
             if (monthlyConfig?.holidays?.includes(todayStr)) return true;
             const offDays: number[] = schoolConfig.offDays ?? [0, 6];
             return offDays.includes(today.getDay());
         })();
 
         setIsHoliday(isHolidayToday);
-
         if (isHolidayToday) {
             setActivities([]);
             setIsLoading(false);
             return;
         }
 
-        const attendanceQuery = query(
-          collectionGroup(firestore, 'attendanceRecords'),
-          where('date', '==', format(today, 'yyyy-MM-dd'))
-        );
-
+        const attendanceQuery = query(collectionGroup(firestore, 'attendanceRecords'), where('date', '==', todayStr));
         const attendanceSnap = await getDocs(attendanceQuery);
         const activitiesData: Omit<Activity, 'no'>[] = [];
 
@@ -94,47 +86,35 @@ const RecentAttendanceTable = () => {
               const userData = userSnap.data();
               const checkInDate = attendanceData.checkInTime ? attendanceData.checkInTime.toDate() : null;
               const checkOutDate = attendanceData.checkOutTime ? attendanceData.checkOutTime.toDate() : null;
-              const reason = attendanceData.reasonForUpdate || '';
+              const reason = (attendanceData.reasonForUpdate || '').toLowerCase();
               
-              let statusLabel = 'Hadir';
-              if (checkOutDate) statusLabel = 'Pulang';
+              const isSpecial = reason.includes('dinas') || reason.includes('pulang cepat');
               
-              const lowReason = reason.toLowerCase();
-              const isDinasSiang = lowReason.includes('dinas siang');
-              const isPulangCepat = lowReason.includes('pulang cepat');
-              const isDinasPagi = lowReason.includes('dinas pagi');
-              
-              if (lowReason.includes('dinas')) statusLabel = reason;
-              if (isPulangCepat) statusLabel = 'Pulang cepat';
+              let statusLabel = checkOutDate ? 'Pulang' : 'Hadir';
+              if (isSpecial) statusLabel = attendanceData.reasonForUpdate;
 
               activitiesData.push({
                 name: userData.name || '-',
                 nip: userData.nip || '-',
                 rawCheckInTime: checkInDate || checkOutDate, 
                 checkInTime: checkInDate ? format(checkInDate, 'HH:mm:ss') : '-',
-                checkOutTime: (isDinasSiang || isPulangCepat || isDinasPagi) ? '-' : (checkOutDate ? format(checkOutDate, 'HH:mm:ss') : '-'),
+                checkOutTime: isSpecial ? '-' : (checkOutDate ? format(checkOutDate, 'HH:mm:ss') : '-'),
                 status: statusLabel,
-                keterangan: reason || (checkOutDate ? 'Absensi selesai' : 'Sedang bertugas'),
+                keterangan: attendanceData.reasonForUpdate || (checkOutDate ? 'Absensi selesai' : 'Sedang bertugas'),
               });
             }
           }
         }
 
         const sortedActivities = activitiesData.sort((a, b) => {
-            const timeA = a.rawCheckInTime?.getTime() || 0;
-            const timeB = b.rawCheckInTime?.getTime() || 0;
-            return timeB - timeA;
+            const tA = a.rawCheckInTime?.getTime() || 0;
+            const tB = b.rawCheckInTime?.getTime() || 0;
+            return tB - tA;
         });
 
-        const finalActivities = sortedActivities.map((activity, index) => ({
-            ...activity,
-            no: index + 1,
-        }));
-
-        setActivities(finalActivities);
-
+        setActivities(sortedActivities.map((act, i) => ({ ...act, no: i + 1 })));
       } catch (e: any) {
-        console.error("Error fetching today's activity:", e);
+        console.error("Error fetching activities:", e);
         setError("Gagal memuat aktivitas hari ini.");
       } finally {
         setIsLoading(false);
@@ -144,64 +124,41 @@ const RecentAttendanceTable = () => {
     fetchActivities();
   }, [firestore]);
 
-  const todayFormatted = format(new Date(), "d MMMM yyyy", { locale: indonesiaLocale });
-
-  const EmptyState = () => {
-    if (isHoliday) {
-        return (
-            <div className="flex flex-col items-center justify-center h-40 text-muted-foreground text-center px-4">
-                <CalendarOff className="w-10 h-10 mb-4 opacity-50" />
-                <h3 className="text-lg font-bold tracking-tight text-foreground">Hari libur</h3>
-                <p className="text-xs">Sistem absensi non-aktif hari ini.</p>
-            </div>
-        );
-    }
-    return (
-        <div className="flex flex-col items-center justify-center h-40 text-muted-foreground text-center px-4">
-            <WifiOff className="w-10 h-10 mb-4 opacity-50" />
-            <h3 className="text-lg font-bold tracking-tight text-foreground">Belum ada aktivitas</h3>
-            <p className="text-xs">Belum ada staf yang melakukan absensi masuk hari ini.</p>
-        </div>
-    );
-  }
-
   const getStatusBadgeStyle = (status: string) => {
       const s = status.toLowerCase();
-      if (s === 'pulang') return 'bg-slate-700 text-white border-none';
-      if (s.includes('dinas') || s.includes('cepat')) return 'bg-blue-800 text-white border-none';
-      return 'bg-primary text-white border-none';
+      if (s === 'pulang') return 'bg-slate-700 text-white border-none shadow-sm';
+      if (s.includes('dinas') || s.includes('cepat')) return 'bg-blue-800 text-white border-none shadow-sm';
+      return 'bg-primary text-white border-none shadow-sm';
+  }
+
+  if (isHoliday) {
+      return (
+          <Card className="border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden">
+              <CardContent className="h-40 flex flex-col items-center justify-center text-muted-foreground text-center">
+                  <CalendarOff className="w-10 h-10 mb-2 opacity-40" />
+                  <p className="text-sm font-bold uppercase tracking-widest opacity-60">Hari Libur Sekolah</p>
+              </CardContent>
+          </Card>
+      );
   }
 
   return (
     <div className="w-full space-y-4">
-      <Card className="border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden">
+      <Card className="border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden bg-card">
         <CardHeader className="p-6 border-b border-muted-foreground/5">
           <div className="flex items-start gap-3">
-            <div className="mt-1">
-              <History className="h-5 w-5 text-green-700" />
-            </div>
-            <div className="space-y-1">
-              <CardTitle className="font-bold text-base tracking-tight text-green-700">
-                Aktivitas Kehadiran
-              </CardTitle>
-              <p className="text-sm font-medium text-muted-foreground">
-                Absensi tercatat pada {todayFormatted}
-              </p>
+            <History className="h-5 w-5 text-green-700 mt-0.5" />
+            <div>
+              <CardTitle className="font-bold text-base tracking-tight text-green-700">Aktivitas Kehadiran</CardTitle>
+              <p className="text-sm font-medium text-muted-foreground">Absensi tercatat pada {format(new Date(), "d MMMM yyyy", { locale: indonesiaLocale })}</p>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center h-40 text-muted-foreground">
-              <Loader2 className="h-8 w-8 animate-spin mr-3" />
-              <span className="text-xs font-bold tracking-widest">Memuat aktivitas...</span>
+              <Loader2 className="h-8 w-8 animate-spin mr-3" /><span className="text-xs font-bold uppercase tracking-widest">Memuat...</span>
             </div>
-          ) : error ? (
-               <div className="flex flex-col items-center justify-center h-40 text-destructive text-center px-4">
-                  <AlertCircle className="w-8 h-8 mb-3" />
-                  <span className='font-bold text-xs tracking-widest'>Terjadi kesalahan</span>
-                  <span className="text-[10px]">{error}</span>
-              </div>
           ) : activities.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
@@ -215,25 +172,17 @@ const RecentAttendanceTable = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {activities.map((activity, index) => (
-                    <TableRow key={index} className="border-muted-foreground/5 hover:bg-green-500/5 transition-colors">
-                      <TableCell className="text-center font-bold text-xs text-muted-foreground">{activity.no}</TableCell>
+                  {activities.map((act) => (
+                    <TableRow key={act.no} className="border-muted-foreground/5 hover:bg-green-500/5 transition-colors">
+                      <TableCell className="text-center font-bold text-xs text-muted-foreground">{act.no}</TableCell>
                       <TableCell>
-                         <div className="font-bold text-sm text-foreground">{activity.name}</div>
-                        <div className="text-[10px] text-muted-foreground font-bold tracking-tight">{activity.nip}</div>
+                         <div className="font-bold text-sm text-foreground">{act.name}</div>
+                        <div className="text-[10px] text-muted-foreground font-bold">{act.nip}</div>
                       </TableCell>
-                      <TableCell className="text-center font-mono text-xs font-bold text-foreground">{activity.checkInTime}</TableCell>
-                      <TableCell className="text-center font-mono text-xs font-bold text-foreground">{activity.checkOutTime}</TableCell>
+                      <TableCell className="text-center font-mono text-xs font-bold">{act.checkInTime}</TableCell>
+                      <TableCell className="text-center font-mono text-xs font-bold">{act.checkOutTime}</TableCell>
                        <TableCell className="text-center">
-                        <Badge 
-                            variant="outline" 
-                            className={cn(
-                                "text-[9px] font-bold px-3 py-1 rounded-full shadow-sm",
-                                getStatusBadgeStyle(activity.status)
-                            )}
-                        >
-                            {activity.status}
-                        </Badge>
+                        <Badge variant="outline" className={cn("text-[9px] font-bold px-3 py-1 rounded-full uppercase", getStatusBadgeStyle(act.status))}>{act.status}</Badge>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -241,7 +190,10 @@ const RecentAttendanceTable = () => {
               </Table>
             </div>
           ) : (
-            <EmptyState />
+            <div className="flex flex-col items-center justify-center h-40 text-muted-foreground text-center">
+                <WifiOff className="w-10 h-10 mb-2 opacity-30" />
+                <p className="text-xs font-bold uppercase tracking-widest opacity-60">Belum ada aktivitas masuk</p>
+            </div>
           )}
         </CardContent>
       </Card>
