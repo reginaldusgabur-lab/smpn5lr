@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
@@ -140,7 +141,6 @@ export default function UserReportDetailPage() {
                     dataToSave.checkInTime = null;
                     dataToSave.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, outStart, outEnd));
                 } else if (newStatus === 'Dinas Siang') {
-                    // For Dinas Siang: Maintain or set random check-in, set checkout to NULL as requested
                     if (existingItem?.checkInTime) {
                         dataToSave.checkInTime = Timestamp.fromDate(parseISO(existingItem.checkInTime));
                     } else {
@@ -149,7 +149,7 @@ export default function UserReportDetailPage() {
                         const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                         dataToSave.checkInTime = Timestamp.fromDate(new Date(baseLimit.getTime() - randomMs));
                     }
-                    dataToSave.checkOutTime = null; // Dinas Siang: Empty check-out
+                    dataToSave.checkOutTime = null; 
                 } else { // Pulang Cepat
                     if (existingItem?.checkInTime) {
                         dataToSave.checkInTime = Timestamp.fromDate(parseISO(existingItem.checkInTime));
@@ -159,7 +159,7 @@ export default function UserReportDetailPage() {
                         const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                         dataToSave.checkInTime = Timestamp.fromDate(new Date(baseLimit.getTime() - randomMs));
                     }
-                    dataToSave.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, "11:00", "13:00"));
+                    dataToSave.checkOutTime = null; // Set to NULL for Pulang Cepat as requested
                 }
 
                 if (!snap.empty) batch.update(snap.docs[0].ref, dataToSave);
@@ -467,7 +467,7 @@ export default function UserReportDetailPage() {
                                                                 <DropdownMenu>
                                                                     <DropdownMenuTrigger asChild>
                                                                         <Button variant="outline" size="sm" className={cn("font-bold text-[9px] h-7 rounded-lg shadow-none", isAlpa ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200')}>
-                                                                            {isAlpa ? 'Alpa' : 'Hadir'} <MoreVertical className="h-3 w-3 ml-1" />
+                                                                            {isAlpa ? 'Alpa' : item.status} <MoreVertical className="h-3 w-3 ml-1" />
                                                                         </Button>
                                                                     </DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border-none p-2">
@@ -522,3 +522,4 @@ export default function UserReportDetailPage() {
         </div>
     );
 }
+

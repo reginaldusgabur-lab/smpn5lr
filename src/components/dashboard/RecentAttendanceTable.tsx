@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -84,7 +85,7 @@ const RecentAttendanceTable = () => {
 
         for (const attendanceDoc of attendanceSnap.docs) {
           const attendanceData = attendanceDoc.data();
-          const userId = attendanceDoc.ref.parent.parent?.id;
+          const userId = attendanceData.userId || attendanceDoc.ref.parent.parent?.id;
 
           if (userId) {
             const userRef = doc(firestore, 'users', userId);
@@ -98,15 +99,21 @@ const RecentAttendanceTable = () => {
               
               let statusLabel = 'Hadir';
               if (checkOutDate) statusLabel = 'Pulang';
-              if (reason.toLowerCase().includes('dinas')) statusLabel = reason;
-              if (reason.toLowerCase().includes('pulang cepat')) statusLabel = 'Pulang cepat';
+              
+              const lowReason = reason.toLowerCase();
+              const isDinasSiang = lowReason.includes('dinas siang');
+              const isPulangCepat = lowReason.includes('pulang cepat');
+              
+              if (lowReason.includes('dinas')) statusLabel = reason;
+              if (isPulangCepat) statusLabel = 'Pulang cepat';
 
               activitiesData.push({
                 name: userData.name || '-',
                 nip: userData.nip || '-',
                 rawCheckInTime: checkInDate || checkOutDate, 
                 checkInTime: checkInDate ? format(checkInDate, 'HH:mm:ss') : '-',
-                checkOutTime: checkOutDate ? format(checkOutDate, 'HH:mm:ss') : '-',
+                // Force empty check-out display for Dinas Siang and Pulang Cepat
+                checkOutTime: (isDinasSiang || isPulangCepat) ? '-' : (checkOutDate ? format(checkOutDate, 'HH:mm:ss') : '-'),
                 status: statusLabel,
                 keterangan: reason || (checkOutDate ? 'Absensi selesai' : 'Sedang bertugas'),
               });

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -121,7 +122,6 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
         const { checkInEndTime, checkOutStartTime, checkOutEndTime } = schoolConfig;
         setIsSaving(true);
         try {
-            const now = new Date();
             const batch = writeBatch(firestore);
             const recordDate = parseISO(day.date);
             const recordRef = doc(firestore, 'users', user.uid, 'attendanceRecords', day.id);
@@ -129,9 +129,6 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
             let checkInTime: Date | null = null;
             let checkOutTime: Date | null = null;
             let reasonForUpdate: string;
-
-            const [outH_threshold, outM_threshold] = (checkOutStartTime || '14:00').split(':').map(Number);
-            const checkOutThreshold = setMinutes(setHours(startOfDay(recordDate), outH_threshold), outM_threshold);
 
             const [endH, endM] = (checkInEndTime || '07:30').split(':').map(Number);
             const baseLimit = setMinutes(setHours(startOfDay(recordDate), endH), endM);
@@ -161,7 +158,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                     checkInTime = new Date(baseLimit.getTime() - randomMs);
                 }
-                checkOutTime = null; // Dinas Siang: Empty check-out
+                checkOutTime = null; // Always NULL
                 reasonForUpdate = 'Dinas siang';
             } else { // pulang-cepat
                 if (day.checkInTime) {
@@ -170,7 +167,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                     checkInTime = new Date(baseLimit.getTime() - randomMs);
                 }
-                checkOutTime = getRandomTime(recordDate, "11:00", "13:00");
+                checkOutTime = null; // Always NULL as per request
                 reasonForUpdate = 'Pulang cepat';
             }
 
@@ -267,7 +264,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Badge variant={day.status === 'Alpa' ? 'destructive' : 'secondary'} className="cursor-pointer hover:bg-muted/80 flex items-center px-3 py-1 rounded-lg text-[10px] font-bold">
-                                                        {day.status === 'Alpa' ? 'Alpa' : 'Hadir'} <MoreVertical className="h-3 w-3 ml-1" />
+                                                        {day.status === 'Alpa' ? 'Alpa' : day.status} <MoreVertical className="h-3 w-3 ml-1" />
                                                     </Badge>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border-none p-2">
