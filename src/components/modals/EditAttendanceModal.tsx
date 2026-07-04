@@ -138,13 +138,15 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
             const baseLimit = setMinutes(setHours(startOfDay(recordDate), endH), endM);
 
             if (type === 'hadir') {
-                // 5 Menit SEBELUM batas (07:25 - 07:30)
-                const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
-                checkInTime = new Date(baseLimit.getTime() - randomMs);
+                if (day.checkInTime) {
+                    checkInTime = parseISO(day.checkInTime);
+                } else {
+                    const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
+                    checkInTime = new Date(baseLimit.getTime() - randomMs);
+                }
                 checkOutTime = shouldFillCheckOut ? getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00') : null;
                 reasonForUpdate = 'Kehadiran penuh';
             } else if (type === 'terlambat') {
-                // 5 Menit SESUDAH batas (07:30 - 07:35)
                 const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                 checkInTime = new Date(baseLimit.getTime() + randomMs);
                 checkOutTime = shouldFillCheckOut ? getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00') : null;
@@ -154,13 +156,21 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 checkOutTime = getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00');
                 reasonForUpdate = 'Dinas pagi';
             } else if (type === 'dinas-siang') {
-                const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
-                checkInTime = new Date(baseLimit.getTime() - randomMs);
+                if (day.checkInTime) {
+                    checkInTime = parseISO(day.checkInTime);
+                } else {
+                    const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
+                    checkInTime = new Date(baseLimit.getTime() - randomMs);
+                }
                 checkOutTime = null;
                 reasonForUpdate = 'Dinas siang';
             } else { // pulang-cepat
-                const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
-                checkInTime = new Date(baseLimit.getTime() - randomMs);
+                if (day.checkInTime) {
+                    checkInTime = parseISO(day.checkInTime);
+                } else {
+                    const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
+                    checkInTime = new Date(baseLimit.getTime() - randomMs);
+                }
                 checkOutTime = null;
                 reasonForUpdate = 'Pulang cepat';
             }
@@ -213,11 +223,13 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 if (!day.checkInTime) {
                     const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                     dataToUpdate.checkInTime = Timestamp.fromDate(new Date(baseLimit.getTime() - randomMs));
+                } else {
+                    dataToUpdate.checkInTime = Timestamp.fromDate(parseISO(day.checkInTime));
                 }
 
                 if (shouldFillCheckOut) {
                     let checkOutTime = getRandomTime(recordDate, schoolConfig.checkOutStartTime || '14:00', schoolConfig.checkOutEndTime || '16:00');
-                    const cIn = day.checkInTime ? parseISO(day.checkInTime) : baseLimit;
+                    const cIn = dataToUpdate.checkInTime.toDate();
                     if (checkOutTime.getTime() <= cIn.getTime()) {
                         checkOutTime = addMinutes(cIn, 60);
                     }
@@ -249,39 +261,60 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     <div className="py-4">
                         <DialogDescription className="mb-4 text-sm font-bold text-muted-foreground">Pilih data untuk diperbaiki atau ubah status alpa secara langsung.</DialogDescription>
                         <div className="max-h-[300px] overflow-y-auto -mr-2 pr-2 space-y-2">
-                            {problematicDays.map(day => (
-                                <div key={day.id} className="flex items-center gap-3 p-3 rounded-xl transition-colors hover:bg-muted/50 border border-muted-foreground/5">
-                                    {day.status === 'Alpa' ? (
-                                        <div className="p-1 rounded-full bg-destructive/10"><AlertTriangle className="h-4 w-4 text-destructive" /></div>
-                                    ) : (
-                                        <Checkbox id={day.id} checked={!!selectedDays[day.id]} onCheckedChange={() => handleSelectDay(day.id)} className="rounded-md" />
-                                    )}
-                                    <label htmlFor={day.id} className="text-sm font-bold grow cursor-pointer">{format(parseISO(day.date), 'eeee, d MMM yyyy', { locale: id })}</label>
-                                    {day.status === 'Alpa' ? (
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Badge variant="destructive" className="cursor-pointer hover:bg-destructive/80 flex items-center px-3 py-1 rounded-lg text-[10px] font-bold">Alpa <MoreVertical className="h-3 w-3 ml-1" /></Badge>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border-none p-2">
-                                                <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2 opacity-50">Set Hadir (±5 Menit)</DropdownMenuLabel>
-                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'hadir')}>Jadikan Hadir</DropdownMenuItem>
-                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'terlambat')}>Set Terlambat</DropdownMenuItem>
-                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'dinas-pagi')}>Dinas Pagi</DropdownMenuItem>
-                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'dinas-siang')}>Dinas Siang</DropdownMenuItem>
-                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'pulang-cepat')}>Pulang Cepat</DropdownMenuItem>
-                                                <DropdownMenuSeparator className="my-1.5 opacity-50" />
-                                                <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2 opacity-50">Set Izin</DropdownMenuLabel>
-                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToLeave(day, 'Sakit')}>Set Sakit</DropdownMenuItem>
-                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToLeave(day, 'Izin')}>Set Izin</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    ) : (
-                                        <Badge variant="secondary" className="whitespace-nowrap rounded-lg text-[10px] font-bold px-3 py-1 bg-amber-50 text-amber-700 border-amber-200">
-                                            {day.description}
-                                        </Badge>
-                                    )}
-                                </div>
-                            ))}
+                            {problematicDays.map(day => {
+                                const hasIn = !!day.checkInTime;
+                                return (
+                                    <div key={day.id} className="flex items-center gap-3 p-3 rounded-xl transition-colors hover:bg-muted/50 border border-muted-foreground/5">
+                                        {day.status === 'Alpa' ? (
+                                            <div className="p-1 rounded-full bg-destructive/10"><AlertTriangle className="h-4 w-4 text-destructive" /></div>
+                                        ) : (
+                                            <Checkbox id={day.id} checked={!!selectedDays[day.id]} onCheckedChange={() => handleSelectDay(day.id)} className="rounded-md" />
+                                        )}
+                                        <label htmlFor={day.id} className="text-sm font-bold grow cursor-pointer">{format(parseISO(day.date), 'eeee, d MMM yyyy', { locale: id })}</label>
+                                        {day.status === 'Alpa' || !day.checkOutTime ? (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Badge variant={day.status === 'Alpa' ? 'destructive' : 'secondary'} className="cursor-pointer hover:bg-muted/80 flex items-center px-3 py-1 rounded-lg text-[10px] font-bold">
+                                                        {day.status === 'Alpa' ? 'Alpa' : 'Hadir'} <MoreVertical className="h-3 w-3 ml-1" />
+                                                    </Badge>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border-none p-2">
+                                                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2 opacity-50">
+                                                        {hasIn ? 'Koreksi Pulang' : 'Koreksi Hadir'}
+                                                    </DropdownMenuLabel>
+                                                    
+                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'hadir')}>
+                                                        {hasIn ? 'Lengkapi absen pulang' : 'Jadikan Hadir'}
+                                                    </DropdownMenuItem>
+
+                                                    {!hasIn && (
+                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'terlambat')}>Set Terlambat</DropdownMenuItem>
+                                                    )}
+                                                    
+                                                    <DropdownMenuSeparator className="my-1.5 opacity-50" />
+                                                    
+                                                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2 opacity-50">Ubah Status</DropdownMenuLabel>
+                                                    
+                                                    {!hasIn && (
+                                                        <>
+                                                            <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToLeave(day, 'Sakit')}>Set Sakit</DropdownMenuItem>
+                                                            <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToLeave(day, 'Izin')}>Set Izin</DropdownMenuItem>
+                                                            <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'dinas-pagi')}>Dinas Pagi</DropdownMenuItem>
+                                                        </>
+                                                    )}
+                                                    
+                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'dinas-siang')}>Dinas Siang</DropdownMenuItem>
+                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'pulang-cepat')}>Pulang Cepat</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        ) : (
+                                            <Badge variant="secondary" className="whitespace-nowrap rounded-lg text-[10px] font-bold px-3 py-1 bg-amber-50 text-amber-700 border-amber-200">
+                                                {day.description}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 ) : (

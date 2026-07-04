@@ -75,7 +75,7 @@ export default function UserReportDetailPage() {
     const [error, setError] = useState<string | null>(null);
 
     const schoolConfigRef = useMemoFirebase(() => firestore ? doc(firestore, 'schoolConfig', 'default') : null, [firestore]);
-    const { data: schoolConfigData, isLoading: isConfigLoading } = useDoc(currentUser, schoolConfigRef);
+    const { data: schoolConfigData } = useDoc(currentUser, schoolConfigRef);
 
     const fetchData = useCallback(async () => {
         if (!firestore || !userId || !schoolConfigData || !currentUser || !isMounted.current) return;
@@ -134,17 +134,21 @@ export default function UserReportDetailPage() {
                     updatedBy: currentUser.uid, updatedAt: serverTimestamp()
                 };
 
+                const existingItem = monthlyReportData.find(d => d.date === dateStr);
+
                 if (newStatus === 'Dinas Pagi') {
                     dataToSave.checkInTime = null;
                     dataToSave.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, outStart, outEnd));
                 } else {
-                    // Untuk Dinas Siang / Pulang Cepat, set masuk 5 menit sebelum batas selesai
-                    const [h, m] = inEnd.split(':').map(Number);
-                    const baseLimit = setMinutes(setHours(startOfDay(targetDate), h), m);
-                    const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
-                    const realInTime = new Date(baseLimit.getTime() - randomMs);
-                    
-                    dataToSave.checkInTime = Timestamp.fromDate(realInTime);
+                    // For Dinas Siang / Pulang Cepat, preserve existing in-time if present
+                    if (existingItem?.checkInTime) {
+                        dataToSave.checkInTime = Timestamp.fromDate(parseISO(existingItem.checkInTime));
+                    } else {
+                        const [h, m] = inEnd.split(':').map(Number);
+                        const baseLimit = setMinutes(setHours(startOfDay(targetDate), h), m);
+                        const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
+                        dataToSave.checkInTime = Timestamp.fromDate(new Date(baseLimit.getTime() - randomMs));
+                    }
                     dataToSave.checkOutTime = null;
                 }
 
@@ -180,13 +184,12 @@ export default function UserReportDetailPage() {
             const inEnd = schoolConfigData.checkInEndTime || '08:00';
             const [endH, endM] = inEnd.split(':').map(Number);
             
-            // LOGIKA: 5 Menit SESUDAH jam selesai masuk (07:30 - 07:35)
             const baseLateTime = setMinutes(setHours(startOfDay(targetDate), endH), endM);
             const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
             const realInTime = new Date(baseLateTime.getTime() + randomMs);
 
-            const [outH, outM] = (schoolConfigData.checkOutStartTime || '14:00').split(':').map(Number);
-            const checkOutThreshold = setMinutes(setHours(startOfDay(targetDate), outH), outM);
+            const [outH_threshold, outM_threshold] = (schoolConfigData.checkOutStartTime || '14:00').split(':').map(Number);
+            const checkOutThreshold = setMinutes(setHours(startOfDay(targetDate), outH_threshold), outM_threshold);
             const shouldFillCheckOut = isBefore(startOfDay(targetDate), startOfDay(now)) || now >= checkOutThreshold;
 
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
@@ -234,10 +237,7 @@ export default function UserReportDetailPage() {
             const outEnd = schoolConfigData.checkOutEndTime || '16:00';
 
             const [endH, endM] = inEnd.split(':').map(Number);
-            // LOGIKA: 5 Menit SEBELUM jam selesai masuk (07:25 - 07:30)
             const baseOnTimeLimit = setMinutes(setHours(startOfDay(targetDate), endH), endM);
-            const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
-            const realInTime = new Date(baseOnTimeLimit.getTime() - randomMs);
 
             const [outH_threshold, outM_threshold] = outStart.split(':').map(Number);
             const checkOutThreshold = setMinutes(setHours(startOfDay(targetDate), outH_threshold), outM_threshold);
@@ -255,14 +255,20 @@ export default function UserReportDetailPage() {
                 updatedAt: serverTimestamp()
             };
 
-            dataToSave.checkInTime = Timestamp.fromDate(realInTime);
+            if (item.checkInTime) {
+                dataToSave.checkInTime = Timestamp.fromDate(parseISO(item.checkInTime));
+            } else {
+                const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
+                dataToSave.checkInTime = Timestamp.fromDate(new Date(baseOnTimeLimit.getTime() - randomMs));
+            }
 
             if (item.checkOutTime) {
                 dataToSave.checkOutTime = Timestamp.fromDate(parseISO(item.checkOutTime));
             } else if (shouldFillCheckOut) {
                 let checkOutTime = getRandomTime(targetDate, outStart, outEnd);
-                if (checkOutTime.getTime() <= realInTime.getTime()) {
-                    checkOutTime = addMinutes(realInTime, 240);
+                const cIn = dataToSave.checkInTime.toDate();
+                if (checkOutTime.getTime() <= cIn.getTime()) {
+                    checkOutTime = addMinutes(cIn, 240);
                 }
                 dataToSave.checkOutTime = Timestamp.fromDate(checkOutTime);
             } else {
@@ -435,8 +441,8 @@ export default function UserReportDetailPage() {
                                             <TableRow><TableCell colSpan={6} className="h-48 text-center text-destructive font-bold"><p>{error}</p></TableCell></TableRow>
                                         ) : monthlyReportData.length > 0 ? (
                                             monthlyReportData.map((item, index) => {
-                                                const isMissingOut = item.description === 'Belum absen pulang';
-                                                const isMissingIn = item.description === 'Belum absen masuk';
+                                                const hasIn = !!item.checkInTime;
+                                                const hasOut = !!item.checkOutTime;
                                                 const isAlpa = item.status === 'Alpa';
 
                                                 return (
@@ -446,30 +452,40 @@ export default function UserReportDetailPage() {
                                                         <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkInTime, 'HH:mm:ss')}</TableCell>
                                                         <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkOutTime, 'HH:mm:ss')}</TableCell>
                                                         <TableCell className="text-center">
-                                                            {isAdmin && (isAlpa || isMissingOut || isMissingIn) ? (
+                                                            {isAdmin && (isAlpa || (!hasOut && item.status !== 'Alpa')) ? (
                                                                 <DropdownMenu>
                                                                     <DropdownMenuTrigger asChild>
-                                                                        <Button variant="outline" size="sm" className={cn("font-bold text-[9px] h-7 rounded-lg shadow-none", item.status === 'Alpa' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200')}>
-                                                                            {item.status === 'Alpa' ? 'Alpa' : 'Hadir'} <MoreVertical className="h-3 w-3 ml-1" />
+                                                                        <Button variant="outline" size="sm" className={cn("font-bold text-[9px] h-7 rounded-lg shadow-none", isAlpa ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200')}>
+                                                                            {isAlpa ? 'Alpa' : 'Hadir'} <MoreVertical className="h-3 w-3 ml-1" />
                                                                         </Button>
                                                                     </DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border-none p-2">
-                                                                        <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground px-3 py-2 opacity-50">Koreksi Hadir</DropdownMenuLabel>
+                                                                        <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground px-3 py-2 opacity-50">
+                                                                            {hasIn ? 'Koreksi Pulang' : 'Koreksi Hadir'}
+                                                                        </DropdownMenuLabel>
                                                                         
                                                                         <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleSetHadir(item)}>
-                                                                            Lengkapi Data
+                                                                            {hasIn ? 'Lengkapi absen pulang' : 'Jadikan Hadir'}
                                                                         </DropdownMenuItem>
 
-                                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleSetLate(item)}>
-                                                                            Set Terlambat
-                                                                        </DropdownMenuItem>
+                                                                        {!hasIn && (
+                                                                            <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleSetLate(item)}>
+                                                                                Set Terlambat
+                                                                            </DropdownMenuItem>
+                                                                        )}
                                                                         
                                                                         <DropdownMenuSeparator className='my-1.5 opacity-50' />
                                                                         
                                                                         <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground px-3 py-2 opacity-50">Ubah Status</DropdownMenuLabel>
-                                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Sakit', 'Sakit')}>Sakit (0.9)</DropdownMenuItem>
-                                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Izin Pribadi', 'Izin Pribadi')}>Izin (0.7)</DropdownMenuItem>
-                                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Dinas Pagi', 'Dinas Pagi')}>Dinas Pagi (1.0)</DropdownMenuItem>
+                                                                        
+                                                                        {!hasIn && (
+                                                                            <>
+                                                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Sakit', 'Sakit')}>Sakit (0.9)</DropdownMenuItem>
+                                                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Izin Pribadi', 'Izin Pribadi')}>Izin (0.7)</DropdownMenuItem>
+                                                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Dinas Pagi', 'Dinas Pagi')}>Dinas Pagi (1.0)</DropdownMenuItem>
+                                                                            </>
+                                                                        )}
+                                                                        
                                                                         <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Dinas Siang', 'Dinas Siang')}>Dinas Siang (1.0)</DropdownMenuItem>
                                                                         <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Pulang Cepat', 'Pulang Cepat')}>Pulang Cepat (0.95)</DropdownMenuItem>
                                                                     </DropdownMenuContent>
