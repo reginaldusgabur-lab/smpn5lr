@@ -348,7 +348,7 @@ export default function SchoolReportPage() {
         <div className="flex-1 pt-2 pb-24 md:p-8">
             <div className="max-w-7xl mx-auto space-y-4">
                 <div className="px-4 md:px-0">
-                    <h1 className="text-2xl font-black tracking-tight text-foreground">Laporan sekolah</h1>
+                    <h1 className="text-2xl font-normal tracking-tight text-foreground">Laporan sekolah</h1>
                     <p className="text-muted-foreground mt-0.5 text-xs font-bold">Ringkasan kehadiran bulanan untuk seluruh personil aktif.</p>
                 </div>
 
@@ -407,12 +407,11 @@ export default function SchoolReportPage() {
                                     </div>
                                 </div>
                                 <Button 
-                                    className="w-full sm:w-auto h-11 rounded-xl font-bold shadow-none active:scale-95 transition-all px-6 bg-primary hover:bg-primary/90 text-xs" 
+                                    className="w-full sm:w-auto h-11 rounded-xl font-normal shadow-none active:scale-95 transition-all px-6 bg-primary hover:bg-primary/90 text-xs uppercase tracking-wider" 
                                     disabled={isReportLoading || !filteredReports.length || isExporting}
                                     onClick={handleDownloadPdf}
                                 >
-                                    {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                                    UNDUH PDF
+                                    {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}UNDUH PDF
                                 </Button>
                             </div>
                         </div>

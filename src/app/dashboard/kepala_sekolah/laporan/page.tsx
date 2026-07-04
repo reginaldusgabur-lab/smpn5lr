@@ -274,7 +274,7 @@ function StaffReportView() {
     <div className="flex-1 pt-4 pb-24 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="px-4 md:px-0">
-          <h1 className="text-3xl font-bold tracking-tight">Laporan Staf</h1>
+          <h1 className="text-3xl font-normal tracking-tight">Laporan Staf</h1>
           <p className="text-muted-foreground mt-1">Rekapitulasi data kehadiran bulanan untuk Guru dan Pegawai.</p>
         </div>
 
@@ -282,12 +282,12 @@ function StaffReportView() {
           <CardHeader>
              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div>
-                    <CardTitle>Rekapitulasi Kehadiran</CardTitle>
+                    <CardTitle className="font-normal">Rekapitulasi Kehadiran</CardTitle>
                     <CardDescription>Pilih kategori staf dan bulan untuk melihat laporan.</CardDescription>
                 </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                         <Button variant="outline" className="w-full sm:w-auto">
+                         <Button variant="outline" className="w-full sm:w-auto font-normal">
                             <Download className="mr-2 h-4 w-4" />
                             Unduh Laporan
                             <ChevronDown className="ml-2 h-4 w-4" />

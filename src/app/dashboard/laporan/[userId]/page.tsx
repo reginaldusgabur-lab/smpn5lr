@@ -374,7 +374,7 @@ export default function UserReportDetailPage() {
                         <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2 shadow-none" onClick={() => router.back()}>
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
-                        <h1 className="text-2xl font-black tracking-tight">Detail Laporan Kehadiran</h1>
+                        <h1 className="text-2xl font-normal tracking-tight">Detail Laporan Kehadiran</h1>
                     </div>
                     <div className="h-6 flex items-center">
                         {!userData ? <Skeleton className="h-4 w-64 ml-8 sm:ml-0" /> : <p className="text-muted-foreground ml-8 sm:ml-0 font-bold text-xs">Laporan harian untuk {userData.name}.</p>}
@@ -400,7 +400,7 @@ export default function UserReportDetailPage() {
                                 </div>
                             </div>
                             <div className="flex justify-center sm:justify-end">
-                                <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-bold bg-primary hover:bg-primary/90 shadow-none h-11 rounded-xl text-xs uppercase tracking-wider">
+                                <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-normal bg-primary hover:bg-primary/90 shadow-none h-11 rounded-xl text-xs uppercase tracking-wider">
                                     {isLoading || isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}UNDUH PDF
                                 </Button>
                             </div>

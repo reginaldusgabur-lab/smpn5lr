@@ -43,7 +43,7 @@ const LaporanGuruListPage = () => {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Laporan Kehadiran Guru & Staf</CardTitle>
+                <CardTitle className="font-normal">Laporan Kehadiran Guru & Staf</CardTitle>
                 <CardDescription>Pilih guru atau staf untuk melihat laporan kehadiran detail mereka.</CardDescription>
             </CardHeader>
             <CardContent>
