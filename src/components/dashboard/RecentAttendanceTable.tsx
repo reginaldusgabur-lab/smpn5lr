@@ -16,6 +16,7 @@ import { format, startOfDay, endOfDay } from 'date-fns';
 import { id as indonesiaLocale } from 'date-fns/locale';
 import { Loader2, WifiOff, AlertCircle, CalendarOff, History } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface Activity {
   no: number;
@@ -92,15 +93,16 @@ const RecentAttendanceTable = () => {
             if (userSnap.exists()) {
               const userData = userSnap.data();
               const checkInDate = attendanceData.checkInTime ? attendanceData.checkInTime.toDate() : null;
+              const checkOutDate = attendanceData.checkOutTime ? attendanceData.checkOutTime.toDate() : null;
               
               activitiesData.push({
                 name: userData.name || '-',
                 nip: userData.nip || '-',
-                rawCheckInTime: checkInDate,
+                rawCheckInTime: checkInDate || checkOutDate, // Use checkout time as fallback for sorting if check-in is missing
                 checkInTime: checkInDate ? format(checkInDate, 'HH:mm:ss') : '-',
-                checkOutTime: attendanceData.checkOutTime ? format(attendanceData.checkOutTime.toDate(), 'HH:mm:ss') : '-',
-                status: attendanceData.checkOut ? 'Pulang' : 'Hadir',
-                keterangan: attendanceData.checkOut ? 'Kehadiran penuh' : 'Masih di tempat',
+                checkOutTime: checkOutDate ? format(checkOutDate, 'HH:mm:ss') : '-',
+                status: checkOutDate ? 'Pulang' : 'Hadir',
+                keterangan: checkOutDate ? 'Absensi selesai' : 'Sedang bertugas',
               });
             }
           }
@@ -138,7 +140,7 @@ const RecentAttendanceTable = () => {
         return (
             <div className="flex flex-col items-center justify-center h-40 text-muted-foreground text-center px-4">
                 <CalendarOff className="w-10 h-10 mb-4 opacity-50" />
-                <h3 className="text-lg font-bold tracking-tight">Hari libur</h3>
+                <h3 className="text-lg font-bold tracking-tight text-foreground">Hari libur</h3>
                 <p className="text-xs">Sistem absensi non-aktif hari ini.</p>
             </div>
         );
@@ -146,7 +148,7 @@ const RecentAttendanceTable = () => {
     return (
         <div className="flex flex-col items-center justify-center h-40 text-muted-foreground text-center px-4">
             <WifiOff className="w-10 h-10 mb-4 opacity-50" />
-            <h3 className="text-lg font-bold tracking-tight">Belum ada aktivitas</h3>
+            <h3 className="text-lg font-bold tracking-tight text-foreground">Belum ada aktivitas</h3>
             <p className="text-xs">Belum ada staf yang melakukan absensi masuk hari ini.</p>
         </div>
     );
@@ -205,7 +207,13 @@ const RecentAttendanceTable = () => {
                       <TableCell className="text-center font-mono text-xs font-bold text-foreground">{activity.checkInTime}</TableCell>
                       <TableCell className="text-center font-mono text-xs font-bold text-foreground">{activity.checkOutTime}</TableCell>
                        <TableCell className="text-center">
-                        <Badge variant={activity.status === 'Hadir' ? 'default' : 'secondary'} className="text-[9px] font-bold px-3 py-0.5 rounded-full">
+                        <Badge 
+                            variant="outline" 
+                            className={cn(
+                                "text-[9px] font-bold px-3 py-0.5 rounded-full border-none shadow-sm",
+                                activity.status === 'Pulang' ? "bg-slate-700 text-white" : "bg-primary text-white"
+                            )}
+                        >
                             {activity.status}
                         </Badge>
                       </TableCell>

@@ -29,7 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getDailyStaffAttendanceStats } from '@/lib/attendance';
 
 const statusVariant: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
-    'Hadir': 'default', 'Sakit': 'destructive', 'Izin': 'secondary', 'Terlambat': 'outline',
+    'Hadir': 'default', 'Pulang': 'secondary', 'Sakit': 'destructive', 'Izin': 'secondary', 'Terlambat': 'outline',
 }
 
 const AdminDashboardSkeletons = () => (
@@ -132,8 +132,8 @@ export default function AdminDashboardPage() {
             const allAttendance = attendanceSnap.docs
                 .map(d => ({ ...d.data(), id: d.id }))
                 .filter(att => {
-                    const checkIn = att.checkInTime?.toDate();
-                    return checkIn && checkIn >= todayStart && checkIn <= todayEnd;
+                    const dStr = att.date || (att.checkInTime ? format(att.checkInTime.toDate(), 'yyyy-MM-dd') : null);
+                    return dStr === todayStr;
                 });
 
             const userMap = new Map(usersData.map(u => [u.id, u.role]));
@@ -178,7 +178,11 @@ export default function AdminDashboardPage() {
     const userMap = new Map(usersData.map(u => [u.id, u]));
     
     return [...dashboardData.allAttendanceData]
-        .sort((a, b) => (a.checkInTime?.toDate().getTime() || 0) - (b.checkInTime?.toDate().getTime() || 0))
+        .sort((a, b) => {
+            const timeA = a.checkInTime?.toDate().getTime() || a.checkOutTime?.toDate().getTime() || 0;
+            const timeB = b.checkInTime?.toDate().getTime() || b.checkOutTime?.toDate().getTime() || 0;
+            return timeB - timeA;
+        })
         .map((att, index) => {
             const userDoc = userMap.get(att.userId);
             return {
@@ -186,9 +190,9 @@ export default function AdminDashboardPage() {
                 sequence: index + 1,
                 name: userDoc?.name || 'Pengguna tidak dikenal',
                 role: (userDoc?.role || 'user').replace('_', ' '),
-                checkInTimeFormatted: att.checkInTime ? format(att.checkInTime.toDate(), 'HH:mm') : '-',
-                checkOutTimeFormatted: att.checkOutTime ? format(att.checkOutTime.toDate(), 'HH:mm') : '-',
-                status: 'Hadir',
+                checkInTimeFormatted: att.checkInTime ? format(att.checkInTime.toDate(), 'HH:mm:ss') : '-',
+                checkOutTimeFormatted: att.checkOutTime ? format(att.checkOutTime.toDate(), 'HH:mm:ss') : '-',
+                status: att.checkOutTime ? 'Pulang' : 'Hadir',
             };
         });
   }, [usersData, dashboardData.allAttendanceData, isAdmin]);
@@ -202,7 +206,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Selamat Datang</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Selamat Datang</h1>
           <p className="text-lg text-muted-foreground">{userData?.name || 'Admin'}</p>
           <p className="text-muted-foreground !mt-2">Ini adalah ringkasan data dan statistik sekolah.</p>
       </div>
@@ -281,12 +285,12 @@ export default function AdminDashboardPage() {
                     <Table>
                         <TableHeader className="bg-muted/30">
                             <TableRow className="border-none">
-                                <TableHead className="w-[60px] text-center font-bold text-[10px] uppercase">No</TableHead>
-                                <TableHead className="font-bold text-[10px] uppercase">Nama Personil</TableHead>
-                                <TableHead className="font-bold text-[10px] uppercase">Peran</TableHead>
-                                <TableHead className="text-center font-bold text-[10px] uppercase">Masuk</TableHead>
-                                <TableHead className="text-center font-bold text-[10px] uppercase">Pulang</TableHead>
-                                <TableHead className="text-center font-bold text-[10px] uppercase">Status</TableHead>
+                                <TableHead className="w-[60px] text-center font-bold text-[10px] uppercase tracking-widest">No</TableHead>
+                                <TableHead className="font-bold text-[10px] uppercase tracking-widest">Nama Personil</TableHead>
+                                <TableHead className="font-bold text-[10px] uppercase tracking-widest">Peran</TableHead>
+                                <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest">Masuk</TableHead>
+                                <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest">Pulang</TableHead>
+                                <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest">Status</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -295,9 +299,13 @@ export default function AdminDashboardPage() {
                                     <TableCell className="text-center font-bold text-muted-foreground">{item.sequence}</TableCell>
                                     <TableCell className="font-bold text-sm">{item.name}</TableCell>
                                     <TableCell className="capitalize text-xs font-medium">{item.role}</TableCell>
-                                    <TableCell className="text-center font-mono text-xs font-bold">{item.checkInTimeFormatted}</TableCell>
-                                    <TableCell className="text-center font-mono text-xs font-bold">{item.checkOutTimeFormatted}</TableCell>
-                                    <TableCell className="text-center"><Badge variant="default" className="text-[9px] font-bold uppercase">{item.status}</Badge></TableCell>
+                                    <TableCell className="text-center font-mono text-xs font-bold text-foreground">{item.checkInTimeFormatted}</TableCell>
+                                    <TableCell className="text-center font-mono text-xs font-bold text-foreground">{item.checkOutTimeFormatted}</TableCell>
+                                    <TableCell className="text-center">
+                                        <Badge variant={statusVariant[item.status] || 'default'} className="text-[9px] font-bold uppercase">
+                                            {item.status}
+                                        </Badge>
+                                    </TableCell>
                                 </TableRow>
                             )) : (
                                 <TableRow>

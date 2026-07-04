@@ -138,12 +138,10 @@ export default function KepalaSekolahDashboardPage() {
 
   const todaysPersonalAttendanceQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    const todayStart = startOfDay(new Date());
-    const todayEnd = endOfDay(new Date());
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
     return query(
       collection(firestore, 'users', user.uid, 'attendanceRecords'),
-      where('checkInTime', '>=', Timestamp.fromDate(todayStart)),
-      where('checkInTime', '<=', Timestamp.fromDate(todayEnd))
+      where('date', '==', todayStr)
     );
   }, [user, firestore]);
   const { data: todaysAttendance, isLoading: isAttendanceLoading } = useCollection(user, todaysPersonalAttendanceQuery);
@@ -174,6 +172,8 @@ export default function KepalaSekolahDashboardPage() {
         setIsDashboardDataLoading(true);
         
         try {
+            const today = new Date();
+            const todayStr = format(today, 'yyyy-MM-dd');
             const attendanceQuery = collectionGroup(firestore, 'attendanceRecords');
             const leaveQuery = collectionGroup(firestore, 'leaveRequests');
 
@@ -182,17 +182,14 @@ export default function KepalaSekolahDashboardPage() {
                 getDocs(leaveQuery),
             ]);
             
-            const todayStart = startOfDay(new Date());
-            const todayEnd = endOfDay(new Date());
-
             const userMap = new Map(usersData.map(u => [u.id, u.role]));
             
             const allAttendance = attendanceSnap.docs
                 .map(d => ({ ...d.data(), id: d.id }))
                 .filter(att => {
-                    const checkIn = att.checkInTime?.toDate();
+                    const dStr = att.date || (att.checkInTime ? format(att.checkInTime.toDate(), 'yyyy-MM-dd') : null);
                     const role = userMap.get(att.userId);
-                    return checkIn && checkIn >= todayStart && checkIn <= todayEnd && role && ['guru', 'kepala_sekolah', 'pegawai'].includes(role);
+                    return dStr === todayStr && role && ['guru', 'kepala_sekolah', 'pegawai'].includes(role);
                 });
             
             const allPendingLeave = leaveSnap.docs
@@ -219,7 +216,7 @@ export default function KepalaSekolahDashboardPage() {
     };
 
     fetchDashboardData();
-  }, [isHeadmaster, firestore, isUsersLoading, toast]);
+  }, [isHeadmaster, firestore, isUsersLoading, usersData, toast]);
 
   const isLoading = isRoleLoading || isConfigLoading || isAttendanceLoading || isUsersLoading || isDashboardDataLoading;
   
@@ -253,18 +250,22 @@ export default function KepalaSekolahDashboardPage() {
     const staffAndTeachers = usersData.filter(u => ['guru', 'kepala_sekolah', 'pegawai'].includes(u.role));
     const presentStaffIds = new Set(allAttendanceData.map(att => att.userId));
     
-    // SORT: Ascending (A - B) - First arrive at top
-    const sortedRecentAttendance = [...allAttendanceData].sort((a, b) => (a.checkInTime?.toDate().getTime() || 0) - (b.checkInTime?.toDate().getTime() || 0));
+    const sortedRecentAttendance = [...allAttendanceData].sort((a, b) => {
+        const timeA = a.checkInTime?.toDate().getTime() || a.checkOutTime?.toDate().getTime() || 0;
+        const timeB = b.checkInTime?.toDate().getTime() || b.checkOutTime?.toDate().getTime() || 0;
+        return timeA - timeB;
+    });
 
     const enrichedRecentAttendance = sortedRecentAttendance.map((att, index) => {
+        const hasOut = !!att.checkOutTime;
         return {
             ...att,
             sequence: index + 1,
             name: userMap.get(att.userId)?.name || 'Pengguna tidak dikenal',
-            checkInTimeFormatted: att.checkInTime ? att.checkInTime.toDate().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-',
-            checkOutTimeFormatted: att.checkOutTime ? att.checkOutTime.toDate().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-',
-            status: 'Hadir',
-            statusVariant: 'default',
+            checkInTimeFormatted: att.checkInTime ? format(att.checkInTime.toDate(), 'HH:mm:ss') : '-',
+            checkOutTimeFormatted: att.checkOutTime ? format(att.checkOutTime.toDate(), 'HH:mm:ss') : '-',
+            status: hasOut ? 'Pulang' : 'Hadir',
+            statusVariant: hasOut ? 'secondary' : 'default',
         };
     });
 
@@ -308,18 +309,18 @@ export default function KepalaSekolahDashboardPage() {
 
   let personalButtonAction;
   if (checkInTime && !checkOutTime) {
-    personalButtonAction = <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Pulang</Link></Button>;
+    personalButtonAction = <Button asChild size="lg" className="w-full font-semibold rounded-xl h-12 active:scale-95 transition-all"><Link href="/dashboard/absen">Absen Pulang</Link></Button>;
   } else if (!checkInTime) {
-    personalButtonAction = <Button asChild size="lg" className="w-full"><Link href="/dashboard/absen">Absen Masuk</Link></Button>;
+    personalButtonAction = <Button asChild size="lg" className="w-full font-semibold rounded-xl h-12 active:scale-95 transition-all"><Link href="/dashboard/absen">Absen Masuk</Link></Button>;
   } else {
-    personalButtonAction = <Button disabled size="lg" className="w-full">Absensi Selesai</Button>;
+    personalButtonAction = <Button disabled size="lg" className="w-full font-semibold rounded-xl h-12 active:scale-95 transition-all">Absensi Selesai</Button>;
   }
 
   if (isHoliday) {
     return (
       <div className="space-y-6">
         <div className="space-y-1">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Selamat Datang</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Selamat Datang</h1>
             <p className="text-lg text-muted-foreground">{userData?.name || 'Kepala Sekolah'}</p>
             <p className="text-muted-foreground !mt-2">Dasbor pemantauan untuk Kepala Sekolah.</p>
         </div>
@@ -346,7 +347,7 @@ export default function KepalaSekolahDashboardPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Selamat Datang</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Selamat Datang</h1>
         <p className="text-lg text-muted-foreground">{userData?.name || 'Kepala Sekolah'}</p>
         <p className="text-muted-foreground !mt-2">Ini adalah dasbor pribadi dan ringkasan pemantauan Anda.</p>
       </div>
@@ -436,39 +437,41 @@ export default function KepalaSekolahDashboardPage() {
           </Card>
         </div>
       </div>
-      <Card className="shadow-none">
-        <CardHeader>
-            <CardTitle>Riwayat Kehadiran Guru &amp; Pegawai Terbaru</CardTitle>
+      <Card className="shadow-none overflow-hidden">
+        <CardHeader className="bg-muted/20 border-b border-muted-foreground/5">
+            <CardTitle className="text-lg font-bold">Riwayat Kehadiran Guru &amp; Pegawai Terbaru</CardTitle>
             <CardDescription>Aktivitas kehadiran guru &amp; pegawai yang tercatat hari ini.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
             <div className="overflow-x-auto">
                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[50px] text-center">No.</TableHead>
-                            <TableHead>Nama</TableHead>
-                            <TableHead className="text-center">Waktu Masuk</TableHead>
-                            <TableHead className="text-center">Waktu Pulang</TableHead>
-                            <TableHead className="text-center">Status</TableHead>
+                    <TableHeader className="bg-muted/30">
+                        <TableRow className="border-none">
+                            <TableHead className="w-[50px] text-center font-bold text-[10px] uppercase tracking-widest">No.</TableHead>
+                            <TableHead className="font-bold text-[10px] uppercase tracking-widest">Nama</TableHead>
+                            <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest">Waktu Masuk</TableHead>
+                            <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest">Waktu Pulang</TableHead>
+                            <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest">Status</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {recentStaffAttendance.length > 0 ? (
                             recentStaffAttendance.map(item => (
-                                <TableRow key={item.id}>
-                                    <TableCell className="text-center font-medium">{item.sequence}</TableCell>
-                                    <TableCell className="font-medium">{item.name}</TableCell>
-                                    <TableCell className="text-center">{item.checkInTimeFormatted}</TableCell>
-                                    <TableCell className="text-center">{item.checkOutTimeFormatted}</TableCell>
+                                <TableRow key={item.id} className="border-muted-foreground/5 hover:bg-primary/5">
+                                    <TableCell className="text-center font-bold text-muted-foreground text-xs">{item.sequence}</TableCell>
+                                    <TableCell className="font-bold text-sm">{item.name}</TableCell>
+                                    <TableCell className="text-center font-mono text-xs font-bold text-foreground">{item.checkInTimeFormatted}</TableCell>
+                                    <TableCell className="text-center font-mono text-xs font-bold text-foreground">{item.checkOutTimeFormatted}</TableCell>
                                     <TableCell className="text-center">
-                                        <Badge variant={item.statusVariant as any}>{item.status}</Badge>
+                                        <Badge variant={item.statusVariant as any} className="text-[9px] font-bold uppercase">
+                                            {item.status}
+                                        </Badge>
                                     </TableCell>
                                 </TableRow>
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">
+                                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground font-bold">
                                     Belum ada aktivitas kehadiran dari guru &amp; pegawai hari ini.
                                 </TableCell>
                             </TableRow>
