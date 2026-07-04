@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -24,6 +23,7 @@ import { format, parseISO, isValid, startOfDay, endOfDay, addMinutes, isBefore, 
 import { id } from 'date-fns/locale';
 import { MoreVertical, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { invalidateCache } from '@/lib/cache';
+import { cn } from '@/lib/utils';
 
 export default function EditAttendanceModal({ user, month, isOpen, onClose, currentUser }) {
     const firestore = useFirestore();

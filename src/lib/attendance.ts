@@ -1,4 +1,3 @@
-
 'use client';
 
 import { doc, getDoc, collection, getDocs, query, where, collectionGroup } from 'firebase/firestore';
@@ -21,7 +20,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v37_${todayStr}`;
+    const cacheKey = `daily_stats_v39_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -128,7 +127,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v37_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v39_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -235,14 +234,14 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
         
         const attendanceQuery = query(
             collection(firestore, 'users', userId, 'attendanceRecords'),
-            where('date', >=, format(monthStart, 'yyyy-MM-dd')),
-            where('date', <=, format(monthEnd, 'yyyy-MM-dd'))
+            where('date', '>=', format(monthStart, 'yyyy-MM-dd')),
+            where('date', '<=', format(monthEnd, 'yyyy-MM-dd'))
         );
 
         const leaveHistoryQuery = query(
             collection(firestore, 'users', userId, 'leaveRequests'), 
             where('status', '==', 'approved'),
-            where('startDate', <=, monthEnd)
+            where('startDate', '<=', monthEnd)
         );
 
         const [monthlyConfigSnap, attendanceHistorySnap, leaveHistorySnap] = await Promise.all([
