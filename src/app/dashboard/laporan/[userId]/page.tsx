@@ -124,9 +124,9 @@ export default function UserReportDetailPage() {
                 const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
                 const snap = await getDocs(q);
                 
-                const inStart = schoolConfigData.checkInStartTime || '07:00';
                 const outStart = schoolConfigData.checkOutStartTime || '14:00';
                 const outEnd = schoolConfigData.checkOutEndTime || '16:00';
+                const inEnd = schoolConfigData.checkInEndTime || '07:30';
                 
                 let dataToSave: any = {
                     userId, date: format(targetDate, 'yyyy-MM-dd'),
@@ -138,7 +138,13 @@ export default function UserReportDetailPage() {
                     dataToSave.checkInTime = null;
                     dataToSave.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, outStart, outEnd));
                 } else {
-                    dataToSave.checkInTime = Timestamp.fromDate(getRandomTime(targetDate, inStart, inStart));
+                    // Untuk Dinas Siang / Pulang Cepat, set masuk 5 menit sebelum batas selesai
+                    const [h, m] = inEnd.split(':').map(Number);
+                    const baseLimit = setMinutes(setHours(startOfDay(targetDate), h), m);
+                    const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
+                    const realInTime = new Date(baseLimit.getTime() - randomMs);
+                    
+                    dataToSave.checkInTime = Timestamp.fromDate(realInTime);
                     dataToSave.checkOutTime = null;
                 }
 
@@ -173,9 +179,11 @@ export default function UserReportDetailPage() {
             const targetDate = parseISO(item.date);
             const inEnd = schoolConfigData.checkInEndTime || '08:00';
             const [endH, endM] = inEnd.split(':').map(Number);
-            const baseLateTime = new Date(targetDate);
-            baseLateTime.setHours(endH, endM, 0);
-            const realInTime = addMinutes(baseLateTime, Math.floor(Math.random() * 15) + 1);
+            
+            // LOGIKA: 5 Menit SESUDAH jam selesai masuk (07:30 - 07:35)
+            const baseLateTime = setMinutes(setHours(startOfDay(targetDate), endH), endM);
+            const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
+            const realInTime = new Date(baseLateTime.getTime() + randomMs);
 
             const [outH, outM] = (schoolConfigData.checkOutStartTime || '14:00').split(':').map(Number);
             const checkOutThreshold = setMinutes(setHours(startOfDay(targetDate), outH), outM);
@@ -221,10 +229,15 @@ export default function UserReportDetailPage() {
             const targetDate = parseISO(item.date);
             const batch = writeBatch(firestore);
             
-            const inStart = schoolConfigData.checkInStartTime || '07:00';
             const inEnd = schoolConfigData.checkInEndTime || '07:30';
             const outStart = schoolConfigData.checkOutStartTime || '14:00';
             const outEnd = schoolConfigData.checkOutEndTime || '16:00';
+
+            const [endH, endM] = inEnd.split(':').map(Number);
+            // LOGIKA: 5 Menit SEBELUM jam selesai masuk (07:25 - 07:30)
+            const baseOnTimeLimit = setMinutes(setHours(startOfDay(targetDate), endH), endM);
+            const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
+            const realInTime = new Date(baseOnTimeLimit.getTime() - randomMs);
 
             const [outH_threshold, outM_threshold] = outStart.split(':').map(Number);
             const checkOutThreshold = setMinutes(setHours(startOfDay(targetDate), outH_threshold), outM_threshold);
@@ -242,15 +255,14 @@ export default function UserReportDetailPage() {
                 updatedAt: serverTimestamp()
             };
 
-            const checkInTime = item.checkInTime ? parseISO(item.checkInTime) : getRandomTime(targetDate, inStart, inEnd);
-            dataToSave.checkInTime = Timestamp.fromDate(checkInTime);
+            dataToSave.checkInTime = Timestamp.fromDate(realInTime);
 
             if (item.checkOutTime) {
                 dataToSave.checkOutTime = Timestamp.fromDate(parseISO(item.checkOutTime));
             } else if (shouldFillCheckOut) {
                 let checkOutTime = getRandomTime(targetDate, outStart, outEnd);
-                if (checkOutTime.getTime() <= checkInTime.getTime()) {
-                    checkOutTime = addMinutes(checkInTime, 240);
+                if (checkOutTime.getTime() <= realInTime.getTime()) {
+                    checkOutTime = addMinutes(realInTime, 240);
                 }
                 dataToSave.checkOutTime = Timestamp.fromDate(checkOutTime);
             } else {
@@ -423,8 +435,8 @@ export default function UserReportDetailPage() {
                                             <TableRow><TableCell colSpan={6} className="h-48 text-center text-destructive font-bold"><p>{error}</p></TableCell></TableRow>
                                         ) : monthlyReportData.length > 0 ? (
                                             monthlyReportData.map((item, index) => {
-                                                const isMissingOut = item.description.toLowerCase().includes('absen pulang');
-                                                const isMissingIn = item.description.toLowerCase().includes('absen masuk');
+                                                const isMissingOut = item.description === 'Belum absen pulang';
+                                                const isMissingIn = item.description === 'Belum absen masuk';
                                                 const isAlpa = item.status === 'Alpa';
 
                                                 return (
@@ -448,11 +460,9 @@ export default function UserReportDetailPage() {
                                                                             Lengkapi Data
                                                                         </DropdownMenuItem>
 
-                                                                        {!isMissingOut && (
-                                                                            <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleSetLate(item)}>
-                                                                                Set Terlambat
-                                                                            </DropdownMenuItem>
-                                                                        )}
+                                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleSetLate(item)}>
+                                                                            Set Terlambat
+                                                                        </DropdownMenuItem>
                                                                         
                                                                         <DropdownMenuSeparator className='my-1.5 opacity-50' />
                                                                         
