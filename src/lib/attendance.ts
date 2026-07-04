@@ -197,8 +197,8 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                     let isLate = false;
                     if (schoolConfig?.useTimeValidation && schoolConfig?.checkInEndTime) {
                         const [h, m] = schoolConfig.checkInEndTime.split(':').map(Number);
-                        const deadline = setMinutes(setHours(startOfDay(att.checkInTime), h), m);
-                        if (att.checkInTime > deadline) isLate = true;
+                        const deadline = setMinutes(setHours(startOfDay(att.checkInTime.toDate()), h), m);
+                        if (att.checkInTime.toDate() > deadline) isLate = true;
                     }
                     point = isLate ? 0.95 : 1.0;
                 } else if (att.checkInTime || att.checkOutTime) {
@@ -327,7 +327,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
 
                 const terminalDescriptions = ['dinas pagi', 'dinas siang', 'pulang cepat'];
                 if (isManual && terminalDescriptions.includes(description.toLowerCase())) {
-                    const isCheckOutHiddenStatus = ['dinas siang', 'pulang cepat'].includes(description.toLowerCase());
+                    const isCheckOutHiddenStatus = ['dinas pagi', 'dinas siang', 'pulang cepat'].includes(description.toLowerCase());
                     const displayCheckOutTime = isCheckOutHiddenStatus ? null : checkOutTime;
                     
                     return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: displayCheckOutTime, status: description, description, manualEntry: true };

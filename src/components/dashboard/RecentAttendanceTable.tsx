@@ -102,6 +102,7 @@ const RecentAttendanceTable = () => {
               const lowReason = reason.toLowerCase();
               const isDinasSiang = lowReason.includes('dinas siang');
               const isPulangCepat = lowReason.includes('pulang cepat');
+              const isDinasPagi = lowReason.includes('dinas pagi');
               
               if (lowReason.includes('dinas')) statusLabel = reason;
               if (isPulangCepat) statusLabel = 'Pulang cepat';
@@ -110,8 +111,8 @@ const RecentAttendanceTable = () => {
                 name: userData.name || '-',
                 nip: userData.nip || '-',
                 rawCheckInTime: checkInDate || checkOutDate, 
-                checkInTime: checkInTime ? format(checkInDate, 'HH:mm:ss') : '-',
-                checkOutTime: (isDinasSiang || isPulangCepat) ? '-' : (checkOutDate ? format(checkOutDate, 'HH:mm:ss') : '-'),
+                checkInTime: checkInDate ? format(checkInDate, 'HH:mm:ss') : '-',
+                checkOutTime: (isDinasSiang || isPulangCepat || isDinasPagi) ? '-' : (checkOutDate ? format(checkOutDate, 'HH:mm:ss') : '-'),
                 status: statusLabel,
                 keterangan: reason || (checkOutDate ? 'Absensi selesai' : 'Sedang bertugas'),
               });
