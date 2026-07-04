@@ -331,10 +331,10 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                     return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime, status: 'Hadir', description, manualEntry: true };
                 }
 
-                if (!checkOutTime && !isToday && isBefore(day, todayStart)) {
-                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: 'Alpa', description: 'Belum absen pulang', manualEntry: isManual };
+                if (!checkOutTime) {
+                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: 'Hadir', description: 'Belum absen pulang', manualEntry: isManual };
                 }
-                return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime, status: 'Hadir', description: !checkOutTime && isToday ? 'Belum absen pulang' : description, manualEntry: isManual };
+                return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime, status: 'Hadir', description, manualEntry: isManual };
             }
 
             if (leaveRecord && leaveRecord.type !== 'Pulang Cepat') {
