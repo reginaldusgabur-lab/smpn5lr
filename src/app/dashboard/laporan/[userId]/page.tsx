@@ -139,7 +139,8 @@ export default function UserReportDetailPage() {
                 if (newStatus === 'Dinas Pagi') {
                     dataToSave.checkInTime = null;
                     dataToSave.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, outStart, outEnd));
-                } else {
+                } else if (newStatus === 'Dinas Siang') {
+                    // For Dinas Siang: Maintain or set random check-in, set checkout to NULL as requested
                     if (existingItem?.checkInTime) {
                         dataToSave.checkInTime = Timestamp.fromDate(parseISO(existingItem.checkInTime));
                     } else {
@@ -148,7 +149,16 @@ export default function UserReportDetailPage() {
                         const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                         dataToSave.checkInTime = Timestamp.fromDate(new Date(baseLimit.getTime() - randomMs));
                     }
-                    // Force set a random early check-out for "Pulang Cepat" or "Dinas Siang" to close the record
+                    dataToSave.checkOutTime = null; // Dinas Siang: Empty check-out
+                } else { // Pulang Cepat
+                    if (existingItem?.checkInTime) {
+                        dataToSave.checkInTime = Timestamp.fromDate(parseISO(existingItem.checkInTime));
+                    } else {
+                        const [h, m] = inEnd.split(':').map(Number);
+                        const baseLimit = setMinutes(setHours(startOfDay(targetDate), h), m);
+                        const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
+                        dataToSave.checkInTime = Timestamp.fromDate(new Date(baseLimit.getTime() - randomMs));
+                    }
                     dataToSave.checkOutTime = Timestamp.fromDate(getRandomTime(targetDate, "11:00", "13:00"));
                 }
 
@@ -191,7 +201,6 @@ export default function UserReportDetailPage() {
             const [outH_threshold, outM_threshold] = (schoolConfigData.checkOutStartTime || '14:00').split(':').map(Number);
             const checkOutThreshold = setMinutes(setHours(startOfDay(targetDate), outH_threshold), outM_threshold);
             
-            // For admin correction, if we set late, we usually want to complete the record if it's a past date
             const shouldFillCheckOut = isBefore(startOfDay(targetDate), startOfDay(now)) || now >= checkOutThreshold;
 
             const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
@@ -244,7 +253,6 @@ export default function UserReportDetailPage() {
             const [outH_threshold, outM_threshold] = outStart.split(':').map(Number);
             const checkOutThreshold = setMinutes(setHours(startOfDay(targetDate), outH_threshold), outM_threshold);
             
-            // CRITICAL FIX: If item.checkInTime exists, we are "completing" the record. Always fill checkout.
             const isCompletingOut = !!item.checkInTime;
             const shouldFillCheckOut = isBefore(startOfDay(targetDate), startOfDay(now)) || now >= checkOutThreshold || isCompletingOut;
 
@@ -455,7 +463,7 @@ export default function UserReportDetailPage() {
                                                         <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkInTime, 'HH:mm:ss')}</TableCell>
                                                         <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkOutTime, 'HH:mm:ss')}</TableCell>
                                                         <TableCell className="text-center">
-                                                            {isAdmin && (isAlpa || (!hasOut && item.status !== 'Alpa')) ? (
+                                                            {isAdmin && (isAlpa || (!hasOut && !['Dinas Siang', 'Pulang cepat', 'Dinas pagi'].includes(item.status))) ? (
                                                                 <DropdownMenu>
                                                                     <DropdownMenuTrigger asChild>
                                                                         <Button variant="outline" size="sm" className={cn("font-bold text-[9px] h-7 rounded-lg shadow-none", isAlpa ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200')}>
@@ -483,14 +491,14 @@ export default function UserReportDetailPage() {
                                                                         
                                                                         {!hasIn && (
                                                                             <>
-                                                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Sakit', 'Sakit')}>Sakit (0.9)</DropdownMenuItem>
-                                                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Izin Pribadi', 'Izin Pribadi')}>Izin (0.7)</DropdownMenuItem>
-                                                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Dinas Pagi', 'Dinas Pagi')}>Dinas Pagi (1.0)</DropdownMenuItem>
+                                                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Sakit', 'Sakit')}>Sakit</DropdownMenuItem>
+                                                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Izin Pribadi', 'Izin Pribadi')}>Izin</DropdownMenuItem>
+                                                                                <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Dinas Pagi', 'Dinas Pagi')}>Dinas Pagi</DropdownMenuItem>
                                                                             </>
                                                                         )}
                                                                         
-                                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Dinas Siang', 'Dinas Siang')}>Dinas Siang (1.0)</DropdownMenuItem>
-                                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Pulang Cepat', 'Pulang Cepat')}>Pulang Cepat (0.95)</DropdownMenuItem>
+                                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Dinas Siang', 'Dinas Siang')}>Dinas Siang</DropdownMenuItem>
+                                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleStatusChange(item.date, 'Pulang Cepat', 'Pulang Cepat')}>Pulang Cepat</DropdownMenuItem>
                                                                     </DropdownMenuContent>
                                                                 </DropdownMenu>
                                                             ) : (

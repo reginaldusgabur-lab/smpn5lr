@@ -20,7 +20,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v20_${todayStr}`;
+    const cacheKey = `daily_stats_v21_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -130,7 +130,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v20_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v21_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -328,7 +328,8 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
 
                 const terminalDescriptions = ['dinas pagi', 'dinas siang', 'pulang cepat'];
                 if (isManual && terminalDescriptions.includes(description.toLowerCase())) {
-                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime, status: 'Hadir', description, manualEntry: true };
+                    // Update status to match description for Dinas Siang and Pulang Cepat
+                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime, status: description, description, manualEntry: true };
                 }
 
                 if (!checkOutTime) {

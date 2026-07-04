@@ -132,7 +132,6 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
 
             const [outH_threshold, outM_threshold] = (checkOutStartTime || '14:00').split(':').map(Number);
             const checkOutThreshold = setMinutes(setHours(startOfDay(recordDate), outH_threshold), outM_threshold);
-            const shouldFillCheckOut = isBefore(startOfDay(recordDate), startOfDay(now)) || now >= checkOutThreshold;
 
             const [endH, endM] = (checkInEndTime || '07:30').split(':').map(Number);
             const baseLimit = setMinutes(setHours(startOfDay(recordDate), endH), endM);
@@ -144,7 +143,6 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                     checkInTime = new Date(baseLimit.getTime() - randomMs);
                 }
-                // ALWAYS fill checkOut for admin correction if manually finalizing
                 checkOutTime = getRandomTime(recordDate, checkOutStartTime || '14:00', checkOutEndTime || '16:00');
                 reasonForUpdate = 'Kehadiran penuh';
             } else if (type === 'terlambat') {
@@ -163,7 +161,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     const randomMs = Math.floor(Math.random() * (5 * 60 * 1000));
                     checkInTime = new Date(baseLimit.getTime() - randomMs);
                 }
-                checkOutTime = getRandomTime(recordDate, "11:00", "13:00");
+                checkOutTime = null; // Dinas Siang: Empty check-out
                 reasonForUpdate = 'Dinas siang';
             } else { // pulang-cepat
                 if (day.checkInTime) {
@@ -200,7 +198,6 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
 
         setIsSaving(true);
         try {
-            const now = new Date();
             const batch = writeBatch(firestore);
             const daysToUpdate = problematicDays.filter(day => selectedDays[day.id]);
             for (const day of daysToUpdate) {
@@ -224,7 +221,6 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     dataToUpdate.checkInTime = Timestamp.fromDate(parseISO(day.checkInTime));
                 }
 
-                // For bulk "Correction", we always fill checkout time if we are correcting a "Belum absen pulang"
                 let checkOutTime = getRandomTime(recordDate, schoolConfig.checkOutStartTime || '14:00', schoolConfig.checkOutEndTime || '16:00');
                 const cIn = dataToUpdate.checkInTime.toDate();
                 if (checkOutTime.getTime() <= cIn.getTime()) {
@@ -255,7 +251,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                     <div className="py-4 space-y-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-3/4" /></div>
                 ) : problematicDays.length > 0 ? (
                     <div className="py-4">
-                        <DialogDescription className="mb-4 text-sm font-bold text-muted-foreground">Pilih data untuk diperbaiki atau ubah status alpa secara langsung.</DialogDescription>
+                        <DialogDescription className="mb-4 text-sm font-bold text-muted-foreground">Pilih data untuk diperbaiki atau ubah status secara langsung.</DialogDescription>
                         <div className="max-h-[300px] overflow-y-auto -mr-2 pr-2 space-y-2">
                             {problematicDays.map(day => {
                                 const hasIn = !!day.checkInTime;
@@ -279,12 +275,12 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                                                         {hasIn ? 'Koreksi Pulang' : 'Koreksi Hadir'}
                                                     </DropdownMenuLabel>
                                                     
-                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'hadir')}>
+                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'hadir')}>
                                                         {hasIn ? 'Lengkapi absen pulang' : 'Jadikan Hadir'}
                                                     </DropdownMenuItem>
 
                                                     {!hasIn && (
-                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'terlambat')}>Set Terlambat</DropdownMenuItem>
+                                                        <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'terlambat')}>Set Terlambat</DropdownMenuItem>
                                                     )}
                                                     
                                                     <DropdownMenuSeparator className="my-1.5 opacity-50" />
@@ -293,14 +289,14 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                                                     
                                                     {!hasIn && (
                                                         <>
-                                                            <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToLeave(day, 'Sakit')}>Set Sakit</DropdownMenuItem>
-                                                            <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToLeave(day, 'Izin')}>Set Izin</DropdownMenuItem>
-                                                            <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'dinas-pagi')}>Dinas Pagi</DropdownMenuItem>
+                                                            <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToLeave(day, 'Sakit')}>Set Sakit</DropdownMenuItem>
+                                                            <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToLeave(day, 'Izin')}>Set Izin</DropdownMenuItem>
+                                                            <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'dinas-pagi')}>Dinas Pagi</DropdownMenuItem>
                                                         </>
                                                     )}
                                                     
-                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'dinas-siang')}>Dinas Siang</DropdownMenuItem>
-                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'pulang-cepat')}>Pulang Cepat</DropdownMenuItem>
+                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'dinas-siang')}>Dinas Siang</DropdownMenuItem>
+                                                    <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isSaving} onClick={() => handleAlpaConversionToAttendance(day, 'pulang-cepat')}>Pulang Cepat</DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         ) : (

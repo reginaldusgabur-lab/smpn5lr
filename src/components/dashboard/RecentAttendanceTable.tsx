@@ -25,7 +25,7 @@ interface Activity {
   checkInTime: string;
   checkOutTime: string;
   rawCheckInTime: Date | null;
-  status: 'Hadir' | 'Pulang';
+  status: string;
   keterangan: string;
 }
 
@@ -94,21 +94,26 @@ const RecentAttendanceTable = () => {
               const userData = userSnap.data();
               const checkInDate = attendanceData.checkInTime ? attendanceData.checkInTime.toDate() : null;
               const checkOutDate = attendanceData.checkOutTime ? attendanceData.checkOutTime.toDate() : null;
+              const reason = attendanceData.reasonForUpdate || '';
               
+              let statusLabel = 'Hadir';
+              if (checkOutDate) statusLabel = 'Pulang';
+              if (reason.toLowerCase().includes('dinas')) statusLabel = reason;
+              if (reason.toLowerCase().includes('pulang cepat')) statusLabel = 'Pulang cepat';
+
               activitiesData.push({
                 name: userData.name || '-',
                 nip: userData.nip || '-',
-                rawCheckInTime: checkInDate || checkOutDate, // Use checkout time as fallback for sorting if check-in is missing
+                rawCheckInTime: checkInDate || checkOutDate, 
                 checkInTime: checkInDate ? format(checkInDate, 'HH:mm:ss') : '-',
                 checkOutTime: checkOutDate ? format(checkOutDate, 'HH:mm:ss') : '-',
-                status: checkOutDate ? 'Pulang' : 'Hadir',
-                keterangan: checkOutDate ? 'Absensi selesai' : 'Sedang bertugas',
+                status: statusLabel,
+                keterangan: reason || (checkOutDate ? 'Absensi selesai' : 'Sedang bertugas'),
               });
             }
           }
         }
 
-        // SORT: Ascending (A - B) - First arrive at top
         const sortedActivities = activitiesData.sort((a, b) => {
             const timeA = a.rawCheckInTime?.getTime() || 0;
             const timeB = b.rawCheckInTime?.getTime() || 0;
@@ -154,6 +159,13 @@ const RecentAttendanceTable = () => {
     );
   }
 
+  const getStatusBadgeStyle = (status: string) => {
+      const s = status.toLowerCase();
+      if (s === 'pulang') return 'bg-slate-700 text-white border-none';
+      if (s.includes('dinas') || s.includes('cepat')) return 'bg-blue-800 text-white border-none';
+      return 'bg-primary text-white border-none';
+  }
+
   return (
     <div className="w-full space-y-4">
       <Card className="border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden">
@@ -189,11 +201,11 @@ const RecentAttendanceTable = () => {
               <Table>
                 <TableHeader className="bg-green-500/5">
                   <TableRow className="border-none">
-                    <TableHead className="w-[60px] text-center font-bold text-[10px] tracking-widest text-green-700 uppercase">No</TableHead>
-                    <TableHead className="font-bold text-[10px] tracking-widest text-green-700 uppercase">Nama & NIP</TableHead>
-                    <TableHead className="text-center font-bold text-[10px] tracking-widest text-green-700 uppercase">Masuk</TableHead>
-                    <TableHead className="text-center font-bold text-[10px] tracking-widest text-green-700 uppercase">Pulang</TableHead>
-                    <TableHead className="text-center font-bold text-[10px] tracking-widest text-green-700 uppercase">Status</TableHead>
+                    <TableHead className="w-[60px] text-center font-bold text-[10px] uppercase tracking-widest text-green-700">No</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-widest text-green-700">Nama & NIP</TableHead>
+                    <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-green-700">Masuk</TableHead>
+                    <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-green-700">Pulang</TableHead>
+                    <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest text-green-700">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -210,8 +222,8 @@ const RecentAttendanceTable = () => {
                         <Badge 
                             variant="outline" 
                             className={cn(
-                                "text-[9px] font-bold px-3 py-0.5 rounded-full border-none shadow-sm",
-                                activity.status === 'Pulang' ? "bg-slate-700 text-white" : "bg-primary text-white"
+                                "text-[9px] font-bold px-3 py-1 rounded-full shadow-sm",
+                                getStatusBadgeStyle(activity.status)
                             )}
                         >
                             {activity.status}
