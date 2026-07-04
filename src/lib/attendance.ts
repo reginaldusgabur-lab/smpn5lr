@@ -21,7 +21,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v36_${todayStr}`;
+    const cacheKey = `daily_stats_v37_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -128,7 +128,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v36_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v37_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -235,14 +235,14 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
         
         const attendanceQuery = query(
             collection(firestore, 'users', userId, 'attendanceRecords'),
-            where('date', '>=', format(monthStart, 'yyyy-MM-dd')),
-            where('date', '<=', format(monthEnd, 'yyyy-MM-dd'))
+            where('date', >=, format(monthStart, 'yyyy-MM-dd')),
+            where('date', <=, format(monthEnd, 'yyyy-MM-dd'))
         );
 
         const leaveHistoryQuery = query(
             collection(firestore, 'users', userId, 'leaveRequests'), 
             where('status', '==', 'approved'),
-            where('startDate', '<=', monthEnd)
+            where('startDate', <=, monthEnd)
         );
 
         const [monthlyConfigSnap, attendanceHistorySnap, leaveHistorySnap] = await Promise.all([
@@ -296,6 +296,10 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                 const specialStatuses = ['dinas pagi', 'dinas siang', 'pulang cepat'];
                 if (isManual && specialStatuses.includes(description.toLowerCase())) {
                     return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: description, description, manualEntry: true };
+                }
+
+                if (!checkInTime && checkOutTime) {
+                    return { id: attendanceRecord.id, date: day, checkInTime: null, checkOutTime, status: 'Hadir', description: 'Absen pulang (Tanpa masuk)', manualEntry: isManual };
                 }
 
                 return { 

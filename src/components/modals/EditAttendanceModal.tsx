@@ -25,24 +25,6 @@ import { id } from 'date-fns/locale';
 import { MoreVertical, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { invalidateCache } from '@/lib/cache';
 
-const getRandomTime = (baseDate: Date, startTimeStr: string, endTimeStr: string): Date => {
-    const [startH, startM] = startTimeStr.split(':').map(Number);
-    const [endH, endM] = endTimeStr.split(':').map(Number);
-    const startDate = new Date(baseDate.getTime());
-    startDate.setHours(startH, startM, 0, 0);
-    const endDate = new Date(baseDate.getTime());
-    endDate.setHours(endH, endM, 0, 0);
-    
-    if (endDate.getTime() <= startDate.getTime()) {
-        endDate.setDate(endDate.getDate() + 1);
-    }
-    
-    const randomTimestamp = startDate.getTime() + Math.random() * (endDate.getTime() - startDate.getTime());
-    const res = new Date(randomTimestamp);
-    res.setSeconds(Math.floor(Math.random() * 60));
-    return res;
-};
-
 export default function EditAttendanceModal({ user, month, isOpen, onClose, currentUser }) {
     const firestore = useFirestore();
     const [problematicDays, setProblematicDays] = useState<any[]>([]);
@@ -66,8 +48,12 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 if (isMounted.current) setSchoolConfig(config);
                 const reportData = await fetchUserMonthlyReportData(firestore, user.uid, month, config);
                 
-                // Menangkap data yang bermasalah (Alpa atau Belum Pulang)
-                const problems = reportData.filter(d => (d.status === 'Alpa') || (d.description === 'Belum absen pulang'));
+                // Menangkap data yang bermasalah (Alpa, Belum Pulang, atau Tanpa Masuk)
+                const problems = reportData.filter(d => 
+                    (d.status === 'Alpa') || 
+                    (d.description === 'Belum absen pulang') ||
+                    (d.description === 'Absen pulang (Tanpa masuk)')
+                );
                 if (isMounted.current) {
                     setProblematicDays(problems);
                     setSelectedDays({});
@@ -108,7 +94,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
         finally { setIsSaving(false); }
     };
 
-    const handleAlpaConversionToAttendance = async (day: any, type: 'hadir' | 'terlambat' | 'dinas-pagi' | 'dinas-siang' | 'pulang-cepat') => {
+    const handleAlpaConversionToAttendance = async (day: any, type: 'hadir' | 'terlambat' | 'dinas-pagi' | 'dinas-siang' | 'pulang-cepat' | 'lengkapi-masuk') => {
         if (!currentUser?.uid || !firestore || !schoolConfig) return;
         
         setIsSaving(true);
@@ -130,13 +116,16 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
             };
 
             if (type === 'hadir') {
-                data.checkInTime = day.checkInTime ? Timestamp.fromDate(parseISO(day.checkInTime)) : Timestamp.fromDate(new Date(limitIn.getTime() - Math.floor(Math.random() * 5 * 60 * 1000)));
+                data.checkInTime = Timestamp.fromDate(new Date(limitIn.getTime() - Math.floor(Math.random() * 5 * 60 * 1000)));
                 data.checkOutTime = Timestamp.fromDate(new Date(limitOutStart.getTime() + Math.floor(Math.random() * 5 * 60 * 1000)));
                 data.reasonForUpdate = 'Kehadiran penuh';
             } else if (type === 'terlambat') {
                 data.checkInTime = Timestamp.fromDate(new Date(limitIn.getTime() + Math.floor(Math.random() * 5 * 60 * 1000)));
                 data.checkOutTime = Timestamp.fromDate(new Date(limitOutStart.getTime() + Math.floor(Math.random() * 5 * 60 * 1000)));
                 data.reasonForUpdate = 'Terlambat';
+            } else if (type === 'lengkapi-masuk') {
+                data.checkInTime = Timestamp.fromDate(new Date(limitIn.getTime() - Math.floor(Math.random() * 5 * 60 * 1000)));
+                data.reasonForUpdate = 'Koreksi jam masuk';
             } else if (type === 'dinas-pagi') {
                 data.checkInTime = null;
                 data.checkOutTime = Timestamp.fromDate(new Date(limitOutStart.getTime() + Math.floor(Math.random() * 5 * 60 * 1000)));
@@ -203,19 +192,26 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                         <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1">
                             {problematicDays.map(day => {
                                 const hasIn = !!day.checkInTime;
+                                const hasOut = !!day.checkOutTime;
+                                const isNoIn = !hasIn && hasOut;
+
                                 return (
                                     <div key={day.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 border border-muted-foreground/5">
                                         {day.status === 'Alpa' ? <div className="p-1 rounded-full bg-destructive/10"><AlertTriangle className="h-4 w-4 text-destructive" /></div> : <Checkbox checked={!!selectedDays[day.id]} onCheckedChange={() => handleSelectDay(day.id)} />}
                                         <label className="text-sm font-bold grow">{format(parseISO(day.date), 'eeee, d MMM yyyy', { locale: id })}</label>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Badge variant="outline" className={cn("cursor-pointer font-bold text-[10px] px-3 py-1 rounded-lg uppercase", getAdminBadgeClass(day.status))}>
+                                                <Badge variant="outline" className={cn("cursor-pointer font-bold text-[10px] px-3 py-1 rounded-lg uppercase shadow-none", getAdminBadgeClass(day.status))}>
                                                     {day.status} <MoreVertical className="h-3 w-3 ml-1" />
                                                 </Badge>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border-none p-2">
                                                 <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest opacity-50 px-3 py-2">Koreksi Kehadiran</DropdownMenuLabel>
-                                                <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToAttendance(day, 'hadir')}>{hasIn ? 'Lengkapi absen pulang' : 'Jadikan Hadir'}</DropdownMenuItem>
+                                                {isNoIn ? (
+                                                    <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToAttendance(day, 'lengkapi-masuk')}>Lengkapi absen masuk</DropdownMenuItem>
+                                                ) : (
+                                                    <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToAttendance(day, 'hadir')}>{hasIn ? 'Lengkapi absen pulang' : 'Jadikan Hadir'}</DropdownMenuItem>
+                                                )}
                                                 {!hasIn && <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToAttendance(day, 'terlambat')}>Set Terlambat</DropdownMenuItem>}
                                                 <DropdownMenuSeparator className='my-1.5 opacity-50' />
                                                 <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest opacity-50 px-3 py-2">Ubah Status</DropdownMenuLabel>
@@ -240,8 +236,8 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 )}
                 </div>
                 <DialogFooter className="p-6 pt-0 gap-2">
-                    <DialogClose asChild><Button variant="ghost" className="rounded-xl font-bold">Batal</Button></DialogClose>
-                    <Button onClick={handleSaveChanges} className="rounded-xl font-bold bg-primary uppercase text-xs tracking-wider" disabled={isLoading || isSaving || !Object.values(selectedDays).some(Boolean)}>{isSaving ? <Loader2 className="animate-spin h-4 w-4" /> : 'Lengkapi Terpilih'}</Button>
+                    <DialogClose asChild><Button variant="ghost" className="rounded-xl font-bold shadow-none">Batal</Button></DialogClose>
+                    <Button onClick={handleSaveChanges} className="rounded-xl font-bold bg-primary uppercase text-xs tracking-wider shadow-none" disabled={isLoading || isSaving || !Object.values(selectedDays).some(Boolean)}>{isSaving ? <Loader2 className="animate-spin h-4 w-4" /> : 'Lengkapi Terpilih'}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

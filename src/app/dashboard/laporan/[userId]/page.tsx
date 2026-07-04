@@ -188,6 +188,37 @@ export default function UserReportDetailPage() {
         finally { setIsMutating(false); }
     };
 
+    const handleSetIn = async (item: MonthlyReportData) => {
+        if (!currentUser || !firestore || !schoolConfigData || isMutating) return;
+        setIsMutating(true);
+        try {
+            const targetDate = parseISO(item.date);
+            const inEnd = schoolConfigData.checkInEndTime || '07:30';
+            const [h, m] = inEnd.split(':').map(Number);
+            const limitIn = setMinutes(setHours(startOfDay(targetDate), h), m);
+            
+            const realIn = new Date(limitIn.getTime() - Math.floor(Math.random() * 5 * 60 * 1000));
+            
+            const attendanceRef = collection(firestore, 'users', userId, 'attendanceRecords');
+            const q = query(attendanceRef, where('date', '==', format(targetDate, 'yyyy-MM-dd')));
+            const snap = await getDocs(q);
+
+            if (!snap.empty) {
+                await writeBatch(firestore).update(snap.docs[0].ref, {
+                    checkInTime: Timestamp.fromDate(realIn),
+                    updatedBy: currentUser.uid,
+                    updatedAt: serverTimestamp(),
+                    reasonForUpdate: 'Koreksi jam masuk',
+                    manualEntry: true
+                }).commit();
+                invalidateCache();
+                toast({ title: 'Berhasil', description: 'Jam masuk telah dilengkapi.' });
+                fetchData();
+            }
+        } catch (err) { toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal memperbarui data.' }); }
+        finally { setIsMutating(false); }
+    };
+
     const handleSetLate = async (item: MonthlyReportData) => {
         if (!currentUser || !firestore || !schoolConfigData || isMutating) return;
         setIsMutating(true);
@@ -287,7 +318,7 @@ export default function UserReportDetailPage() {
         if (status === 'Sakit') return 'bg-orange-50 text-orange-700 border-orange-200';
         if (status === 'Izin' || status.includes('Izin')) return 'bg-blue-50 text-blue-700 border-blue-200';
         if (status.includes('Dinas')) return 'bg-purple-50 text-purple-700 border-purple-200';
-        return 'bg-orange-50 text-orange-700 border-orange-200'; // Default for Hadir but incomplete
+        return 'bg-orange-50 text-orange-700 border-orange-200';
     };
 
     return (
@@ -295,7 +326,7 @@ export default function UserReportDetailPage() {
             <div className="max-w-7xl mx-auto space-y-4">
                 <div className="px-4 md:px-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2 shadow-none" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
                         <h1 className="text-2xl font-normal tracking-tight">Detail Laporan Kehadiran</h1>
                     </div>
                 </div>
@@ -305,16 +336,16 @@ export default function UserReportDetailPage() {
                         <div className="p-4 space-y-4">
                             <div className="flex flex-col items-center justify-center gap-4 py-2">
                                 <div className="flex items-center bg-muted/40 rounded-2xl border border-muted-foreground/5 p-1">
-                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={() => setCurrentMonth(prev => subMonths(prev, 1))} disabled={isLoading || !canGoPrev}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl shadow-none" onClick={() => setCurrentMonth(prev => subMonths(prev, 1))} disabled={isLoading || !canGoPrev}><ChevronLeft className="h-5 w-5 text-primary" /></Button>
                                     <div className="flex items-center gap-3 px-4">
                                         {stats && <span className="text-sm font-bold text-primary border-r border-muted-foreground/20 pr-3">{stats.persentase}</span>}
                                         <span className="font-bold text-xl text-primary capitalize whitespace-nowrap min-w-[120px] text-center">{format(currentMonth, 'MMMM yyyy', { locale: id })}</span>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isLoading || !canGoNext}><ChevronRight className="h-5 w-5 text-primary" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl shadow-none" onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} disabled={isLoading || !canGoNext}><ChevronRight className="h-5 w-5 text-primary" /></Button>
                                 </div>
                             </div>
                             <div className="flex justify-center sm:justify-end">
-                                <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-normal bg-primary hover:bg-primary/90 h-11 rounded-xl text-xs uppercase tracking-wider">
+                                <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-normal bg-primary hover:bg-primary/90 h-11 rounded-xl text-xs uppercase tracking-wider shadow-none">
                                     {isLoading || isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}UNDUH PDF
                                 </Button>
                             </div>
@@ -349,6 +380,7 @@ export default function UserReportDetailPage() {
                                             const isAlpa = item.status === 'Alpa';
                                             const hasIn = !!item.checkInTime;
                                             const hasOut = !!item.checkOutTime;
+                                            const isLeave = ['Sakit', 'Izin', 'Dinas'].includes(item.status);
 
                                             return (
                                                 <TableRow key={item.id} className={cn("border-muted-foreground/5 hover:bg-muted/20 transition-colors", isAlpa && "bg-destructive/5")}>
@@ -357,7 +389,7 @@ export default function UserReportDetailPage() {
                                                     <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkInTime, 'HH:mm:ss')}</TableCell>
                                                     <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkOutTime, 'HH:mm:ss')}</TableCell>
                                                     <TableCell className="text-center">
-                                                        {isAdmin && (isAlpa || !hasOut || item.status === 'Sakit' || item.status.includes('Izin')) ? (
+                                                        {isAdmin && !isLeave ? (
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger asChild>
                                                                     <Button variant="outline" size="sm" className={cn("font-bold text-[9px] h-7 rounded-lg shadow-none flex items-center justify-center gap-1", getAdminBadgeClass(item.status))}>
@@ -365,8 +397,10 @@ export default function UserReportDetailPage() {
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border-none p-2">
-                                                                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest opacity-50 px-3 py-2">Koreksi Hadir</DropdownMenuLabel>
-                                                                    <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetHadir(item)}>{hasIn ? 'Lengkapi absen pulang' : 'Jadikan Hadir'}</DropdownMenuItem>
+                                                                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest opacity-50 px-3 py-2">Koreksi</DropdownMenuLabel>
+                                                                    {!hasIn && !hasOut && <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetHadir(item)}>Jadikan Hadir</DropdownMenuItem>}
+                                                                    {!hasIn && hasOut && <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetIn(item)}>Lengkapi absen masuk</DropdownMenuItem>}
+                                                                    {hasIn && !hasOut && <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetHadir(item)}>Lengkapi absen pulang</DropdownMenuItem>}
                                                                     {!hasIn && <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetLate(item)}>Set Terlambat</DropdownMenuItem>}
                                                                     <DropdownMenuSeparator className='my-1.5 opacity-50' />
                                                                     <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest opacity-50 px-3 py-2">Ubah Status</DropdownMenuLabel>
@@ -405,3 +439,4 @@ export default function UserReportDetailPage() {
         </div>
     );
 }
+
