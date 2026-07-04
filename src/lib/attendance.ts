@@ -21,7 +21,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v30_${todayStr}`;
+    const cacheKey = `daily_stats_v35_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -128,7 +128,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v30_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v35_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -140,33 +140,26 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         
         const attendanceQuery = query(
             collection(firestore, 'users', userId, 'attendanceRecords'),
-            where('checkInTime', '>=', start),
-            where('checkInTime', '<=', end)
-        );
-        
-        const attendanceFallbackQuery = query(
-            collection(firestore, 'users', userId, 'attendanceRecords'),
             where('date', '>=', format(start, 'yyyy-MM-dd')),
             where('date', '<=', format(end, 'yyyy-MM-dd'))
         );
-
+        
         const leaveQuery = query(
             collection(firestore, 'users', userId, 'leaveRequests'),
             where('status', '==', 'approved'),
             where('startDate', '<=', end)
         );
 
-        const [schoolConfigSnap, monthlyConfigSnap, attendanceSnap, attendanceFallbackSnap, leaveSnap] = await Promise.all([
+        const [schoolConfigSnap, monthlyConfigSnap, attendanceSnap, leaveSnap] = await Promise.all([
             getDoc(schoolConfigRef),
             getDoc(monthlyConfigRef),
             getDocs(attendanceQuery),
-            getDocs(attendanceFallbackQuery),
             getDocs(leaveQuery),
         ]);
 
         const schoolConfig = schoolConfigSnap.data();
         const monthlyConfig = monthlyConfigSnap.data();
-        const attendanceData = [...attendanceSnap.docs, ...attendanceFallbackSnap.docs].map(d => ({ ...d.data(), id: d.id }));
+        const attendanceData = attendanceSnap.docs.map(d => ({ ...d.data(), id: d.id }));
         const leaveData = leaveSnap.docs.map(d => d.data());
 
         const offDays: number[] = schoolConfig?.offDays ?? [0, 6];
@@ -182,7 +175,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         const processedDates = new Set<string>();
 
         attendanceData.forEach((att: any) => {
-            const attDateStr = att.date || (att.checkInTime ? format(att.checkInTime.toDate(), 'yyyy-MM-dd') : null);
+            const attDateStr = att.date;
             if (attDateStr && workingDaysSet.has(attDateStr) && !processedDates.has(attDateStr)) {
                 let point = 0;
                 const desc = (att.reasonForUpdate || '').toLowerCase();
@@ -239,13 +232,8 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
     try {
         const monthlyConfigId = format(currentMonth, 'yyyy-MM');
         const monthlyConfigRef = doc(firestore, 'monthlyConfigs', monthlyConfigId);
-        const attendanceHistoryQuery = query(
-            collection(firestore, 'users', userId, 'attendanceRecords'), 
-            where('checkInTime', '>=', monthStart), 
-            where('checkInTime', '<=', monthEnd)
-        );
         
-        const attendanceFallbackQuery = query(
+        const attendanceQuery = query(
             collection(firestore, 'users', userId, 'attendanceRecords'),
             where('date', '>=', format(monthStart, 'yyyy-MM-dd')),
             where('date', '<=', format(monthEnd, 'yyyy-MM-dd'))
@@ -257,15 +245,14 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
             where('startDate', '<=', monthEnd)
         );
 
-        const [monthlyConfigSnap, attendanceHistorySnap, attendanceFallbackSnap, leaveHistorySnap] = await Promise.all([
+        const [monthlyConfigSnap, attendanceHistorySnap, leaveHistorySnap] = await Promise.all([
             getDoc(monthlyConfigRef),
-            getDocs(attendanceHistoryQuery),
-            getDocs(attendanceFallbackQuery),
+            getDocs(attendanceQuery),
             getDocs(leaveHistoryQuery),
         ]);
 
         const monthlyConfig = monthlyConfigSnap.exists() ? monthlyConfigSnap.data() : {};
-        const attendanceHistory = [...attendanceHistorySnap.docs, ...attendanceFallbackSnap.docs].map(d => ({ ...d.data(), id: d.id }));
+        const attendanceHistory = attendanceHistorySnap.docs.map(d => ({ ...d.data(), id: d.id }));
         const leaveHistory = leaveHistorySnap.docs.map(d => d.data());
 
         const now = new Date();
@@ -275,8 +262,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
 
         const attendanceMap = new Map();
         attendanceHistory.forEach((rec: any) => {
-            const dateStr = rec.date || (rec.checkInTime ? format(rec.checkInTime.toDate(), 'yyyy-MM-dd') : null);
-            if (dateStr) attendanceMap.set(dateStr, rec);
+            if (rec.date) attendanceMap.set(rec.date, rec);
         });
 
         const leaveMap = new Map<string, any>();
@@ -325,7 +311,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
             }
 
             if (isToday || (isWorkingDay && isBefore(day, todayStart))) {
-                return { id: dayStr, date: day, checkInTime: null, checkOutTime: null, status: 'Alpa', description: 'Belum absen masuk' };
+                return { id: dayStr, date: day, checkInTime: null, checkOutTime: null, status: 'Alpa', description: 'Tidak ada keterangan' };
             }
             return null;
         });

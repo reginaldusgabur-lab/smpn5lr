@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, getDoc, writeBatch, collection, serverTimestamp, Timestamp, query, where, getDocs } from 'firebase/firestore';
-import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isBefore, isSameMonth, startOfMonth, endOfMonth, setHours, setMinutes } from 'date-fns';
+import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isBefore, isSameMonth, startOfMonth, endOfMonth, setHours, setMinutes, subMonths, addMonths } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -169,7 +170,6 @@ export default function UserReportDetailPage() {
                 data.checkInTime = Timestamp.fromDate(new Date(limitIn.getTime() - Math.floor(Math.random() * 5 * 60 * 1000)));
             }
 
-            // PATEN: Waktu acak 5 menit SETELAH jam mulai pulang
             const realOut = new Date(limitOut.getTime() + Math.floor(Math.random() * 5 * 60 * 1000));
             data.checkOutTime = Timestamp.fromDate(realOut);
 
@@ -201,9 +201,7 @@ export default function UserReportDetailPage() {
             const [outH, outM] = outStart.split(':').map(Number);
             const limitOut = setMinutes(setHours(startOfDay(targetDate), outH), outM);
 
-            // PATEN: Waktu acak 5 menit SETELAH jam selesai masuk
             const realIn = new Date(limitIn.getTime() + Math.floor(Math.random() * 5 * 60 * 1000));
-            // PATEN: Waktu acak 5 menit SETELAH jam mulai pulang
             const realOut = new Date(limitOut.getTime() + Math.floor(Math.random() * 5 * 60 * 1000));
 
             const data = {
@@ -396,14 +394,3 @@ export default function UserReportDetailPage() {
     );
 }
 
-function subMonths(date: Date, amount: number) {
-    const d = new Date(date);
-    d.setMonth(d.getMonth() - amount);
-    return d;
-}
-
-function addMonths(date: Date, amount: number) {
-    const d = new Date(date);
-    d.setMonth(d.getMonth() + amount);
-    return d;
-}
