@@ -110,7 +110,7 @@ export default async function UserReportDetailPage({ params, searchParams }: {
                 let description;
 
                 if (attendanceRecord.manualEntry) {
-                    description = 'Kehadiran Penuh';
+                    description = attendanceRecord.reasonForUpdate || 'Kehadiran Penuh';
                 } else {
                     if (checkOutTime) {
                         if (schoolConfig.useTimeValidation && schoolConfig.checkInEndTime) {
@@ -124,7 +124,7 @@ export default async function UserReportDetailPage({ params, searchParams }: {
                         if (leaveRecord && leaveRecord.type === 'Pulang Cepat') {
                             description = 'Pulang Cepat';
                         } else {
-                            description = isBefore(day, today) ? 'Tidak Absen Pulang' : 'Belum Absen Pulang';
+                            description = 'Belum absen pulang';
                         }
                     }
                 }
@@ -149,7 +149,7 @@ export default async function UserReportDetailPage({ params, searchParams }: {
                     checkInTime: null, 
                     checkOutTime: null, 
                     status: 'Alpa', 
-                    description: isToday ? 'Belum Ada Aktivitas' : 'Tidak Ada Keterangan' 
+                    description: 'Belum absen masuk'
                 };
             }
 

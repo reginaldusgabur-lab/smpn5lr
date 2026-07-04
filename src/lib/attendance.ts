@@ -198,9 +198,8 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                     const checkInDate = att.checkInTime.toDate();
                     if (schoolConfig?.useTimeValidation && schoolConfig?.checkInEndTime) {
                         const [h, m] = schoolConfig.checkInEndTime.split(':').map(Number);
-                        const deadline = new Date(checkInDate);
-                        deadline.setHours(h, m, 0, 0);
-                        if (checkInDate > deadline) isLate = true;
+                        const deadline = setMinutes(setHours(startOfDay(att.checkInTime), h), m);
+                        if (att.checkInTime > deadline) isLate = true;
                     }
                     point = isLate ? 0.95 : 1.0;
                 } else if (att.checkInTime || att.checkOutTime) {
@@ -333,7 +332,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                 }
 
                 if (!checkOutTime && !isToday && isBefore(day, todayStart)) {
-                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: 'Alpa', description: 'Tidak absen pulang', manualEntry: isManual };
+                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: 'Alpa', description: 'Belum absen pulang', manualEntry: isManual };
                 }
                 return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime, status: 'Hadir', description: !checkOutTime && isToday ? 'Belum absen pulang' : description, manualEntry: isManual };
             }
@@ -343,7 +342,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
             }
 
             if (isToday || (isWorkingDay && isBefore(day, todayStart))) {
-                return { id: dayStr, date: day, checkInTime: null, checkOutTime: null, status: 'Alpa', description: isToday ? 'Belum ada aktivitas' : 'Tidak ada keterangan' };
+                return { id: dayStr, date: day, checkInTime: null, checkOutTime: null, status: 'Alpa', description: 'Belum absen masuk' };
             }
             return null;
         });

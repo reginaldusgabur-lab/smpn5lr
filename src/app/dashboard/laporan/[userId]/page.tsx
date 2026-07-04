@@ -424,7 +424,7 @@ export default function UserReportDetailPage() {
                                         ) : monthlyReportData.length > 0 ? (
                                             monthlyReportData.map((item, index) => {
                                                 const isMissingOut = item.description.toLowerCase().includes('absen pulang');
-                                                const isMissingIn = item.description.toLowerCase().includes('tanpa masuk');
+                                                const isMissingIn = item.description.toLowerCase().includes('absen masuk');
                                                 const isAlpa = item.status === 'Alpa';
 
                                                 return (
@@ -445,7 +445,7 @@ export default function UserReportDetailPage() {
                                                                         <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground px-3 py-2 opacity-50">Koreksi Hadir</DropdownMenuLabel>
                                                                         
                                                                         <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5 px-3 font-bold text-xs" disabled={isMutating} onClick={() => handleSetHadir(item)}>
-                                                                            {isMissingIn ? 'Lengkapi Masuk' : (isMissingOut ? 'Lengkapi Pulang' : 'Jadikan Hadir')}
+                                                                            Lengkapi Data
                                                                         </DropdownMenuItem>
 
                                                                         {!isMissingOut && (
