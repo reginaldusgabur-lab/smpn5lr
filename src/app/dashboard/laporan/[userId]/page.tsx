@@ -181,7 +181,7 @@ export default function UserReportDetailPage() {
 
             await batch.commit();
             invalidateCache();
-            toast({ title: 'Berhasil', description: 'Data kehadiran telah lengkap.' });
+            toast({ title: 'Berhasil', description: 'Data kehadiran kini lengkap.' });
             fetchData();
         } catch (err) { toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal memperbarui data.' }); }
         finally { setIsMutating(false); }
@@ -211,7 +211,7 @@ export default function UserReportDetailPage() {
                     manualEntry: true
                 }).commit();
                 invalidateCache();
-                toast({ title: 'Berhasil', description: 'Kehadiran kini tercatat penuh.' });
+                toast({ title: 'Berhasil', description: 'Data absen masuk telah dilengkapi.' });
                 fetchData();
             }
         } catch (err) { toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal memperbarui data.' }); }

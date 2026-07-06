@@ -20,7 +20,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v39_${todayStr}`;
+    const cacheKey = `daily_stats_v40_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -127,7 +127,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v39_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v40_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -179,7 +179,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                 let point = 0;
                 const desc = (att.reasonForUpdate || '').toLowerCase();
                 
-                if (desc.includes('dinas') || desc.includes('pulang cepat')) {
+                if (desc.includes('dinas') || desc.includes('pulang cepat') || desc.includes('kehadiran penuh')) {
                     point = 1.0;
                 } else if (att.checkInTime && att.checkOutTime) {
                     point = 1.0;
@@ -304,7 +304,7 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                 return { 
                     id: attendanceRecord.id, date: day, checkInTime, checkOutTime, 
                     status: 'Hadir', 
-                    description: !checkOutTime ? 'Belum absen pulang' : description, 
+                    description: !checkOutTime && isToday ? 'Belum absen pulang' : description, 
                     manualEntry: isManual 
                 };
             }
