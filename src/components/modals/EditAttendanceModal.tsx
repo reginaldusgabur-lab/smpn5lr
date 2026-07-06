@@ -222,8 +222,8 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                                                         <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToAttendance(day, 'dinas-pagi')}>Dinas Pagi</DropdownMenuItem>
                                                     </>
                                                 )}
-                                                <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToAttendance(day, 'dinas-siang')}>Dinas Siang</DropdownMenuItem>
-                                                <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToAttendance(day, 'pulang-cepat')}>Pulang Cepat</DropdownMenuItem>
+                                                <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToAttendance(day, 'dinas-siang')}>Dinas siang</DropdownMenuItem>
+                                                <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleAlpaConversionToAttendance(day, 'pulang-cepat')}>Pulang cepat</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </div>
@@ -243,4 +243,3 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
         </Dialog>
     );
 }
-

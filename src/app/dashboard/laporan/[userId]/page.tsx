@@ -181,7 +181,7 @@ export default function UserReportDetailPage() {
 
             await batch.commit();
             invalidateCache();
-            toast({ title: 'Berhasil', description: 'Kehadiran berhasil dilengkapi.' });
+            toast({ title: 'Berhasil', description: 'Data kehadiran telah lengkap.' });
             fetchData();
         } catch (err) { toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal memperbarui data.' }); }
         finally { setIsMutating(false); }
@@ -211,7 +211,7 @@ export default function UserReportDetailPage() {
                     manualEntry: true
                 }).commit();
                 invalidateCache();
-                toast({ title: 'Berhasil', description: 'Kehadiran telah lengkap.' });
+                toast({ title: 'Berhasil', description: 'Jam masuk telah dilengkapi.' });
                 fetchData();
             }
         } catch (err) { toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal memperbarui data.' }); }
@@ -379,6 +379,7 @@ export default function UserReportDetailPage() {
                                             const isAlpa = item.status === 'Alpa';
                                             const hasIn = !!item.checkInTime;
                                             const hasOut = !!item.checkOutTime;
+                                            const isNoIn = !hasIn && hasOut;
                                             const isLeave = ['Sakit', 'Izin', 'Dinas'].includes(item.status);
 
                                             return (
@@ -396,10 +397,12 @@ export default function UserReportDetailPage() {
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end" className="w-52 rounded-xl shadow-xl border-none p-2">
-                                                                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest opacity-50 px-3 py-2">Koreksi</DropdownMenuLabel>
-                                                                    {!hasIn && !hasOut && <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetHadir(item)}>Jadikan Hadir</DropdownMenuItem>}
-                                                                    {!hasIn && hasOut && <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetIn(item)}>Lengkapi absen masuk</DropdownMenuItem>}
-                                                                    {hasIn && !hasOut && <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetHadir(item)}>Lengkapi absen pulang</DropdownMenuItem>}
+                                                                    <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest opacity-50 px-3 py-2">Koreksi Kehadiran</DropdownMenuLabel>
+                                                                    {isNoIn ? (
+                                                                        <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetIn(item)}>Lengkapi absen masuk</DropdownMenuItem>
+                                                                    ) : (
+                                                                        <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetHadir(item)}>{hasIn ? 'Lengkapi absen pulang' : 'Jadikan Hadir'}</DropdownMenuItem>
+                                                                    )}
                                                                     {!hasIn && <DropdownMenuItem className="rounded-xl py-2.5 px-3 font-bold text-xs" onClick={() => handleSetLate(item)}>Set Terlambat</DropdownMenuItem>}
                                                                     <DropdownMenuSeparator className='my-1.5 opacity-50' />
                                                                     <DropdownMenuLabel className="text-[9px] font-black uppercase tracking-widest opacity-50 px-3 py-2">Ubah Status</DropdownMenuLabel>
@@ -439,3 +442,4 @@ export default function UserReportDetailPage() {
     );
 }
 
+const minDate = new Date(2026, 0, 1);
