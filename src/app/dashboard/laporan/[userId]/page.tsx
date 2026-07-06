@@ -207,11 +207,11 @@ export default function UserReportDetailPage() {
                     checkInTime: Timestamp.fromDate(realIn),
                     updatedBy: currentUser.uid,
                     updatedAt: serverTimestamp(),
-                    reasonForUpdate: 'Koreksi jam masuk',
+                    reasonForUpdate: 'Kehadiran penuh',
                     manualEntry: true
                 }).commit();
                 invalidateCache();
-                toast({ title: 'Berhasil', description: 'Jam masuk telah dilengkapi.' });
+                toast({ title: 'Berhasil', description: 'Kehadiran telah lengkap.' });
                 fetchData();
             }
         } catch (err) { toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal memperbarui data.' }); }
