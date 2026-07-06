@@ -20,7 +20,7 @@ const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v40_${todayStr}`;
+    const cacheKey = `daily_stats_v50_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -127,7 +127,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v40_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v50_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -293,18 +293,18 @@ export async function fetchUserMonthlyReportData(firestore: Firestore, userId: s
                 description = cleanDesc(description) || 'Kehadiran penuh';
 
                 const specialStatuses = ['dinas pagi', 'dinas siang', 'pulang cepat'];
-                if (isManual && specialStatuses.includes(description.toLowerCase())) {
-                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: description, description, manualEntry: true };
+                if (specialStatuses.includes(description.toLowerCase())) {
+                    return { id: attendanceRecord.id, date: day, checkInTime, checkOutTime: null, status: description, description, manualEntry: isManual };
                 }
 
                 if (!checkInTime && checkOutTime) {
-                    return { id: attendanceRecord.id, date: day, checkInTime: null, checkOutTime, status: 'Hadir', description: 'Absen pulang (Tanpa masuk)', manualEntry: isManual };
+                    return { id: attendanceRecord.id, date: day, checkInTime: null, checkOutTime, status: 'Hadir', description: 'Belum absen masuk', manualEntry: isManual };
                 }
 
                 return { 
                     id: attendanceRecord.id, date: day, checkInTime, checkOutTime, 
                     status: 'Hadir', 
-                    description: !checkOutTime && isToday ? 'Belum absen pulang' : description, 
+                    description: !checkOutTime && isToday ? 'Belum absen pulang' : (isBefore(day, todayStart) && !checkOutTime ? 'Belum absen pulang' : description), 
                     manualEntry: isManual 
                 };
             }

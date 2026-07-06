@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, getDoc, writeBatch, collection, serverTimestamp, Timestamp, query, where, getDocs } from 'firebase/firestore';
-import { format, isValid, parseISO, startOfDay, endOfDay, addMinutes, isBefore, isSameMonth, startOfMonth, endOfMonth, setHours, setMinutes, subMonths, addMonths } from 'date-fns';
+import { format, isValid, parseISO, startOfDay, isSameMonth, startOfMonth, endOfMonth, setHours, setMinutes, subMonths, addMonths } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -345,7 +345,7 @@ export default function UserReportDetailPage() {
                             </div>
                             <div className="flex justify-center sm:justify-end">
                                 <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-normal bg-primary hover:bg-primary/90 h-11 rounded-xl text-xs uppercase tracking-wider shadow-none">
-                                    {isLoading || isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}Unduh Pdf
+                                    {isLoading || isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}UNDUH PDF
                                 </Button>
                             </div>
                         </div>
@@ -380,7 +380,7 @@ export default function UserReportDetailPage() {
                                             const hasIn = !!item.checkInTime;
                                             const hasOut = !!item.checkOutTime;
                                             const isNoIn = !hasIn && hasOut;
-                                            const isLeave = ['Sakit', 'Izin', 'Dinas'].includes(item.status);
+                                            const isLeave = ['Sakit', 'Izin', 'Dinas'].some(s => item.status.includes(s));
 
                                             return (
                                                 <TableRow key={item.id} className={cn("border-muted-foreground/5 hover:bg-muted/20 transition-colors", isAlpa && "bg-destructive/5")}>
