@@ -48,7 +48,6 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 if (isMounted.current) setSchoolConfig(config);
                 const reportData = await fetchUserMonthlyReportData(firestore, user.uid, month, config);
                 
-                // Menangkap data yang bermasalah (Alpa, Belum Pulang, atau Tanpa Masuk)
                 const problems = reportData.filter(d => 
                     (d.status === 'Alpa') || 
                     (d.description === 'Belum absen pulang') ||
@@ -112,20 +111,19 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
 
             let data: any = {
                 userId: user.uid, date: format(recordDate, 'yyyy-MM-dd'),
-                manualEntry: true, updatedBy: currentUser.uid, updatedAt: serverTimestamp()
+                manualEntry: true, updatedBy: currentUser.uid, updatedAt: serverTimestamp(),
+                reasonForUpdate: 'Kehadiran penuh'
             };
 
             if (type === 'hadir') {
                 data.checkInTime = Timestamp.fromDate(new Date(limitIn.getTime() - Math.floor(Math.random() * 5 * 60 * 1000)));
                 data.checkOutTime = Timestamp.fromDate(new Date(limitOutStart.getTime() + Math.floor(Math.random() * 5 * 60 * 1000)));
-                data.reasonForUpdate = 'Kehadiran penuh';
             } else if (type === 'terlambat') {
                 data.checkInTime = Timestamp.fromDate(new Date(limitIn.getTime() + Math.floor(Math.random() * 5 * 60 * 1000)));
                 data.checkOutTime = Timestamp.fromDate(new Date(limitOutStart.getTime() + Math.floor(Math.random() * 5 * 60 * 1000)));
                 data.reasonForUpdate = 'Terlambat';
             } else if (type === 'lengkapi-masuk') {
                 data.checkInTime = Timestamp.fromDate(new Date(limitIn.getTime() - Math.floor(Math.random() * 5 * 60 * 1000)));
-                data.reasonForUpdate = 'Kehadiran penuh';
             } else if (type === 'dinas-pagi') {
                 data.checkInTime = null;
                 data.checkOutTime = Timestamp.fromDate(new Date(limitOutStart.getTime() + Math.floor(Math.random() * 5 * 60 * 1000)));

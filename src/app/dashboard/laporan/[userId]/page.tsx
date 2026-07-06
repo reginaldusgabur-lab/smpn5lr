@@ -211,7 +211,7 @@ export default function UserReportDetailPage() {
                     manualEntry: true
                 }).commit();
                 invalidateCache();
-                toast({ title: 'Berhasil', description: 'Jam masuk telah dilengkapi.' });
+                toast({ title: 'Berhasil', description: 'Kehadiran kini tercatat penuh.' });
                 fetchData();
             }
         } catch (err) { toast({ variant: 'destructive', title: 'Gagal', description: 'Gagal memperbarui data.' }); }
@@ -345,7 +345,7 @@ export default function UserReportDetailPage() {
                             </div>
                             <div className="flex justify-center sm:justify-end">
                                 <Button onClick={handleDownloadPdf} disabled={monthlyReportData.length === 0 || isLoading || isMutating} className="w-full sm:w-auto font-normal bg-primary hover:bg-primary/90 h-11 rounded-xl text-xs uppercase tracking-wider shadow-none">
-                                    {isLoading || isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}UNDUH PDF
+                                    {isLoading || isMutating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}Unduh Pdf
                                 </Button>
                             </div>
                         </div>
@@ -441,5 +441,3 @@ export default function UserReportDetailPage() {
         </div>
     );
 }
-
-const minDate = new Date(2026, 0, 1);
