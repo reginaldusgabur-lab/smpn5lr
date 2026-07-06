@@ -124,6 +124,7 @@ export default function EditAttendanceModal({ user, month, isOpen, onClose, curr
                 data.reasonForUpdate = 'Terlambat';
             } else if (type === 'lengkapi-masuk') {
                 data.checkInTime = Timestamp.fromDate(new Date(limitIn.getTime() - Math.floor(Math.random() * 5 * 60 * 1000)));
+                data.reasonForUpdate = 'Kehadiran penuh';
             } else if (type === 'dinas-pagi') {
                 data.checkInTime = null;
                 data.checkOutTime = Timestamp.fromDate(new Date(limitOutStart.getTime() + Math.floor(Math.random() * 5 * 60 * 1000)));
