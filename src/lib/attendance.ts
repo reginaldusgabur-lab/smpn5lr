@@ -15,7 +15,18 @@ export interface MonthlyReportData {
     manualEntry: boolean;
 }
 
-const cleanDesc = (desc: string) => desc ? desc.replace(/\s?\(diubah oleh Admin\)/g, '').replace(/\(✓\)/g, '').trim() : '';
+/**
+ * Memastikan label keterangan tetap riil dan profesional.
+ * Menghapus tag sistem dan mengganti label koreksi teknis dengan "Kehadiran penuh".
+ */
+const cleanDesc = (desc: string) => {
+    if (!desc) return '';
+    return desc
+        .replace(/\s?\(diubah oleh Admin\)/g, '')
+        .replace(/\(✓\)/g, '')
+        .replace(/Koreksi jam (masuk|pulang)/gi, 'Kehadiran penuh')
+        .trim();
+};
 
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
@@ -127,7 +138,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v50_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v51_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -169,8 +180,12 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         );
 
         const workingDaysSet = new Set(workingDaysInMonth.map(day => format(day, 'yyyy-MM-dd')));
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
         
         let totalPoints = 0;
+        let hadirCount = 0;
+        let izinCount = 0;
+        let sakitCount = 0;
         const processedDates = new Set<string>();
 
         attendanceData.forEach((att: any) => {
@@ -188,6 +203,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                 }
                 
                 totalPoints += point;
+                hadirCount++;
                 processedDates.add(attDateStr);
             }
         });
@@ -197,23 +213,37 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                 const dayStr = format(day, 'yyyy-MM-dd');
                 if (workingDaysSet.has(dayStr) && !processedDates.has(dayStr)) {
                     let point = 0;
-                    if (leave.type === 'Sakit') point = 0.9;
-                    else if (leave.type === 'Izin' || leave.type === 'Izin Pribadi') point = 0.7;
-                    else if (leave.type.includes('Dinas') || leave.type === 'Pulang Cepat') point = 1.0;
+                    if (leave.type === 'Sakit') {
+                        point = 0.9;
+                        sakitCount++;
+                    } else if (leave.type === 'Izin' || leave.type === 'Izin Pribadi') {
+                        point = 0.7;
+                        izinCount++;
+                    } else if (leave.type.includes('Dinas') || leave.type === 'Pulang Cepat') {
+                        point = 1.0;
+                        hadirCount++;
+                    }
                     totalPoints += point;
                     processedDates.add(dayStr);
                 }
             });
         });
 
+        const pastWorkingDays = workingDaysInMonth.filter(day => {
+            const dStr = format(day, 'yyyy-MM-dd');
+            return dStr <= todayStr;
+        });
+
+        const alpaCount = pastWorkingDays.filter(day => !processedDates.has(format(day, 'yyyy-MM-dd'))).length;
+        
         const denominator = Math.max(1, workingDaysInMonth.length);
         const finalPercentage = (totalPoints / denominator) * 100;
 
         const result = {
-            totalHadir: totalPoints, 
-            totalIzin: 0,
-            totalSakit: 0,
-            totalAlpa: 0,
+            totalHadir: hadirCount, 
+            totalIzin: izinCount,
+            totalSakit: sakitCount,
+            totalAlpa: alpaCount,
             persentase: Math.min(finalPercentage, 100).toFixed(1) + '%',
         };
 
