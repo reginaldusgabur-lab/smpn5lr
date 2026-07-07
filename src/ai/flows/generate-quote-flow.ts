@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview Alur kerja untuk menghasilkan kutipan motivasi dan humor harian menggunakan GenAI.
+ * @fileOverview Alur kerja untuk menghasilkan kutipan motivasi, humor sekolah, dan pantun harian menggunakan GenAI.
  */
 
 import { ai } from '../genkit';
@@ -9,11 +9,12 @@ import { z } from 'genkit';
 const QuoteInputSchema = z.object({
   category: z.string().describe('Peran pengguna (kepala_sekolah, guru, pegawai, admin)'),
   attendanceType: z.enum(['in', 'out']).describe('Tipe absensi (in untuk masuk, out untuk pulang)'),
+  seed: z.number().optional().describe('Nilai acak untuk memastikan variasi output'),
 });
 
 const QuoteOutputSchema = z.object({
-  quote: z.string().describe('Kalimat motivasi atau humor pendek'),
-  author: z.string().describe('Nama tokoh, sebutan tim, atau sumber berita fiktif'),
+  quote: z.string().describe('Teks motivasi, humor, atau pantun'),
+  author: z.string().describe('Nama tokoh atau identitas kreatif (misal: "Tim Anti-Lembur")'),
 });
 
 export async function generateQuote(input: z.infer<typeof QuoteInputSchema>) {
@@ -29,26 +30,35 @@ const generateQuoteFlow = ai.defineFlow(
   async (input) => {
     const { output } = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
-      prompt: `Anda adalah motivator cerdas untuk lingkungan SMPN 5 Langke Rembong. 
-      Berikan satu kutipan unik dalam Bahasa Indonesia untuk seseorang dengan peran ${input.category} 
-      yang baru saja melakukan absen ${input.attendanceType === 'in' ? 'MASUK (Pagi hari)' : 'PULANG (Sore hari)'}.
+      prompt: `Anda adalah "Motivator Kocak & Cerdas" khusus untuk lingkungan SMPN 5 Langke Rembong. 
+      Tugas Anda adalah memberikan satu pesan unik untuk pengguna dengan peran ${input.category} 
+      yang baru saja absen ${input.attendanceType === 'in' ? 'MASUK' : 'PULANG'}.
 
-      KETENTUAN KONTEN:
-      1. PANJANG TEKS: Buatlah kalimat yang sedikit lebih panjang dan mengalir (antara 15 sampai 25 kata) agar memberikan kesan mendalam.
-      2. TEMA: Motivasi pendidikan, inspirasi harian, apresiasi kinerja, atau humor ringan tentang semangat sekolah.
-      3. GAYA: Inspiratif, hangat, dan profesional. JANGAN mengandung unsur SARA atau Politik.
-      4. NETRALITAS: JANGAN mengandung unsur agama atau istilah keagamaan tertentu. Gunakan bahasa universal.
-      5. KONTEKS:
-         - Jika MASUK: Berikan energi positif untuk mengajar/bekerja hari ini.
-         - Jika PULANG: Berikan apresiasi atas dedikasi dan waktu untuk beristirahat.
+      KEHARUSAN:
+      1. VARIASI: Jangan pernah memberikan teks yang membosankan. Gunakan kombinasi: 
+         - Motivasi inspiratif (untuk semangat kerja/belajar).
+         - Humor sekolah (misal: tentang kopi, rencana liburan, atau candaan "hindari gosip di ruang guru").
+         - Pantun Jenaka (khusus budaya Indonesia).
+         - Petuah kocak (nasihat yang benar tapi lucu).
+      2. KONTEKS: 
+         - Jika Guru: Singgung tentang RPP, semangat mengajar, atau murid yang rajin.
+         - Jika Pegawai: Singgung tentang berkas, komputer, atau waktu istirahat.
+         - Jika Kepala Sekolah: Singgung tentang kepemimpinan yang santai tapi tegas.
+      3. GAYA BAHASA: Hangat, akrab, profesional tapi tidak kaku. JANGAN mengandung SARA, Politik, atau Agama.
+      4. PANJANG: 15-30 kata agar berkesan.
+      
+      CONTOH MOOD:
+      - "Pergi ke pasar beli duku, jangan lupa beli jamu. Selamat datang di sekolahku, ayo kejar ilmu tanpa jemu."
+      - "Gaji boleh tanggal muda, tapi semangat harus tetap muda. Hindari gosip di ruang guru, mari fokus bikin murid seru!"
+      - "Kerja keras hari ini sudah tuntas. Pulanglah dengan bangga, tinggalkan berkas, temui keluarga dengan wajah ikhlas."
 
-      Berikan output yang bervariasi setiap kali diminta.`,
+      Nilai acak permintaan ini: ${input.seed || Math.random()}. Berikan jawaban yang berbeda dari sebelumnya.`,
       output: { schema: QuoteOutputSchema },
     });
 
     if (!output || !output.quote) {
       return {
-        quote: input.attendanceType === 'in' ? "Awali hari dengan semangat dan senyuman, karena energi positif Anda adalah penggerak utama kemajuan sekolah kita hari ini." : "Terima kasih atas dedikasi dan kerja keras Anda hari ini. Selamat beristirahat dengan tenang bersama keluarga tercinta.",
+        quote: input.attendanceType === 'in' ? "Awali hari dengan kopi dan visi. Jangan biarkan gosip ruang guru menghambat dedikasi Anda hari ini!" : "Tugas tuntas, hati pun puas. Selamat pulang, istirahatkan raga, besok kita kembali berkarya untuk bangsa.",
         author: "Sistem E-SPENLI"
       };
     }

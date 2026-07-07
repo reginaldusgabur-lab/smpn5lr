@@ -33,7 +33,11 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
         const response = await fetch('/api/quote', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category, attendanceType }),
+          body: JSON.stringify({ 
+            category, 
+            attendanceType,
+            seed: Math.floor(Math.random() * 1000000) // Menambahkan seed untuk keunikan AI
+          }),
         });
         
         if (!response.ok) throw new Error('API Error');
@@ -41,8 +45,9 @@ const QuoteOfTheDay = ({ category, attendanceType }: QuoteOfTheDayProps) => {
         if (data.quote) setQuote(data);
       } catch (e: any) {
         setError(true);
+        // Fallback dinamis jika AI gagal
         setQuote({
-          quote: attendanceType === 'in' ? "Awali hari dengan semangat dan senyuman, karena energi positif Anda adalah penggerak utama kemajuan sekolah kita hari ini." : "Terima kasih atas dedikasi dan kerja keras Anda hari ini. Selamat beristirahat dengan tenang bersama keluarga tercinta.",
+          quote: attendanceType === 'in' ? "Awali hari dengan energi positif. Jangan lupa bahagia dan tetap semangat mengabdi di SMPN 5 Langke Rembong!" : "Terima kasih atas dedikasi luar biasa Anda hari ini. Selamat pulang dan beristirahat dengan tenang bersama keluarga.",
           author: "Sistem E-SPENLI"
         });
       } finally {
