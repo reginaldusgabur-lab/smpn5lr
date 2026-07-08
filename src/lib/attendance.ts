@@ -17,22 +17,20 @@ export interface MonthlyReportData {
 
 /**
  * Memastikan label keterangan tetap riil dan profesional.
- * Menghapus tag sistem dan mengganti label koreksi teknis dengan "Kehadiran penuh".
+ * Mengganti mutlak label koreksi teknis dengan "Kehadiran penuh".
  */
 const cleanDesc = (desc: string) => {
     if (!desc) return '';
     const d = desc.toLowerCase();
-    if (d.includes('koreksi jam') || d.includes('lengkapi absen')) return 'Kehadiran penuh';
-    return desc
-        .replace(/\s?\(diubah oleh Admin\)/g, '')
-        .replace(/\(✓\)/g, '')
-        .trim();
+    // PATEN: Mengubah semua label koreksi teknis menjadi label riil
+    if (d.includes('koreksi') || d.includes('lengkapi') || d.includes('diubah oleh admin')) return 'Kehadiran penuh';
+    return desc.trim();
 };
 
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v60_${todayStr}`;
+    const cacheKey = `daily_stats_v75_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -111,8 +109,6 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
                     else if (leave.type !== 'Pulang Cepat') izinCount++;
                 } else if (leave.status === 'pending' && leave.type !== 'Pulang Cepat') {
                     pendingCount++;
-                } else {
-                    alpaCount++;
                 }
             } else {
                 alpaCount++;
@@ -139,7 +135,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v60_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v75_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -195,7 +191,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                 let point = 0;
                 const desc = (att.reasonForUpdate || '').toLowerCase();
                 
-                if (desc.includes('dinas') || desc.includes('pulang cepat') || desc.includes('kehadiran penuh')) {
+                if (desc.includes('dinas') || desc.includes('pulang cepat') || desc.includes('kehadiran penuh') || desc.includes('hadir')) {
                     point = 1.0;
                 } else if (att.checkInTime && att.checkOutTime) {
                     point = 1.0;
@@ -220,7 +216,7 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
                     } else if (leave.type === 'Izin' || leave.type === 'Izin Pribadi') {
                         point = 0.7;
                         izinCount++;
-                    } else if (leave.type.includes('Dinas') || leave.type === 'Pulang Cepat') {
+                    } else {
                         point = 1.0;
                         hadirCount++;
                     }

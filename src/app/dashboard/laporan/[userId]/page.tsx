@@ -105,7 +105,7 @@ export default function UserReportDetailPage() {
                 
                 let dataToSave: any = {
                     userId, date: todayStr,
-                    manualEntry: true, reasonForUpdate: reason,
+                    manualEntry: true, reasonForUpdate: 'Kehadiran penuh', // PATEN: Semua perbaikan admin -> Kehadiran penuh
                     updatedBy: currentUser.uid, updatedAt: serverTimestamp(),
                     checkOutTime: null 
                 };
@@ -159,7 +159,7 @@ export default function UserReportDetailPage() {
 
             const data: any = {
                 userId, date: format(targetDate, 'yyyy-MM-dd'),
-                manualEntry: true, reasonForUpdate: 'Kehadiran penuh',
+                manualEntry: true, reasonForUpdate: 'Kehadiran penuh', // PATEN
                 updatedBy: currentUser.uid, updatedAt: serverTimestamp()
             };
 
@@ -207,7 +207,7 @@ export default function UserReportDetailPage() {
                     checkInTime: Timestamp.fromDate(realIn),
                     updatedBy: currentUser.uid,
                     updatedAt: serverTimestamp(),
-                    reasonForUpdate: 'Kehadiran penuh',
+                    reasonForUpdate: 'Kehadiran penuh', // PATEN: Mengisi absen masuk -> Kehadiran penuh
                     manualEntry: true
                 }).commit();
                 invalidateCache();
@@ -288,7 +288,7 @@ export default function UserReportDetailPage() {
 
         const tableRows = monthlyReportData.map((item, index) => [
             index + 1,
-            safeFormat(item.date, 'eeee, dd MMM yyyy'),
+            safeFormat(item.date, 'eeee, dd MMMM yyyy'),
             safeFormat(item.checkInTime, 'HH:mm:ss'),
             safeFormat(item.checkOutTime, 'HH:mm:ss'),
             item.status,
@@ -326,7 +326,7 @@ export default function UserReportDetailPage() {
                 <div className="px-4 md:px-0">
                     <div className="flex items-center gap-2 mb-0.5">
                         <Button variant="ghost" size="icon" className="h-8 w-8 -ml-2 shadow-none" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
-                        <h1 className="text-2xl font-normal tracking-tight">Detail Laporan Kehadiran</h1>
+                        <h1 className="text-2xl font-normal tracking-tight text-foreground">Detail Laporan Kehadiran</h1>
                     </div>
                 </div>
 
@@ -385,9 +385,9 @@ export default function UserReportDetailPage() {
                                             return (
                                                 <TableRow key={item.id} className={cn("border-muted-foreground/5 hover:bg-muted/20 transition-colors", isAlpa && "bg-destructive/5")}>
                                                     <TableCell className='text-center font-bold text-muted-foreground text-sm'>{index + 1}</TableCell>
-                                                    <TableCell className="whitespace-nowrap font-bold text-sm">{safeFormat(item.date, 'eeee, dd MMM yyyy')}</TableCell>
-                                                    <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkInTime, 'HH:mm:ss')}</TableCell>
-                                                    <TableCell className='text-center font-mono text-xs font-bold'>{safeFormat(item.checkOutTime, 'HH:mm:ss')}</TableCell>
+                                                    <TableCell className="whitespace-nowrap font-bold text-sm text-foreground">{safeFormat(item.date, 'eeee, dd MMM yyyy')}</TableCell>
+                                                    <TableCell className='text-center font-mono text-xs font-bold text-foreground'>{safeFormat(item.checkInTime, 'HH:mm:ss')}</TableCell>
+                                                    <TableCell className='text-center font-mono text-xs font-bold text-foreground'>{safeFormat(item.checkOutTime, 'HH:mm:ss')}</TableCell>
                                                     <TableCell className="text-center">
                                                         {isAdmin && !isLeave ? (
                                                             <DropdownMenu>
