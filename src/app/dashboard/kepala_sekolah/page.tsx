@@ -361,7 +361,7 @@ export default function KepalaSekolahDashboardPage() {
           </CardHeader>
           <CardContent className="space-y-6 flex flex-col items-center justify-center pt-8">
             <LiveClock />
-            <div className="grid grid-cols-2 gap-4 text-center w-full max-w-sm pt-4">
+            <div className="grid grid-cols-2 gap-4 text-center w-full max-sm pt-4">
               <div className="rounded-lg border bg-card p-4">
                   <div className="flex items-center justify-center gap-2 mb-1">
                       <LogIn className="w-4 h-4 text-muted-foreground" />
@@ -445,8 +445,8 @@ export default function KepalaSekolahDashboardPage() {
         <CardContent className="p-0">
             <div className="overflow-x-auto">
                 <Table>
-                    <TableHeader className="bg-muted/30">
-                        <TableRow className="border-none">
+                    <TableHeader>
+                        <TableRow>
                             <TableHead className="w-[50px] text-center font-bold text-[10px] uppercase tracking-widest">No.</TableHead>
                             <TableHead className="font-bold text-[10px] uppercase tracking-widest">Nama</TableHead>
                             <TableHead className="text-center font-bold text-[10px] uppercase tracking-widest">Waktu Masuk</TableHead>

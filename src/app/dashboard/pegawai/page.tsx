@@ -15,7 +15,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@
 import { doc, collection, query, where, Timestamp, orderBy, limit } from 'firebase/firestore';
 import { format, isBefore, addDays, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
 import { id } from 'date-fns/locale';
-import Link from 'next/navigation';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
