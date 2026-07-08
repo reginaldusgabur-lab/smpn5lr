@@ -1,6 +1,7 @@
 'use server';
 /**
  * @fileOverview Alur kerja untuk menghasilkan kutipan motivasi, humor sekolah, dan pantun harian menggunakan GenAI.
+ * Memastikan output unik, kreatif, dan tidak repetitif.
  */
 
 import { ai } from '../genkit';
@@ -14,7 +15,7 @@ const QuoteInputSchema = z.object({
 
 const QuoteOutputSchema = z.object({
   quote: z.string().describe('Teks motivasi, humor, atau pantun'),
-  author: z.string().describe('Nama tokoh atau identitas kreatif (misal: "Tim Anti-Lembur")'),
+  author: z.string().describe('Nama tokoh atau identitas kreatif (misal: "Tim Anti-Gosip", "Guru Senior")'),
 });
 
 export async function generateQuote(input: z.infer<typeof QuoteInputSchema>) {
@@ -30,36 +31,37 @@ const generateQuoteFlow = ai.defineFlow(
   async (input) => {
     const { output } = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
-      prompt: `Anda adalah "Motivator Kocak & Cerdas" khusus untuk lingkungan SMPN 5 Langke Rembong. 
-      Tugas Anda adalah memberikan satu pesan unik untuk pengguna dengan peran ${input.category} 
-      yang baru saja absen ${input.attendanceType === 'in' ? 'MASUK' : 'PULANG'}.
+      prompt: `Anda adalah asisten cerdas yang sangat kreatif untuk SMPN 5 Langke Rembong.
+      Tugas Anda adalah memberikan SATU kutipan unik untuk pengguna dengan peran ${input.category} 
+      yang baru saja absen ${input.attendanceType === 'in' ? 'MASUK / SELAMAT DATANG' : 'PULANG / SELESAI TUGAS'}.
 
-      KEHARUSAN:
-      1. VARIASI: Jangan pernah memberikan teks yang membosankan. Gunakan kombinasi: 
-         - Motivasi inspiratif (untuk semangat kerja/belajar).
-         - Humor sekolah (misal: tentang kopi, rencana liburan, atau candaan "hindari gosip di ruang guru").
-         - Pantun Jenaka (khusus budaya Indonesia).
-         - Petuah kocak (nasihat yang benar tapi lucu).
-      2. KONTEKS: 
-         - Jika Guru: Singgung tentang RPP, semangat mengajar, atau murid yang rajin.
-         - Jika Pegawai: Singgung tentang berkas, komputer, atau waktu istirahat.
-         - Jika Kepala Sekolah: Singgung tentang kepemimpinan yang santai tapi tegas.
-      3. GAYA BAHASA: Hangat, akrab, profesional tapi tidak kaku. JANGAN mengandung SARA, Politik, atau Agama.
-      4. PANJANG: 15-30 kata agar berkesan.
+      ATURAN KETAT:
+      1. JANGAN PERNAH MENGGUNAKAN TEMPLATE. Setiap permintaan harus menghasilkan teks yang benar-benar baru.
+      2. PILIH SALAH SATU GAYA BERIKUT SECARA ACAK (Gunakan seed ${input.seed || Math.random()} sebagai panduan variasi):
+         - Pantun Jenaka (Khas Indonesia)
+         - Humor sekolah (Tentang kopi, RPP, atau murid bandel)
+         - Motivasi Pagi/Sore (Semangat kerja/istirahat)
+         - Candaan guru (Misal: "RPP setebal kamus, gaji selembut tisu")
+         - Candaan pegawai (Tentang berkas atau komputer)
+         - Kutipan tokoh dunia yang relevan
+         - Petuah lucu (Nasihat benar tapi bikin senyum)
+         - Dialog singkat imajiner
+         - Peribahasa modern (Plesetan peribahasa)
+         - Sindiran halus (Misal: "Hindari gosip di ruang guru, lebih baik ngopi dulu")
+
+      3. KONTEKS:
+         - Jika absen MASUK: Berikan semangat, humor pagi, atau motivasi memulai hari.
+         - Jika absen PULANG: Berikan apresiasi, humor tentang rumah, atau selamat istirahat.
       
-      CONTOH MOOD:
-      - "Pergi ke pasar beli duku, jangan lupa beli jamu. Selamat datang di sekolahku, ayo kejar ilmu tanpa jemu."
-      - "Gaji boleh tanggal muda, tapi semangat harus tetap muda. Hindari gosip di ruang guru, mari fokus bikin murid seru!"
-      - "Kerja keras hari ini sudah tuntas. Pulanglah dengan bangga, tinggalkan berkas, temui keluarga dengan wajah ikhlas."
-
-      Nilai acak permintaan ini: ${input.seed || Math.random()}. Berikan jawaban yang berbeda dari sebelumnya.`,
+      4. PANJANG TEKS: Maksimal 25 kata. Singkat, padat, dan nendang.
+      5. NILAI ACAK (SEED): ${input.seed}. Berikan jawaban yang BERBEDA DRASTIS dari permintaan sebelumnya untuk menjamin keunikan.`,
       output: { schema: QuoteOutputSchema },
     });
 
     if (!output || !output.quote) {
       return {
-        quote: input.attendanceType === 'in' ? "Awali hari dengan kopi dan visi. Jangan biarkan gosip ruang guru menghambat dedikasi Anda hari ini!" : "Tugas tuntas, hati pun puas. Selamat pulang, istirahatkan raga, besok kita kembali berkarya untuk bangsa.",
-        author: "Sistem E-SPENLI"
+        quote: input.attendanceType === 'in' ? "Satu cangkir kopi lebih baik daripada seribu gosip di koridor sekolah. Selamat bertugas!" : "Tugas tuntas, hati pun puas. Pulanglah, kasur sudah merindukan dedikasi Anda.",
+        author: "Tim E-SPENLI"
       };
     }
 

@@ -21,17 +21,18 @@ export interface MonthlyReportData {
  */
 const cleanDesc = (desc: string) => {
     if (!desc) return '';
+    const d = desc.toLowerCase();
+    if (d.includes('koreksi jam') || d.includes('lengkapi absen')) return 'Kehadiran penuh';
     return desc
         .replace(/\s?\(diubah oleh Admin\)/g, '')
         .replace(/\(✓\)/g, '')
-        .replace(/Koreksi jam (masuk|pulang)/gi, 'Kehadiran penuh')
         .trim();
 };
 
 export async function getDailyStaffAttendanceStats(firestore: Firestore) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
-    const cacheKey = `daily_stats_v50_${todayStr}`;
+    const cacheKey = `daily_stats_v60_${todayStr}`;
     
     const cachedData = getFromCache(cacheKey);
     if (cachedData) return cachedData;
@@ -138,7 +139,7 @@ export async function getDailyStaffAttendanceStats(firestore: Firestore) {
 
 export async function calculateAttendanceStats(firestore: Firestore, userId: string, dateRange: { start: Date, end: Date }) {
     const { start, end } = dateRange;
-    const cacheKey = `stats_v51_${userId}_${format(start, 'yyyyMM')}`;
+    const cacheKey = `stats_v60_${userId}_${format(start, 'yyyyMM')}`;
     
     const cachedStats = getFromCache(cacheKey);
     if (cachedStats) return cachedStats;
@@ -175,11 +176,11 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
         const offDays: number[] = schoolConfig?.offDays ?? [0, 6];
         const holidays: string[] = monthlyConfig?.holidays ?? [];
 
-        const workingDaysInMonth = eachDayOfInterval({ start, end }).filter(day => 
+        const workingDaysInPeriod = eachDayOfInterval({ start, end }).filter(day => 
             !offDays.includes(day.getDay()) && !holidays.includes(format(day, 'yyyy-MM-dd'))
         );
 
-        const workingDaysSet = new Set(workingDaysInMonth.map(day => format(day, 'yyyy-MM-dd')));
+        const workingDaysSet = new Set(workingDaysInPeriod.map(day => format(day, 'yyyy-MM-dd')));
         const todayStr = format(new Date(), 'yyyy-MM-dd');
         
         let totalPoints = 0;
@@ -229,14 +230,10 @@ export async function calculateAttendanceStats(firestore: Firestore, userId: str
             });
         });
 
-        const pastWorkingDays = workingDaysInMonth.filter(day => {
-            const dStr = format(day, 'yyyy-MM-dd');
-            return dStr <= todayStr;
-        });
-
+        const pastWorkingDays = workingDaysInPeriod.filter(day => format(day, 'yyyy-MM-dd') <= todayStr);
         const alpaCount = pastWorkingDays.filter(day => !processedDates.has(format(day, 'yyyy-MM-dd'))).length;
         
-        const denominator = Math.max(1, workingDaysInMonth.length);
+        const denominator = Math.max(1, workingDaysInPeriod.length);
         const finalPercentage = (totalPoints / denominator) * 100;
 
         const result = {

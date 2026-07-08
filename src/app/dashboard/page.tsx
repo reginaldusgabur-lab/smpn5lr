@@ -248,7 +248,7 @@ export default function DashboardPage() {
             <div className="w-full space-y-6 flex flex-col items-stretch">
                 <Card className="w-full border border-muted-foreground/10 shadow-none rounded-xl overflow-hidden bg-card">
                     <CardHeader className="p-6 text-center border-b border-muted-foreground/5">
-                        <CardTitle className="text-xl font-bold tracking-tight text-primary">Kehadiran hari ini</CardTitle>
+                        <CardTitle className="text-xl font-normal tracking-tight text-primary">Kehadiran hari ini</CardTitle>
                     </CardHeader>
                     <CardContent className="p-6 space-y-4 pt-4 text-center">
                         <LiveClockUI />
@@ -285,7 +285,7 @@ export default function DashboardPage() {
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                     <TrendingUp className="w-5 h-5 text-foreground" />
-                                    <h2 className="text-xl font-bold tracking-tight text-foreground">
+                                    <h2 className="text-xl font-normal tracking-tight text-foreground">
                                         Riwayat Bulan {format(summaryMonth, 'MMMM', { locale: id })}
                                     </h2>
                                 </div>
