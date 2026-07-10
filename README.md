@@ -98,3 +98,4 @@ Di era digital, proses manual pencatatan kehadiran rentan terhadap kesalahan, me
     Aplikasi akan berjalan di `http://localhost:3000`.
 
 
+
